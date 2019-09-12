@@ -10,6 +10,41 @@
           "id": 2,
           "start_seconds": 369.1,
           "end_seconds": 370.5
+      },
+      {
+          "id": 3,
+          "start_seconds": 372,
+          "end_seconds": 373.3
+      },
+      {
+          "id": 4,
+          "start_seconds": 373.31,
+          "end_seconds": 375.3
+      },
+      {
+          "id": 5,
+          "start_seconds": 375.31,
+          "end_seconds": 379
+      },
+      {
+          "id": 6,
+          "start_seconds": 379.01,
+          "end_seconds": 381.0
+      },
+      {
+          "id": 7,
+          "start_seconds": 381.01,
+          "end_seconds": 387.0
+      },
+      {
+          "id": 8,
+          "start_seconds": 387.01,
+          "end_seconds": 388.8
+      },
+      {
+          "id": 9,
+          "start_seconds": 388.88,
+          "end_seconds": 393.5
       }
   ]
 }

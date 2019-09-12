@@ -9,7 +9,7 @@ import json
 
 stop_words = list(set(nltk.corpus.stopwords.words('english')))
 
-
+## def need to keep the sentence with the id.
 def get_sentences(dir_path):
     sentences = []
 
@@ -34,7 +34,7 @@ def process_sentences(sentences):
         stopped = [w for w in tokens if not w in stop_words]
         # tagged = nltk.pos_tag(tokens)
         # entities = nltk.chunk.ne_chunk(tagged)
-        print stopped
+        print tokens
         print
 
 if __name__ == '__main__':
