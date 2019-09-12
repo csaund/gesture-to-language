@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-
-
 import os
 import argparse
 import io
 import subprocess
+import json
 
 # from moviepy.editor import VideoFileClip, AudioFileClip
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
@@ -36,8 +35,6 @@ def transcribe_files(filename_base, gesture_clip_timings):
         command = ("ffmpeg -i %s -ab 160k -ac 2 -ar 48000 -vn %s" % (input_vid_path, output_audio_path))
         subprocess.call(command, shell=True)
 
-        #af = AudioFileClip(dir_path + '/' + filename_base + '_' + str(gesture['id']) + '.mp4')
-
         with io.open(output_audio_path, 'rb') as audio_file:
             content = audio_file.read()
 
@@ -51,24 +48,32 @@ def transcribe_files(filename_base, gesture_clip_timings):
 
         response = client.recognize(config, audio)
 
-        ## todo create new file for these
         fn = output_transcript_path
-
-        ## todo turn this into pretty json
+        transcript = {}
         with open(fn, 'w') as f:
             for result in response.results:
                 # f.write("client response:" + response)
                 alternative = result.alternatives[0]
-                f.write(u'Transcript: {}'.format(alternative.transcript))
 
-                for word_info in alternative.words:
-                    word = word_info.word
-                    start_time = word_info.start_time
-                    end_time = word_info.end_time
-                    f.write('Word: {}, start_time: {}, end_time: {}'.format(
-                        word,
-                        start_time.seconds + start_time.nanos * 1e-9,
-                        end_time.seconds + end_time.nanos * 1e-9))
+                transcript['Transcript:'] = str(alternative.transcript)
+                # f.write(u'Transcript: {}'.format(alternative.transcript))
+
+                transcript['words'] = []
+                for i in range(len(alternative.words)):
+                    print i
+                    print len(alternative.words)
+                    transcript['words'].append({})
+                    print transcript['words']
+                    word_info = alternative.words[i]
+                    transcript['words'][i]['word'] = str(word_info.word)
+                    transcript['words'][i]['start_time'] = word_info.start_time.nanos *  1e-9
+                    transcript['words'][i]['end_time'] = word_info.end_time.nanos * 1e-9
+
+            print(transcript)
+
+            print
+            print
+            json.dump(dict(transcript), f)
         f.close()
 
 
@@ -95,7 +100,6 @@ def make_clip_timings():
 #            start_seconds: 367.5,
 #            end_seconds: 369.0
 #        }
-
 ## assumes video subfolder is already created
 def segment_video(filename_base, video_path, gesture_clip_timings):
     dir_path = "./" + filename_base
