@@ -9,7 +9,7 @@ import json
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from oauth2client.client import GoogleCredentials
 
-devKey = 'AIzaSyDH9NoORqTDxa6yKDlmgvgEm6n4mJHR-sU'
+devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 
 from apiclient.discovery import build
 service = build('language', 'v1', developerKey=devKey)
@@ -52,11 +52,8 @@ def transcribe_files(filename_base, gesture_clip_timings):
         transcript = {}
         with open(fn, 'w') as f:
             for result in response.results:
-                # f.write("client response:" + response)
                 alternative = result.alternatives[0]
-
                 transcript['Transcript:'] = str(alternative.transcript)
-                # f.write(u'Transcript: {}'.format(alternative.transcript))
 
                 transcript['words'] = []
                 for i in range(len(alternative.words)):

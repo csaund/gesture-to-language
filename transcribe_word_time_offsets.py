@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-devKey = 'AIzaSyDH9NoORqTDxa6yKDlmgvgEm6n4mJHR-sU'
+devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 
 """Google Cloud Speech API sample that demonstrates word time offsets.
 Example usage:
