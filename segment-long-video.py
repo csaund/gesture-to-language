@@ -57,38 +57,23 @@ def transcribe_files(filename_base, gesture_clip_timings):
 
                 transcript['words'] = []
                 for i in range(len(alternative.words)):
-                    print i
-                    print len(alternative.words)
                     transcript['words'].append({})
-                    print transcript['words']
                     word_info = alternative.words[i]
                     transcript['words'][i]['word'] = str(word_info.word)
                     transcript['words'][i]['start_time'] = word_info.start_time.nanos *  1e-9
                     transcript['words'][i]['end_time'] = word_info.end_time.nanos * 1e-9
 
-            print(transcript)
-
-            print
-            print
             json.dump(dict(transcript), f)
         f.close()
 
 
 ## TODO calculate the timestamps automatically, or take them as an arg
-def make_clip_timings():
-    gestures = [
-        {
-            'id': 1,
-            'start_seconds': 367.5,
-            'end_seconds': 369.0
-        },
-        {
-            'id': 2,
-            'start_seconds': 369.1,
-            'end_seconds': 370.5
-        }
-    ]
-    return gestures
+# expects timings file to exist as well
+def make_clip_timings(filename_base):
+    timings_file = filename_base + '-timings.json'
+    with open(timings_file) as f:
+        timings = json.load(f)
+    return timings
 
 
 # get timings as list of dicts with shape:
@@ -134,5 +119,5 @@ if __name__ == '__main__':
     ## TEMP right now just hard coded for testing
     ## TODO: make this actually segment by gesture
     ## 12 Sept 2019
-    gesture_clips = make_clip_timings()
-    segment_and_extract(filename_base, vid_path, gesture_clips)
+    gesture_clips = make_clip_timings(filename_base)
+    segment_and_extract(filename_base, vid_path, gesture_clips["gestures"])

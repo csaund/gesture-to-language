@@ -1,0 +1,15 @@
+{
+  "gestures":
+  [
+      {
+          "id": 1,
+          "start_seconds": 367.5,
+          "end_seconds": 369.0
+      },
+      {
+          "id": 2,
+          "start_seconds": 369.1,
+          "end_seconds": 370.5
+      }
+  ]
+}
