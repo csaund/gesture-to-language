@@ -42,8 +42,19 @@ def transcribe_file_with_word_time_offsets(speech_file):
     from google.cloud.speech import types
     client = speech.SpeechClient()
 
-    with io.open(speech_file, 'rb') as audio_file:
+    filename_base = speech_file.split('/')[-1].split('.')
+
+    # if we give an mp4, extract the wav first
+    if(filename_base[-1] == '.mp4'):
+        af = AudioFileClip(speech_file)
+    else:
+        af = speech_file
+
+    with io.open(af, 'rb') as audio_file:
         content = audio_file.read()
+
+    print "filenamebase: " + filename_base[0]
+    print af
 
     audio = types.RecognitionAudio(content=content)
     config = types.RecognitionConfig(
@@ -56,7 +67,7 @@ def transcribe_file_with_word_time_offsets(speech_file):
     response = client.recognize(config, audio)
 
     ## todo create new file for these
-    fn = "tmp.json"
+    fn = filename_base[0] + '.json'
 
     ## todo turn this into pretty json
     with open(fn, 'w') as f:
@@ -74,6 +85,8 @@ def transcribe_file_with_word_time_offsets(speech_file):
                     start_time.seconds + start_time.nanos * 1e-9,
                     end_time.seconds + end_time.nanos * 1e-9))
     f.close()
+
+    ## todo make output json pretty
 
 
 # [START speech_transcribe_async_word_time_offsets_gcs]
