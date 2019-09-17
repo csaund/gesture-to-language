@@ -61,11 +61,16 @@ creates a folder `video-file/` that contains the videos of gesture phrases and a
 
 ## What I want
 :white_check_mark: A script that takes a long video
-:white_circle: Segments that video into gesture phrases and sub-gestures
-:white_circle: Takes those mini-gesture videos, and classifies the gesture by movement characteristics
+
+:x: Segments that video into gesture phrases and sub-gestures
+
+:x: Takes those mini-gesture videos, and classifies the gesture by movement characteristics
+
 :white_check_mark: Takes those mini-gesture videos, and gets the transcript for them
-:white_circle: Takes those transcripts, and gets their linguistic forms (nltk?)
-:white_circle: Takes those linguistic forms, categorize them into linguistic categories
+
+:heavy_minus_sign: Takes those transcripts, and gets their linguistic forms (nltk?)
+
+:x: Takes those linguistic forms, categorize them into linguistic categories
 
 
 ## Evaluation
