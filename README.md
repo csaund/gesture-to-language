@@ -14,14 +14,54 @@ And that will put the output into a file called `audio_test.json`
 
 Rad.
 
-From there I need to do wordnet things. Time to install wordnet I guess!
+From there I need to do nltk things. Time to install wordnet I guess!
 
+usage
+```
+$ python segment-long-video.py video-file.mp4
+```
+requires that you first have video-file-timings.json which must be in the format
+```
+
+{
+  "phrases":
+  [
+      {
+        "id": 1,
+        "phase": {
+            "start_seconds": 363,
+            "end_seconds": 370.7,
+            "transcript": ""
+        },
+        "gestures": [
+            {
+              "start_seconds": 364,
+              "end_seconds": 365.5
+            },
+            {
+              "start_seconds": 365.6,
+              "end_seconds": 366
+            },
+            {
+              "start_seconds": 367.7,
+              "end_seconds": 369
+            },
+            {
+              "start_seconds": 369,
+              "end_seconds": 370.6
+            }
+        ]
+      },
+      ...
+  ```
+
+creates a folder `video-file/` that contains the videos of gesture phrases and audio files (`.mp4`/`.wav`), and json files with associated transcript and timings for each gesture phrase and sub-gesture, as given by the `-timings.json` file.
 
 
 
 ## What I want
 * A script that takes a long video
-* Segments that video into gestures
+* Segments that video into gesture phrases and sub-gestures
 * Takes those mini-gesture videos, and classifies the gesture by movement characteristics
 * Takes those mini-gesture videos, and gets the transcript for them
 * Takes those transcripts, and gets their WN forms
