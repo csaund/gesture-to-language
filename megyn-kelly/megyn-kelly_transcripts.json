@@ -1,0 +1,87 @@
+[
+    {
+        "phase": {
+            "end_seconds": 370.7, 
+            "transcript": "Human Resources was not an option for me at all at Fox News who is an entity completely controlled by the CEO ales who is my harasser", 
+            "start_seconds": 363
+        }, 
+        "gestures": [
+            {
+                "end_seconds": 365.5, 
+                "transcript": " Human Resources was not an option for me at", 
+                "start_seconds": 364
+            }, 
+            {
+                "end_seconds": 366, 
+                "transcript": "all", 
+                "start_seconds": 365.6
+            }, 
+            {
+                "end_seconds": 369, 
+                "transcript": "at Fox News who is an entity completely controlled by the CEO", 
+                "start_seconds": 367.7
+            }, 
+            {
+                "end_seconds": 370.6, 
+                "transcript": "ales who is my harasser", 
+                "start_seconds": 369
+            }
+        ], 
+        "id": 1
+    }, 
+    {
+        "phase": {
+            "end_seconds": 378.1, 
+            "transcript": "and I did report it to a supervisor for that matter who did nothing about it and predictably", 
+            "start_seconds": 373
+        }, 
+        "gestures": [
+            {
+                "end_seconds": 374.5, 
+                "transcript": " and I did report it to a supervisor for that", 
+                "start_seconds": 373
+            }, 
+            {
+                "end_seconds": 378, 
+                "transcript": "matter who did nothing about it and predictably", 
+                "start_seconds": 375.6
+            }
+        ], 
+        "id": 2
+    }, 
+    {
+        "phase": {
+            "end_seconds": 395.6, 
+            "transcript": "find a way because the culture I don't want to say has changed but it is changing meaningfully by the mall", 
+            "start_seconds": 386.4
+        }, 
+        "gestures": [
+            {
+                "end_seconds": 388.4, 
+                "transcript": " find a way because", 
+                "start_seconds": 386.4
+            }, 
+            {
+                "end_seconds": 390.1, 
+                "transcript": "the culture I", 
+                "start_seconds": 388.4
+            }, 
+            {
+                "end_seconds": 392.3, 
+                "transcript": "don't want to say has changed but it is", 
+                "start_seconds": 391
+            }, 
+            {
+                "end_seconds": 394, 
+                "transcript": "changing meaningfully", 
+                "start_seconds": 392.3
+            }, 
+            {
+                "end_seconds": 395.5, 
+                "transcript": "by the mall", 
+                "start_seconds": 394
+            }
+        ], 
+        "id": 3
+    }
+]
