@@ -1,50 +1,76 @@
 {
-  "gestures":
+  "phrases":
   [
       {
-          "id": 1,
-          "start_seconds": 367.5,
-          "end_seconds": 369.0
+        "id": 1,
+        "phase": {
+            "start_seconds": 363,
+            "end_seconds": 378.1
+        },
+        "gestures": [
+            {
+              "start_seconds": 364,
+              "end_seconds": 365.5
+            },
+            {
+              "start_seconds": 365.6,
+              "end_seconds": 366
+            },
+            {
+              "start_seconds": 367.7,
+              "end_seconds": 369
+            },
+            {
+              "start_seconds": 369,
+              "end_seconds": 370.6
+            }
+        ]
       },
       {
-          "id": 2,
-          "start_seconds": 369.1,
-          "end_seconds": 370.5
+        "id": 2,
+        "phase": {
+            "start_seconds": 373,
+            "end_seconds": 378.1
+        },
+        "gestures": [
+            {
+              "start_seconds": 373,
+              "end_seconds": 374.5
+            },
+            {
+              "start_seconds": 375.6,
+              "end_seconds": 378
+            }
+        ]
       },
       {
-          "id": 3,
-          "start_seconds": 372,
-          "end_seconds": 373.3
-      },
-      {
-          "id": 4,
-          "start_seconds": 373.31,
-          "end_seconds": 375.3
-      },
-      {
-          "id": 5,
-          "start_seconds": 375.31,
-          "end_seconds": 379
-      },
-      {
-          "id": 6,
-          "start_seconds": 379.01,
-          "end_seconds": 381.0
-      },
-      {
-          "id": 7,
-          "start_seconds": 381.01,
-          "end_seconds": 387.0
-      },
-      {
-          "id": 8,
-          "start_seconds": 387.01,
-          "end_seconds": 388.8
-      },
-      {
-          "id": 9,
-          "start_seconds": 388.88,
-          "end_seconds": 393.5
+        "id": 3,
+        "phase": {
+          "start_seconds": 386.4,
+          "end_seconds": 396
+        },
+        "gestures": [
+          {
+            "start_seconds": 386.4,
+            "end_seconds": 388.4
+          },
+          {
+            "start_seconds": 388.4,
+            "end_seconds": 390.1
+          },
+          {
+            "start_seconds": 391,
+            "end_seconds": 392.3
+          },
+          {
+            "start_seconds": 392.3,
+            "end_seconds": 394
+          },
+          {
+            "start_seconds": 394,
+            "end_seconds": 395.5
+          }
+        ]
       }
   ]
 }

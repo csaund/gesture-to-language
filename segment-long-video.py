@@ -26,10 +26,10 @@ def transcribe_files(filename_base, gesture_clip_timings):
     client = speech.SpeechClient()
     dir_path = "./" + filename_base
 
-    for gesture in gesture_clip_timings:
-        input_vid_path = dir_path + '/' + filename_base + '_' + str(gesture['id']) + '.mp4'
-        output_audio_path = dir_path + '/' + filename_base + '_' + str(gesture['id']) + '.wav'
-        output_transcript_path = dir_path + '/' + filename_base + '_' + str(gesture['id']) + '.json'
+    for gesture_phase in gesture_clip_timings:
+        input_vid_path = dir_path + '/' + filename_base + '_' + str(gesture_phase['id']) + '.mp4'
+        output_audio_path = dir_path + '/' + filename_base + '_' + str(gesture_phase['id']) + '.wav'
+        output_transcript_path = dir_path + '/' + filename_base + '_' + str(gesture_phase['id']) + '.json'
         # todo there is a better way of iterating thru all items in a dir probably
 
         command = ("ffmpeg -i %s -ab 160k -ac 2 -ar 48000 -vn %s" % (input_vid_path, output_audio_path))
@@ -53,7 +53,7 @@ def transcribe_files(filename_base, gesture_clip_timings):
         with open(fn, 'w') as f:
             for result in response.results:
                 alternative = result.alternatives[0]
-                transcript['Transcript:'] = str(alternative.transcript)
+                transcript['Transcript'] = str(alternative.transcript)
 
                 transcript['words'] = []
                 for i in range(len(alternative.words)):
@@ -63,7 +63,7 @@ def transcribe_files(filename_base, gesture_clip_timings):
                     transcript['words'][i]['start_time'] = word_info.start_time.nanos *  1e-9
                     transcript['words'][i]['end_time'] = word_info.end_time.nanos * 1e-9
 
-            json.dump(dict(transcript), f)
+            json.dump(dict(transcript), f, indent=4)
         f.close()
 
 
@@ -85,9 +85,9 @@ def make_clip_timings(filename_base):
 ## assumes video subfolder is already created
 def segment_video(filename_base, video_path, gesture_clip_timings):
     dir_path = "./" + filename_base
-    for gesture in gesture_clip_timings:
-        output_vid_path = dir_path + '/' + filename_base + '_' + str(gesture['id']) + '.mp4'
-        ffmpeg_extract_subclip(video_path, gesture['start_seconds'], gesture['end_seconds'], targetname=output_vid_path)
+    for gesture_phase in gesture_clip_timings:
+        output_vid_path = dir_path + '/' + filename_base + '_' + str(gesture_phase['id']) + '.mp4'
+        ffmpeg_extract_subclip(video_path, gesture_phase['phase']['start_seconds'], gesture_phase['phase']['end_seconds'], targetname=output_vid_path)
     return
 
 def segment_and_extract(filename_base, video_path, gesture_clip_timings):
@@ -120,4 +120,4 @@ if __name__ == '__main__':
     ## TODO: make this actually segment by gesture
     ## 12 Sept 2019
     gesture_clips = make_clip_timings(filename_base)
-    segment_and_extract(filename_base, vid_path, gesture_clips["gestures"])
+    segment_and_extract(filename_base, vid_path, gesture_clips["phrases"])
