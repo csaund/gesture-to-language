@@ -60,14 +60,14 @@ creates a folder `video-file/` that contains the videos of gesture phrases and a
 
 
 ## What I want
-* A script that takes a long video
-* Segments that video into gesture phrases and sub-gestures
-* Takes those mini-gesture videos, and classifies the gesture by movement characteristics
-* Takes those mini-gesture videos, and gets the transcript for them
-* Takes those transcripts, and gets their WN forms
-* Takes those WN forms, categorize them into linguistic categories
+:white_check_mark: A script that takes a long video
+:white_circle: Segments that video into gesture phrases and sub-gestures
+:white_circle: Takes those mini-gesture videos, and classifies the gesture by movement characteristics
+:white_check_mark: Takes those mini-gesture videos, and gets the transcript for them
+:white_circle: Takes those transcripts, and gets their linguistic forms (nltk?)
+:white_circle: Takes those linguistic forms, categorize them into linguistic categories
 
 
 ## Evaluation
 * Computationally, see overlap between sentence categories and gesture categories
-* Subjectively, see people's matching abilities (gesture --> candidate sentences)
+* Subjectively, see people's matching abilities (gesture --> candidate sentences from categories)
