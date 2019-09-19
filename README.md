@@ -57,6 +57,11 @@ requires that you first have video-file-timings.json which must be in the format
 
 creates a folder `video-file/` that contains the videos of gesture phrases and audio files (`.mp4`/`.wav`), and json files with associated transcript and timings for each gesture phrase and sub-gesture, as given by the `-timings.json` file.
 
+so you'd do two things to get all the final forms:
+```
+$ python segment-long-video.py megyn-kelly.mp4
+$ python analyze-transcripts.py megyn-kelly.mp4
+```
 
 
 ## What I want
@@ -68,9 +73,9 @@ creates a folder `video-file/` that contains the videos of gesture phrases and a
 
 :white_check_mark: Takes those mini-gesture videos, and gets the transcript for them
 
-:heavy_minus_sign: Takes those transcripts, and gets their linguistic forms (nltk?)
+:white_check_mark: Takes those transcripts, and gets their linguistic forms (nltk?)
 
-:x: Takes those linguistic forms, categorize them into linguistic categories
+:heavy_minus_sign: Takes those linguistic forms, categorize them into linguistic categories
 
 
 ## Evaluation
