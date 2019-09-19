@@ -146,6 +146,15 @@
         }, 
         "gestures": [
             {
+                "hypernyms": {
+                    "NN": [
+                        "option", 
+                        "choice"
+                    ], 
+                    "RB": [
+                        "not"
+                    ]
+                }, 
                 "end_seconds": 365.5, 
                 "transcript": " Human Resources was not an option for me at", 
                 "structure": [
@@ -189,6 +198,7 @@
                 "start_seconds": 364
             }, 
             {
+                "hypernyms": {}, 
                 "end_seconds": 366, 
                 "transcript": "all", 
                 "structure": [
@@ -200,6 +210,23 @@
                 "start_seconds": 365.6
             }, 
             {
+                "hypernyms": {
+                    "RB": [
+                        "completely", 
+                        "wholly"
+                    ], 
+                    "NN": [
+                        "entity"
+                    ], 
+                    "VBN": [
+                        "control", 
+                        "controlled", 
+                        "see", 
+                        "master", 
+                        "operate", 
+                        "manipulate"
+                    ]
+                }, 
                 "end_seconds": 369, 
                 "transcript": "at Fox News who is an entity completely controlled by the CEO", 
                 "structure": [
@@ -255,6 +282,12 @@
                 "start_seconds": 367.7
             }, 
             {
+                "hypernyms": {
+                    "PRP$": [], 
+                    "NN": [
+                        "harasser"
+                    ]
+                }, 
                 "end_seconds": 370.6, 
                 "transcript": "ales who is my harasser", 
                 "structure": [
@@ -386,6 +419,18 @@
         }, 
         "gestures": [
             {
+                "hypernyms": {
+                    "VB": [
+                        "report", 
+                        "report_card", 
+                        "reputation", 
+                        "composition"
+                    ], 
+                    "NN": [
+                        "supervisor", 
+                        "supervisory_program"
+                    ]
+                }, 
                 "end_seconds": 374.5, 
                 "transcript": " and I did report it to a supervisor for that", 
                 "structure": [
@@ -433,6 +478,14 @@
                 "start_seconds": 373
             }, 
             {
+                "hypernyms": {
+                    "RB": [
+                        "predictably"
+                    ], 
+                    "NN": [
+                        "nothing"
+                    ]
+                }, 
                 "end_seconds": 378, 
                 "transcript": "matter who did nothing about it and predictably", 
                 "structure": [
@@ -596,6 +649,28 @@
         }, 
         "gestures": [
             {
+                "hypernyms": {
+                    "VB": [
+                        "find_oneself", 
+                        "detect", 
+                        "receive", 
+                        "discover", 
+                        "rule", 
+                        "determine", 
+                        "line_up", 
+                        "recover", 
+                        "find", 
+                        "witness", 
+                        "discovery"
+                    ], 
+                    "NN": [
+                        "direction", 
+                        "room", 
+                        "manner", 
+                        "way", 
+                        "means"
+                    ]
+                }, 
                 "end_seconds": 388.4, 
                 "transcript": " find a way because", 
                 "structure": [
@@ -619,6 +694,13 @@
                 "start_seconds": 386.4
             }, 
             {
+                "hypernyms": {
+                    "NN": [
+                        "culture", 
+                        "acculturation", 
+                        "polish"
+                    ]
+                }, 
                 "end_seconds": 390.1, 
                 "transcript": "the culture I", 
                 "structure": [
@@ -638,6 +720,26 @@
                 "start_seconds": 388.4
             }, 
             {
+                "hypernyms": {
+                    "VB": [
+                        "read", 
+                        "pronounce", 
+                        "state", 
+                        "say", 
+                        "suppose", 
+                        "allege", 
+                        "order"
+                    ], 
+                    "VBN": [
+                        "exchange", 
+                        "transfer", 
+                        "changed", 
+                        "switch", 
+                        "deepen", 
+                        "change"
+                    ], 
+                    "RB": []
+                }, 
                 "end_seconds": 392.3, 
                 "transcript": "don't want to say has changed but it is", 
                 "structure": [
@@ -685,6 +787,19 @@
                 "start_seconds": 391
             }, 
             {
+                "hypernyms": {
+                    "VBG": [
+                        "exchange", 
+                        "transfer", 
+                        "switch", 
+                        "changing", 
+                        "deepen", 
+                        "change"
+                    ], 
+                    "RB": [
+                        "meaningfully"
+                    ]
+                }, 
                 "end_seconds": 394, 
                 "transcript": "changing meaningfully", 
                 "structure": [
@@ -700,6 +815,12 @@
                 "start_seconds": 392.3
             }, 
             {
+                "hypernyms": {
+                    "NN": [
+                        "promenade", 
+                        "plaza"
+                    ]
+                }, 
                 "end_seconds": 395.5, 
                 "transcript": "by the moment", 
                 "structure": [

@@ -16,6 +16,8 @@ import pandas as pd
 # for sentence structure?
 # parser = nltk.parse.malt.MaltParser()
 
+POS_I_LIKE = ["VBN", "VB", "VBG", "NN", "RB", "PRP$"]
+
 ##
 stop_words = list(set(nltk.corpus.stopwords.words('english')))
 
@@ -46,14 +48,21 @@ def morph(w0):
        return w
 
 def get_hypernyms(w0):
-    syn = wn.synsets(morph(w0))[0]
-    return syn.hypernyms()
+    syn = wn.synsets(w0)
+    
+    ## dunno when TF this happens
+    if type(syn) != list:
+        return syn.name()
+    ## sometimes it's an empty list??
+    elif len(syn) == 0:
+        return []
 
-# print wnexpand(('big'))
-# print
-# print get_hypernyms('big')
+    # most of the time I want hypernyms tho
+    hyp_list = list(set([hy.name().split('.')[0] for hy in syn]))
+    return hyp_list
 
-def get_wn_forms(gesture_transcripts):
+
+def get_transcript_structure(gesture_transcripts):
     for phrase in gesture_transcripts:
         phrase_transcript = phrase["phase"]["transcript"]
         p_tokens = nltk.word_tokenize(phrase_transcript)
@@ -61,16 +70,25 @@ def get_wn_forms(gesture_transcripts):
         p_structure = nltk.pos_tag(p_tokens)
         phrase["phase"]["structure"] = p_structure
         token_index = 0
+
         for gesture in phrase["gestures"]:
             gesture_transcript = gesture["transcript"]
             g_tokens = nltk.word_tokenize(gesture_transcript)
             g_structure = []
+            gesture["hypernyms"] = {}
+
             structure_index = 0
             for s_index in range(len(g_tokens)):
-                g_structure.append(p_structure[token_index])
+                pos_struct = p_structure[token_index]
+                g_structure.append(pos_struct)
                 token_index += 1
 
+                if(pos_struct[1] in POS_I_LIKE):
+                    gesture["hypernyms"][pos_struct[1]] = get_hypernyms(pos_struct[0])
+
+
             gesture["structure"] = g_structure
+
 
 
     return gesture_transcripts
@@ -102,5 +120,5 @@ if __name__ == '__main__':
     json_outfp = filename_base + '/' + filename_base + '_transcripts_analyzed.json'
 
     gesture_transcripts = read_file(json_fp)
-    analyzed = get_wn_forms(gesture_transcripts)
+    analyzed = get_transcript_structure(gesture_transcripts)
     write_data(json_outfp, analyzed)
