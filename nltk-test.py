@@ -7,9 +7,12 @@ import json
 import copy
 
 from sets import Set
+
+print "loading modules"
 import nltk
 from nltk.corpus import wordnet as wn
 from nltk import sentiment as sent
+print "initializing analyzer"
 Analyzer = sent.vader.SentimentIntensityAnalyzer()
 
 # for sentiment?
@@ -62,10 +65,13 @@ def get_hypernyms(w0):
 def get_transcript_structure(gesture_transcripts):
     for phrase in gesture_transcripts:
         phrase_transcript = phrase["phase"]["transcript"]
+        print "analyzing phrase: " + phrase_transcript
         p_tokens = nltk.word_tokenize(phrase_transcript)
         phrase["phase"]["tokens"] = p_tokens
         p_structure = nltk.pos_tag(p_tokens)
         phrase["phase"]["structure"] = p_structure
+        phrase_sentiment = Analyzer.polarity_scores(phrase_transcript)
+        phrase["sentiment"] = phrase_sentiment
         token_index = 0
 
         for gesture in phrase["gestures"]:
@@ -75,7 +81,7 @@ def get_transcript_structure(gesture_transcripts):
             gesture["hypernyms"] = {}
             sentiment = Analyzer.polarity_scores(gesture_transcript)
             gesture["sentiment"] = sentiment
-            
+
             structure_index = 0
             for s_index in range(len(g_tokens)):
                 pos_struct = p_structure[token_index]
@@ -105,6 +111,7 @@ def write_data(fp, data):
 
 # give this megyn-kelly.mp4 too
 if __name__ == '__main__':
+    print "running program"
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
