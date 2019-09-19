@@ -1,47 +1,319 @@
 [
     {
         "phase": {
+            "tokens": [
+                "Human", 
+                "Resources", 
+                "was", 
+                "not", 
+                "an", 
+                "option", 
+                "for", 
+                "me", 
+                "at", 
+                "all", 
+                "at", 
+                "Fox", 
+                "News", 
+                "who", 
+                "is", 
+                "an", 
+                "entity", 
+                "completely", 
+                "controlled", 
+                "by", 
+                "the", 
+                "CEO", 
+                "ales", 
+                "who", 
+                "is", 
+                "my", 
+                "harasser"
+            ], 
             "end_seconds": 370.7, 
             "transcript": "Human Resources was not an option for me at all at Fox News who is an entity completely controlled by the CEO ales who is my harasser", 
+            "structure": [
+                [
+                    "Human", 
+                    "NNP"
+                ], 
+                [
+                    "Resources", 
+                    "NNP"
+                ], 
+                [
+                    "was", 
+                    "VBD"
+                ], 
+                [
+                    "not", 
+                    "RB"
+                ], 
+                [
+                    "an", 
+                    "DT"
+                ], 
+                [
+                    "option", 
+                    "NN"
+                ], 
+                [
+                    "for", 
+                    "IN"
+                ], 
+                [
+                    "me", 
+                    "PRP"
+                ], 
+                [
+                    "at", 
+                    "IN"
+                ], 
+                [
+                    "all", 
+                    "DT"
+                ], 
+                [
+                    "at", 
+                    "IN"
+                ], 
+                [
+                    "Fox", 
+                    "NNP"
+                ], 
+                [
+                    "News", 
+                    "NNP"
+                ], 
+                [
+                    "who", 
+                    "WP"
+                ], 
+                [
+                    "is", 
+                    "VBZ"
+                ], 
+                [
+                    "an", 
+                    "DT"
+                ], 
+                [
+                    "entity", 
+                    "NN"
+                ], 
+                [
+                    "completely", 
+                    "RB"
+                ], 
+                [
+                    "controlled", 
+                    "VBN"
+                ], 
+                [
+                    "by", 
+                    "IN"
+                ], 
+                [
+                    "the", 
+                    "DT"
+                ], 
+                [
+                    "CEO", 
+                    "NNP"
+                ], 
+                [
+                    "ales", 
+                    "NNS"
+                ], 
+                [
+                    "who", 
+                    "WP"
+                ], 
+                [
+                    "is", 
+                    "VBZ"
+                ], 
+                [
+                    "my", 
+                    "PRP$"
+                ], 
+                [
+                    "harasser", 
+                    "NN"
+                ]
+            ], 
             "start_seconds": 363
         }, 
         "gestures": [
             {
-                "stopped": [
+                "tokens": [
                     "Human", 
                     "Resources", 
-                    "option"
+                    "was", 
+                    "not", 
+                    "an", 
+                    "option", 
+                    "for", 
+                    "me", 
+                    "at"
                 ], 
                 "end_seconds": 365.5, 
                 "transcript": " Human Resources was not an option for me at", 
+                "structure": [
+                    [
+                        "Human", 
+                        "NNP"
+                    ], 
+                    [
+                        "Resources", 
+                        "NNP"
+                    ], 
+                    [
+                        "was", 
+                        "VBD"
+                    ], 
+                    [
+                        "not", 
+                        "RB"
+                    ], 
+                    [
+                        "an", 
+                        "DT"
+                    ], 
+                    [
+                        "option", 
+                        "NN"
+                    ], 
+                    [
+                        "for", 
+                        "IN"
+                    ], 
+                    [
+                        "me", 
+                        "PRP"
+                    ], 
+                    [
+                        "at", 
+                        "IN"
+                    ]
+                ], 
                 "start_seconds": 364
             }, 
             {
-                "stopped": [], 
+                "tokens": [
+                    "all"
+                ], 
                 "end_seconds": 366, 
                 "transcript": "all", 
+                "structure": [
+                    [
+                        "all", 
+                        "DT"
+                    ]
+                ], 
                 "start_seconds": 365.6
             }, 
             {
-                "stopped": [
+                "tokens": [
+                    "at", 
                     "Fox", 
                     "News", 
+                    "who", 
+                    "is", 
+                    "an", 
                     "entity", 
                     "completely", 
                     "controlled", 
+                    "by", 
+                    "the", 
                     "CEO"
                 ], 
                 "end_seconds": 369, 
                 "transcript": "at Fox News who is an entity completely controlled by the CEO", 
+                "structure": [
+                    [
+                        "at", 
+                        "IN"
+                    ], 
+                    [
+                        "Fox", 
+                        "NNP"
+                    ], 
+                    [
+                        "News", 
+                        "NNP"
+                    ], 
+                    [
+                        "who", 
+                        "WP"
+                    ], 
+                    [
+                        "is", 
+                        "VBZ"
+                    ], 
+                    [
+                        "an", 
+                        "DT"
+                    ], 
+                    [
+                        "entity", 
+                        "NN"
+                    ], 
+                    [
+                        "completely", 
+                        "RB"
+                    ], 
+                    [
+                        "controlled", 
+                        "VBN"
+                    ], 
+                    [
+                        "by", 
+                        "IN"
+                    ], 
+                    [
+                        "the", 
+                        "DT"
+                    ], 
+                    [
+                        "CEO", 
+                        "NNP"
+                    ]
+                ], 
                 "start_seconds": 367.7
             }, 
             {
-                "stopped": [
+                "tokens": [
                     "ales", 
+                    "who", 
+                    "is", 
+                    "my", 
                     "harasser"
                 ], 
                 "end_seconds": 370.6, 
                 "transcript": "ales who is my harasser", 
+                "structure": [
+                    [
+                        "ales", 
+                        "NNS"
+                    ], 
+                    [
+                        "who", 
+                        "WP"
+                    ], 
+                    [
+                        "is", 
+                        "VBZ"
+                    ], 
+                    [
+                        "my", 
+                        "PRP$"
+                    ], 
+                    [
+                        "harasser", 
+                        "NN"
+                    ]
+                ], 
                 "start_seconds": 369
             }
         ], 
@@ -49,29 +321,211 @@
     }, 
     {
         "phase": {
+            "tokens": [
+                "and", 
+                "I", 
+                "did", 
+                "report", 
+                "it", 
+                "to", 
+                "a", 
+                "supervisor", 
+                "for", 
+                "that", 
+                "matter", 
+                "who", 
+                "did", 
+                "nothing", 
+                "about", 
+                "it", 
+                "and", 
+                "predictably"
+            ], 
             "end_seconds": 378.1, 
             "transcript": "and I did report it to a supervisor for that matter who did nothing about it and predictably", 
+            "structure": [
+                [
+                    "and", 
+                    "CC"
+                ], 
+                [
+                    "I", 
+                    "PRP"
+                ], 
+                [
+                    "did", 
+                    "VBD"
+                ], 
+                [
+                    "report", 
+                    "VB"
+                ], 
+                [
+                    "it", 
+                    "PRP"
+                ], 
+                [
+                    "to", 
+                    "TO"
+                ], 
+                [
+                    "a", 
+                    "DT"
+                ], 
+                [
+                    "supervisor", 
+                    "NN"
+                ], 
+                [
+                    "for", 
+                    "IN"
+                ], 
+                [
+                    "that", 
+                    "DT"
+                ], 
+                [
+                    "matter", 
+                    "NN"
+                ], 
+                [
+                    "who", 
+                    "WP"
+                ], 
+                [
+                    "did", 
+                    "VBD"
+                ], 
+                [
+                    "nothing", 
+                    "NN"
+                ], 
+                [
+                    "about", 
+                    "IN"
+                ], 
+                [
+                    "it", 
+                    "PRP"
+                ], 
+                [
+                    "and", 
+                    "CC"
+                ], 
+                [
+                    "predictably", 
+                    "RB"
+                ]
+            ], 
             "start_seconds": 373
         }, 
         "gestures": [
             {
-                "stopped": [
+                "tokens": [
+                    "and", 
                     "I", 
+                    "did", 
                     "report", 
-                    "supervisor"
+                    "it", 
+                    "to", 
+                    "a", 
+                    "supervisor", 
+                    "for", 
+                    "that"
                 ], 
                 "end_seconds": 374.5, 
                 "transcript": " and I did report it to a supervisor for that", 
+                "structure": [
+                    [
+                        "and", 
+                        "CC"
+                    ], 
+                    [
+                        "I", 
+                        "PRP"
+                    ], 
+                    [
+                        "did", 
+                        "VBD"
+                    ], 
+                    [
+                        "report", 
+                        "VB"
+                    ], 
+                    [
+                        "it", 
+                        "PRP"
+                    ], 
+                    [
+                        "to", 
+                        "TO"
+                    ], 
+                    [
+                        "a", 
+                        "DT"
+                    ], 
+                    [
+                        "supervisor", 
+                        "NN"
+                    ], 
+                    [
+                        "for", 
+                        "IN"
+                    ], 
+                    [
+                        "that", 
+                        "DT"
+                    ]
+                ], 
                 "start_seconds": 373
             }, 
             {
-                "stopped": [
+                "tokens": [
                     "matter", 
+                    "who", 
+                    "did", 
                     "nothing", 
+                    "about", 
+                    "it", 
+                    "and", 
                     "predictably"
                 ], 
                 "end_seconds": 378, 
                 "transcript": "matter who did nothing about it and predictably", 
+                "structure": [
+                    [
+                        "matter", 
+                        "NN"
+                    ], 
+                    [
+                        "who", 
+                        "WP"
+                    ], 
+                    [
+                        "did", 
+                        "VBD"
+                    ], 
+                    [
+                        "nothing", 
+                        "NN"
+                    ], 
+                    [
+                        "about", 
+                        "IN"
+                    ], 
+                    [
+                        "it", 
+                        "PRP"
+                    ], 
+                    [
+                        "and", 
+                        "CC"
+                    ], 
+                    [
+                        "predictably", 
+                        "RB"
+                    ]
+                ], 
                 "start_seconds": 375.6
             }
         ], 
@@ -79,55 +533,274 @@
     }, 
     {
         "phase": {
+            "tokens": [
+                "find", 
+                "a", 
+                "way", 
+                "because", 
+                "the", 
+                "culture", 
+                "I", 
+                "do", 
+                "n't", 
+                "want", 
+                "to", 
+                "say", 
+                "has", 
+                "changed", 
+                "but", 
+                "it", 
+                "is", 
+                "changing", 
+                "meaningfully", 
+                "by", 
+                "the", 
+                "mall"
+            ], 
             "end_seconds": 395.6, 
             "transcript": "find a way because the culture I don't want to say has changed but it is changing meaningfully by the mall", 
+            "structure": [
+                [
+                    "find", 
+                    "VB"
+                ], 
+                [
+                    "a", 
+                    "DT"
+                ], 
+                [
+                    "way", 
+                    "NN"
+                ], 
+                [
+                    "because", 
+                    "IN"
+                ], 
+                [
+                    "the", 
+                    "DT"
+                ], 
+                [
+                    "culture", 
+                    "NN"
+                ], 
+                [
+                    "I", 
+                    "PRP"
+                ], 
+                [
+                    "do", 
+                    "VBP"
+                ], 
+                [
+                    "n't", 
+                    "RB"
+                ], 
+                [
+                    "want", 
+                    "VB"
+                ], 
+                [
+                    "to", 
+                    "TO"
+                ], 
+                [
+                    "say", 
+                    "VB"
+                ], 
+                [
+                    "has", 
+                    "VBZ"
+                ], 
+                [
+                    "changed", 
+                    "VBN"
+                ], 
+                [
+                    "but", 
+                    "CC"
+                ], 
+                [
+                    "it", 
+                    "PRP"
+                ], 
+                [
+                    "is", 
+                    "VBZ"
+                ], 
+                [
+                    "changing", 
+                    "VBG"
+                ], 
+                [
+                    "meaningfully", 
+                    "RB"
+                ], 
+                [
+                    "by", 
+                    "IN"
+                ], 
+                [
+                    "the", 
+                    "DT"
+                ], 
+                [
+                    "mall", 
+                    "NN"
+                ]
+            ], 
             "start_seconds": 386.4
         }, 
         "gestures": [
             {
-                "stopped": [
+                "tokens": [
                     "find", 
-                    "way"
+                    "a", 
+                    "way", 
+                    "because"
                 ], 
                 "end_seconds": 388.4, 
                 "transcript": " find a way because", 
+                "structure": [
+                    [
+                        "find", 
+                        "VB"
+                    ], 
+                    [
+                        "a", 
+                        "DT"
+                    ], 
+                    [
+                        "way", 
+                        "NN"
+                    ], 
+                    [
+                        "because", 
+                        "IN"
+                    ]
+                ], 
                 "start_seconds": 386.4
             }, 
             {
-                "stopped": [
+                "tokens": [
+                    "the", 
                     "culture", 
                     "I"
                 ], 
                 "end_seconds": 390.1, 
                 "transcript": "the culture I", 
+                "structure": [
+                    [
+                        "the", 
+                        "DT"
+                    ], 
+                    [
+                        "culture", 
+                        "NN"
+                    ], 
+                    [
+                        "I", 
+                        "PRP"
+                    ]
+                ], 
                 "start_seconds": 388.4
             }, 
             {
-                "stopped": [
+                "tokens": [
+                    "do", 
                     "n't", 
                     "want", 
+                    "to", 
                     "say", 
-                    "changed"
+                    "has", 
+                    "changed", 
+                    "but", 
+                    "it", 
+                    "is"
                 ], 
                 "end_seconds": 392.3, 
                 "transcript": "don't want to say has changed but it is", 
+                "structure": [
+                    [
+                        "do", 
+                        "VBP"
+                    ], 
+                    [
+                        "n't", 
+                        "RB"
+                    ], 
+                    [
+                        "want", 
+                        "VB"
+                    ], 
+                    [
+                        "to", 
+                        "TO"
+                    ], 
+                    [
+                        "say", 
+                        "VB"
+                    ], 
+                    [
+                        "has", 
+                        "VBZ"
+                    ], 
+                    [
+                        "changed", 
+                        "VBN"
+                    ], 
+                    [
+                        "but", 
+                        "CC"
+                    ], 
+                    [
+                        "it", 
+                        "PRP"
+                    ], 
+                    [
+                        "is", 
+                        "VBZ"
+                    ]
+                ], 
                 "start_seconds": 391
             }, 
             {
-                "stopped": [
+                "tokens": [
                     "changing", 
                     "meaningfully"
                 ], 
                 "end_seconds": 394, 
                 "transcript": "changing meaningfully", 
+                "structure": [
+                    [
+                        "changing", 
+                        "VBG"
+                    ], 
+                    [
+                        "meaningfully", 
+                        "RB"
+                    ]
+                ], 
                 "start_seconds": 392.3
             }, 
             {
-                "stopped": [
+                "tokens": [
+                    "by", 
+                    "the", 
                     "moment"
                 ], 
                 "end_seconds": 395.5, 
                 "transcript": "by the moment", 
+                "structure": [
+                    [
+                        "by", 
+                        "IN"
+                    ], 
+                    [
+                        "the", 
+                        "DT"
+                    ]
+                ], 
                 "start_seconds": 394
             }
         ], 

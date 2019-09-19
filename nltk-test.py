@@ -14,7 +14,7 @@ from nltk.corpus import wordnet as wn
 import pandas as pd
 
 # for sentence structure?
-from stat_parser import Parser
+# parser = nltk.parse.malt.MaltParser()
 
 ##
 stop_words = list(set(nltk.corpus.stopwords.words('english')))
@@ -55,19 +55,33 @@ def get_hypernyms(w0):
 
 def get_wn_forms(gesture_transcripts):
     for phrase in gesture_transcripts:
+        phrase_transcript = phrase["phase"]["transcript"]
+        p_tokens = nltk.word_tokenize(phrase_transcript)
+        phrase["phase"]["tokens"] = p_tokens
+        p_structure = nltk.pos_tag(p_tokens)
+        phrase["phase"]["structure"] = p_structure
+        token_index = 0
         for gesture in phrase["gestures"]:
-            print gesture
-            # do pos tagging
-            # get subject, do hypernyms?
-            transcript = gesture["transcript"]
-            tokens = nltk.word_tokenize(transcript)
-            gesture["tokens"] = tokens
-            # I don't think it makes sense to take out stopwords --
-            # they often carry very important sentence structure information
-            # and are extremely relevant to the gesture
-            # i.e. ("all of you", "only mine is down")
-            # stopped = [w for w in tokens if not w in stop_words]
-            gesture["structure"] = Parser.parse(transcript)
+            gesture_transcript = gesture["transcript"]
+            g_tokens = nltk.word_tokenize(gesture_transcript)
+            gesture["tokens"] = g_tokens
+            g_structure = []
+            structure_index = 0
+            while g_tokens[structure_index] == p_tokens[token_index]:
+                g_structure.append(p_structure[token_index])
+                structure_index += 1
+                token_index += 1
+                if(token_index >= len(p_tokens)):
+                    break
+                elif(structure_index >= len(g_tokens)):
+                    break
+            gesture["structure"] = g_structure
+
+
+        # trans_index = 0
+        # for gest_index in range(0, len(phrase["gestures"])):
+        #     while gestures[gest_index]["transcript"][trans_index] == phrase["transcript"][trans_index]:
+        #         trans_index++;
 
     return gesture_transcripts
 
