@@ -9,16 +9,14 @@ import copy
 from sets import Set
 import nltk
 from nltk.corpus import wordnet as wn
+from nltk import sentiment as sent
+Analyzer = sent.vader.SentimentIntensityAnalyzer()
 
 # for sentiment?
 import pandas as pd
 
-# for sentence structure?
-# parser = nltk.parse.malt.MaltParser()
-
 POS_I_LIKE = ["VBN", "VB", "VBG", "NN", "RB", "PRP$"]
 
-##
 stop_words = list(set(nltk.corpus.stopwords.words('english')))
 
 def wnexpand(set):
@@ -36,7 +34,6 @@ def wnexpand(set):
       return lst
 
 
-
 def morph(w0):
       u = wn.morphy(str(w0))
       if (u == None):
@@ -49,7 +46,7 @@ def morph(w0):
 
 def get_hypernyms(w0):
     syn = wn.synsets(w0)
-    
+
     ## dunno when TF this happens
     if type(syn) != list:
         return syn.name()
@@ -76,7 +73,9 @@ def get_transcript_structure(gesture_transcripts):
             g_tokens = nltk.word_tokenize(gesture_transcript)
             g_structure = []
             gesture["hypernyms"] = {}
-
+            sentiment = Analyzer.polarity_scores(gesture_transcript)
+            gesture["sentiment"] = sentiment
+            
             structure_index = 0
             for s_index in range(len(g_tokens)):
                 pos_struct = p_structure[token_index]
@@ -88,7 +87,6 @@ def get_transcript_structure(gesture_transcripts):
 
 
             gesture["structure"] = g_structure
-
 
 
     return gesture_transcripts
