@@ -42,7 +42,7 @@ def morph(w0):
        return w0
       else:
        w = u.encode('ascii','ignore')
-       #print w
+       print w
        return w
 
 def get_hypernyms(w0):
@@ -64,24 +64,14 @@ def get_wn_forms(gesture_transcripts):
         for gesture in phrase["gestures"]:
             gesture_transcript = gesture["transcript"]
             g_tokens = nltk.word_tokenize(gesture_transcript)
-            gesture["tokens"] = g_tokens
             g_structure = []
             structure_index = 0
-            while g_tokens[structure_index] == p_tokens[token_index]:
+            for s_index in range(len(g_tokens)):
                 g_structure.append(p_structure[token_index])
-                structure_index += 1
                 token_index += 1
-                if(token_index >= len(p_tokens)):
-                    break
-                elif(structure_index >= len(g_tokens)):
-                    break
+
             gesture["structure"] = g_structure
 
-
-        # trans_index = 0
-        # for gest_index in range(0, len(phrase["gestures"])):
-        #     while gestures[gest_index]["transcript"][trans_index] == phrase["transcript"][trans_index]:
-        #         trans_index++;
 
     return gesture_transcripts
 

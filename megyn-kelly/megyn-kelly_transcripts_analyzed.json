@@ -146,17 +146,6 @@
         }, 
         "gestures": [
             {
-                "tokens": [
-                    "Human", 
-                    "Resources", 
-                    "was", 
-                    "not", 
-                    "an", 
-                    "option", 
-                    "for", 
-                    "me", 
-                    "at"
-                ], 
                 "end_seconds": 365.5, 
                 "transcript": " Human Resources was not an option for me at", 
                 "structure": [
@@ -200,9 +189,6 @@
                 "start_seconds": 364
             }, 
             {
-                "tokens": [
-                    "all"
-                ], 
                 "end_seconds": 366, 
                 "transcript": "all", 
                 "structure": [
@@ -214,20 +200,6 @@
                 "start_seconds": 365.6
             }, 
             {
-                "tokens": [
-                    "at", 
-                    "Fox", 
-                    "News", 
-                    "who", 
-                    "is", 
-                    "an", 
-                    "entity", 
-                    "completely", 
-                    "controlled", 
-                    "by", 
-                    "the", 
-                    "CEO"
-                ], 
                 "end_seconds": 369, 
                 "transcript": "at Fox News who is an entity completely controlled by the CEO", 
                 "structure": [
@@ -283,13 +255,6 @@
                 "start_seconds": 367.7
             }, 
             {
-                "tokens": [
-                    "ales", 
-                    "who", 
-                    "is", 
-                    "my", 
-                    "harasser"
-                ], 
                 "end_seconds": 370.6, 
                 "transcript": "ales who is my harasser", 
                 "structure": [
@@ -421,18 +386,6 @@
         }, 
         "gestures": [
             {
-                "tokens": [
-                    "and", 
-                    "I", 
-                    "did", 
-                    "report", 
-                    "it", 
-                    "to", 
-                    "a", 
-                    "supervisor", 
-                    "for", 
-                    "that"
-                ], 
                 "end_seconds": 374.5, 
                 "transcript": " and I did report it to a supervisor for that", 
                 "structure": [
@@ -480,16 +433,6 @@
                 "start_seconds": 373
             }, 
             {
-                "tokens": [
-                    "matter", 
-                    "who", 
-                    "did", 
-                    "nothing", 
-                    "about", 
-                    "it", 
-                    "and", 
-                    "predictably"
-                ], 
                 "end_seconds": 378, 
                 "transcript": "matter who did nothing about it and predictably", 
                 "structure": [
@@ -653,12 +596,6 @@
         }, 
         "gestures": [
             {
-                "tokens": [
-                    "find", 
-                    "a", 
-                    "way", 
-                    "because"
-                ], 
                 "end_seconds": 388.4, 
                 "transcript": " find a way because", 
                 "structure": [
@@ -682,11 +619,6 @@
                 "start_seconds": 386.4
             }, 
             {
-                "tokens": [
-                    "the", 
-                    "culture", 
-                    "I"
-                ], 
                 "end_seconds": 390.1, 
                 "transcript": "the culture I", 
                 "structure": [
@@ -706,18 +638,6 @@
                 "start_seconds": 388.4
             }, 
             {
-                "tokens": [
-                    "do", 
-                    "n't", 
-                    "want", 
-                    "to", 
-                    "say", 
-                    "has", 
-                    "changed", 
-                    "but", 
-                    "it", 
-                    "is"
-                ], 
                 "end_seconds": 392.3, 
                 "transcript": "don't want to say has changed but it is", 
                 "structure": [
@@ -765,10 +685,6 @@
                 "start_seconds": 391
             }, 
             {
-                "tokens": [
-                    "changing", 
-                    "meaningfully"
-                ], 
                 "end_seconds": 394, 
                 "transcript": "changing meaningfully", 
                 "structure": [
@@ -784,11 +700,6 @@
                 "start_seconds": 392.3
             }, 
             {
-                "tokens": [
-                    "by", 
-                    "the", 
-                    "moment"
-                ], 
                 "end_seconds": 395.5, 
                 "transcript": "by the moment", 
                 "structure": [
@@ -799,6 +710,10 @@
                     [
                         "the", 
                         "DT"
+                    ], 
+                    [
+                        "mall", 
+                        "NN"
                     ]
                 ], 
                 "start_seconds": 394
