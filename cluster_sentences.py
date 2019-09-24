@@ -12,8 +12,8 @@ stop_words = list(set(nltk.corpus.stopwords.words('english')))
 
 ## def need to keep the sentence with the id.
 def get_sentences(transcripts_path):
+    print "loading transcript"
     gesture_hypernyms = []
-
     with open(transcripts_path) as f:
         transcript = json.load(f)
         for phrase in transcript:
@@ -31,11 +31,17 @@ def get_sentences(transcripts_path):
     return gesture_hypernyms
 
 def calculate_tfidf(hypernyms):
-    # all_hypes = [y for x in x['hypernyms'] for x in hypernyms]
+    print "calculating clusters"
     hypes_list = [x['hypernyms'] for x in hypernyms]
-    flattened_hypernyms_lists = [hyp for hyp_l in hypes_list]  # for hyp in hyp_l
+    joined_lists = [' '.join(l) for l in hypes_list]
 
-    print flattened_hypernyms_lists
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf = tfidf_vectorizer.fit_transform(joined_lists)
+
+    kmeans = KMeans(n_clusters=2).fit(tfidf)
+
+    print kmeans.predict(tfidf_vectorizer.transform(["change control completely"]))
+    return
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
