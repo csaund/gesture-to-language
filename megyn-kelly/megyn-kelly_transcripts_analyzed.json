@@ -164,6 +164,7 @@
                 "start_seconds": 364, 
                 "end_seconds": 365.5, 
                 "transcript": " Human Resources was not an option for me at", 
+                "id": "de8a12a1-deae-11e9-aa65-186590d8f22d", 
                 "structure": [
                     [
                         "Human", 
@@ -214,6 +215,7 @@
                 "start_seconds": 365.6, 
                 "end_seconds": 366, 
                 "transcript": "all", 
+                "id": "de8e5645-deae-11e9-9b93-186590d8f22d", 
                 "structure": [
                     [
                         "all", 
@@ -248,6 +250,7 @@
                 "start_seconds": 367.7, 
                 "end_seconds": 369, 
                 "transcript": "at Fox News who is an entity completely controlled by the CEO", 
+                "id": "de8e5770-deae-11e9-957f-186590d8f22d", 
                 "structure": [
                     [
                         "at", 
@@ -315,6 +318,7 @@
                 "start_seconds": 369, 
                 "end_seconds": 370.6, 
                 "transcript": "ales who is my harasser", 
+                "id": "de8e598f-deae-11e9-9cd1-186590d8f22d", 
                 "structure": [
                     [
                         "ales", 
@@ -470,6 +474,7 @@
                 "start_seconds": 373, 
                 "end_seconds": 374.5, 
                 "transcript": " and I did report it to a supervisor for that", 
+                "id": "dfee7475-deae-11e9-a4c3-186590d8f22d", 
                 "structure": [
                     [
                         "and", 
@@ -531,6 +536,7 @@
                 "start_seconds": 375.6, 
                 "end_seconds": 378, 
                 "transcript": "matter who did nothing about it and predictably", 
+                "id": "dfee7c1e-deae-11e9-9795-186590d8f22d", 
                 "structure": [
                     [
                         "matter", 
@@ -728,6 +734,7 @@
                 "start_seconds": 386.4, 
                 "end_seconds": 388.4, 
                 "transcript": " find a way because", 
+                "id": "e1f634a3-deae-11e9-abbc-186590d8f22d", 
                 "structure": [
                     [
                         "find", 
@@ -764,6 +771,7 @@
                 "start_seconds": 388.4, 
                 "end_seconds": 390.1, 
                 "transcript": "the culture I", 
+                "id": "e1f63d6b-deae-11e9-8947-186590d8f22d", 
                 "structure": [
                     [
                         "the", 
@@ -809,6 +817,7 @@
                 "start_seconds": 391, 
                 "end_seconds": 392.3, 
                 "transcript": "don't want to say has changed but it is", 
+                "id": "e1f6401e-deae-11e9-bd97-186590d8f22d", 
                 "structure": [
                     [
                         "do", 
@@ -875,6 +884,7 @@
                 "start_seconds": 392.3, 
                 "end_seconds": 394, 
                 "transcript": "changing meaningfully", 
+                "id": "e1f64366-deae-11e9-b311-186590d8f22d", 
                 "structure": [
                     [
                         "changing", 
@@ -901,7 +911,8 @@
                 }, 
                 "start_seconds": 394, 
                 "end_seconds": 395.5, 
-                "transcript": "by the moment", 
+                "transcript": "by the mall", 
+                "id": "e1f64578-deae-11e9-98aa-186590d8f22d", 
                 "structure": [
                     [
                         "by", 

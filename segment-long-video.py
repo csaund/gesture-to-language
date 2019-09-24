@@ -5,6 +5,7 @@ import io
 import subprocess
 import json
 import copy
+import uuid
 
 # from moviepy.editor import VideoFileClip, AudioFileClip
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
@@ -81,11 +82,13 @@ def transcribe_files(filename_base, gesture_clip_timings):
             alternative = result.alternatives[0]
             gesture_phrase['phase']['transcript'] = str(alternative.transcript)
 
+            ## TODO fix this so we dont' have to do all this setup the first time around...
             ## go through and add specific transcripts to each gesture based on timings
             gesture_index = 0
             current_gesture = gesture_phrase['gestures'][0]
             current_gesture['transcript'] = ""
             gesture_phrase_start = gesture_phrase['phase']['start_seconds']
+            current_gesture['id'] = str(uuid.uuid1())
             for i in range(len(alternative.words)):
                 word_info = alternative.words[i]
 
@@ -102,6 +105,7 @@ def transcribe_files(filename_base, gesture_clip_timings):
                     gesture_index += 1
                     current_gesture = gesture_phrase['gestures'][gesture_index]
                     current_gesture['transcript'] = word_info.word
+                    current_gesture['id'] = str(uuid.uuid1())
             ## only do this for first alternative.
             break
 

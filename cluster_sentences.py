@@ -1,41 +1,41 @@
 #!/usr/bin/env python
-import os
+print "loading modules"
 import argparse
-import io
-import subprocess
 import nltk
 import json
-
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+import re
+import string
 
 stop_words = list(set(nltk.corpus.stopwords.words('english')))
 
 ## def need to keep the sentence with the id.
-def get_sentences(dir_path):
-    sentences = []
+def get_sentences(transcripts_path):
+    gesture_hypernyms = []
 
-    for filename in os.listdir(dir_path):
-        if filename.endswith(".json"):
-            path = dir_path + filename
-            with open(path) as f:
-                transcript = json.load(f)
+    with open(transcripts_path) as f:
+        transcript = json.load(f)
+        for phrase in transcript:
+            for gesture in phrase["gestures"]:
+                hypernyms = []
+                for key in gesture["hypernyms"].keys():
+                    hypernyms.append(gesture["hypernyms"][key])
+                ## flatten the list of hypernyms so it's kind of a grab bag of words.
+                ## this way we can later to tfidf k-means clustering
+                hypernyms = [y for x in hypernyms for y in x]
+                gest = {"id": gesture["id"],
+                        "hypernyms": hypernyms}
+                gesture_hypernyms.append(gest)
 
-                # oh god please no not like this
-                for key in transcript.keys():
-                    sentences.append(str(transcript[key]))
-                    break
-        else:
-            continue
+    return gesture_hypernyms
 
-    return sentences
+def calculate_tfidf(hypernyms):
+    # all_hypes = [y for x in x['hypernyms'] for x in hypernyms]
+    hypes_list = [x['hypernyms'] for x in hypernyms]
+    flattened_hypernyms_lists = [hyp for hyp_l in hypes_list]  # for hyp in hyp_l
 
-def process_sentences(sentences):
-    for s in sentences:
-        tokens = nltk.word_tokenize(s)
-        stopped = [w for w in tokens if not w in stop_words]
-        # tagged = nltk.pos_tag(tokens)
-        # entities = nltk.chunk.ne_chunk(tagged)
-        print tokens
-        print
+    print flattened_hypernyms_lists
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -45,7 +45,11 @@ if __name__ == '__main__':
         'path', help='Long mp4 file to be segmented into gestures')
     args = parser.parse_args()
 
-    transcripts_path = './' + args.path + '/'
+    transcripts_path = './' + args.path + '/' + args.path + '_transcripts_analyzed.json'
 
-    sentences = get_sentences(transcripts_path)
-    process_sentences(sentences)
+    hypernyms = get_sentences(transcripts_path)
+    with_tfidf = calculate_tfidf(hypernyms)
+
+
+
+## special thanks to https://medium.com/@MSalnikov/text-clustering-with-k-means-and-tf-idf-f099bcf95183
