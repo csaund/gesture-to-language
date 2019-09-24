@@ -65,17 +65,25 @@ $ python analyze-transcripts.py megyn-kelly.mp4
 
 
 ## What I want
-:white_check_mark: A script that takes a long video
+* :white_check_mark: A script that takes a long video
 
-:x: Segments that video into gesture phrases and sub-gestures
+* :x: Segments that video into gesture phrases and sub-gestures
 
-:x: Takes those mini-gesture videos, and classifies the gesture by movement characteristics
+* :x: Takes those mini-gesture videos, and classifies the gesture by movement characteristics
 
-:white_check_mark: Takes those mini-gesture videos, and gets the transcript for them
+* :white_check_mark: Takes those mini-gesture videos, and gets the transcript for them
 
-:white_check_mark: Takes those transcripts, and gets their linguistic forms (nltk?)
+* :white_check_mark: Takes those transcripts, and gets their linguistic forms (nltk?)
 
-:heavy_minus_sign: Takes those linguistic forms, categorize them into linguistic categories
+* :heavy_minus_sign: Takes those linguistic forms, categorize them into linguistic categories by:
+    
+  * :white_check_mark: sentiment
+    
+  * :white_check_mark: tfidf
+
+  * :x: syntax
+    
+* :x: matches up and compares gestures <--> sentences that accompany them
 
 
 ## Evaluation
