@@ -43,6 +43,7 @@ if __name__ == "__main__":
             start_time = str(pd.to_datetime(interval['start_time']).time())
             end_time = str(pd.to_datetime(interval['end_time']).time())
             phase = {
+                "video_fn": interval['video_fn'],
                 "start_seconds": convert_time_to_seconds(start_time),
                 "end_seconds": convert_time_to_seconds(end_time),
                 "transcript": ""
@@ -65,4 +66,6 @@ if __name__ == "__main__":
             print(e)
             print("couldn't save interval: %s"%interval)
 
-    write_data(args.output_path, phrases)
+
+
+    write_data(args.output_path, {"phrases": phrases})
