@@ -44,24 +44,27 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds
 # writes out to filename_base/filename_base-id.json
 # with addition of words that match the gesture phrase.
 # gesture_clip_timings is the dict that we want to append to.
-# TODO make this take the whole video and transcribe all at once. 
-def transcribe_files(vid_base_path, transcript_path, gesture_clip_timings):
+# TODO make this take the whole video and transcribe all at once.
+def transcribe_videos(vid_base_path, transcript_path):
     """Transcribe the given audio file synchronously and output the word time
     offsets."""
     from google.cloud import speech
     from google.cloud.speech import enums
     from google.cloud.speech import types
     client = speech.SpeechClient()
-    dir_path = "./" + filename_base
 
-    output_data = copy.deepcopy(gesture_clip_timings)
+    all_video_files = os.listdir(vid_base_path)
+    print "seeing all files:"
+    print all_video_files
 
-    for gesture_phrase in output_data:
+    ## TODO: trim video so that it fits within google's size limits
+
+    for video_file in all_video_files:
+        print "now on file " + video_file
         print
-        print "NEW GESTURE"
-        input_vid_path = vid_base_path + str(gesture_phrase['video_fn']) + '.mp4'
-        output_audio_path = transcript_path + str(gesture_phrase['video_fn']) + '.wav'
-        # TODO there is a better way of iterating thru all items in a dir probably
+        vid_name = video_file.split(".mp4")[0]
+        input_vid_path = vid_base_path + '/' + video_file
+        output_audio_path = transcript_path + '/' + vid_name + '.wav'
 
         command = ("ffmpeg -i %s -ab 160k -ac 2 -ar 48000 -vn %s" % (input_vid_path, output_audio_path))
         subprocess.call(command, shell=True)
@@ -79,9 +82,11 @@ def transcribe_files(vid_base_path, transcript_path, gesture_clip_timings):
 
         response = client.recognize(config, audio)
 
+        output_data = {}
+        output_data['words'] = []
         for result in response.results:
             alternative = result.alternatives[0]
-            gesture_phrase['phase']['transcript'] = str(alternative.transcript)
+            output_data["transcript"] = str(alternative.transcript)
 
             ## TODO fix this so we dont' have to do all this setup the first time around...
             ## go through and add specific transcripts to each gesture based on timings
@@ -99,43 +104,19 @@ def transcribe_files(vid_base_path, transcript_path, gesture_clip_timings):
                 # word_end = word_info.start_time.nanos *  1e-9
                 word_start = word_info.start_time.seconds
                 word_end = word_info.start_time.seconds
-                # we're still in the same gesture phrase
-                if (word_start + gesture_phrase_start) < current_gesture['end_seconds']:
-                    current_gesture['transcript'] += " " + word_info.word
-                else:
-                    gesture_index += 1
-                    current_gesture = gesture_phrase['gestures'][gesture_index]
-                    current_gesture['transcript'] = word_info.word
-                    current_gesture['id'] = str(uuid.uuid1())
-            ## only do this for first alternative.
-            break
+                word = {
+                    "word_info": word_info,
+                    "word_start": word_start,
+                    "word_end": word_end
+                }
+                outputdata['words'].append(word)
 
-    output_transcript_path = dir_path + '/' + filename_base + '_transcripts' + '.json'
-    fn = output_transcript_path
-    with open(fn, 'w') as f:
-        json.dump(output_data, f, indent=4)
-    f.close()
+        output_transcript_path = transcript_path + '/' + vid_name + '.json'
+        fn = output_transcript_path
+        with open(fn, 'w') as f:
+            json.dump(output_data, f, indent=4)
+        f.close()
 
-
-## TODO calculate the timestamps automatically, or take them as an arg
-# expects timings file to exist as well
-def open_clip_timings(timings_file):
-    with open(timings_file) as f:
-        timings = json.load(f)
-    return timings
-
-
-
-def segment_video(vid_base_path, timings_path, gesture_clip_timings):
-    for gesture_phase in gesture_clip_timings:
-        current_vid = vid_base_path + '/' + str(gesture_phase['phase']['video_fn'])
-        output_vid_path = vid_base_path + '/' + str(gesture_phase['phase']['video_fn']) + '_' + str(gesture_phase['id']) + '.mp4'
-        ffmpeg_extract_subclip(current_vid, gesture_phase['phase']['start_seconds'], gesture_phase['phase']['end_seconds'], targetname=output_vid_path)
-    return
-
-def segment_and_extract(vid_base_path, timings_path, gesture_clip_timings):
-    segment_video(vid_base_path, timings_path, gesture_clip_timings)
-    transcribe_files(vid_base_path, timings_path, gesture_clip_timings)
 
 def create_video_subdir(dir_path):
     try:
@@ -158,12 +139,6 @@ if __name__ == '__main__':
     vid_base_path = args.base_path + '/' + args.speaker + '/videos'
     transcript_path = args.base_path + '/' + args.speaker + '/transcripts'
     # TODO make other script output timings to this place
-    timings_path = args.base_path + '/' + args.speaker + '/timings.json'
 
     create_video_subdir(transcript_path)
-
-    ## TEMP right now just hard coded for testing
-    ## TODO: make this actually segment by gesture
-    ## 12 Sept 2019
-    gesture_clips = open_clip_timings(timings_path)
-    segment_and_extract(vid_base_path, timings_path, gesture_clips["phrases"])
+    transcribe_videos(vid_base_path, transcript_path)
