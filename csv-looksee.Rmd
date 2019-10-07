@@ -1,0 +1,22 @@
+---
+title: "AAMAS2020 -- csv analysis"
+author: "--"
+date: "10/07/2019"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(pwr)
+library(ordinal)
+```
+
+
+just check out the csv interval stats... Not sure I understand this dataset. 
+```{r}
+gesture_intervals <- read.csv('../gest-data/data/intervals_df.csv') %>%
+  filter(speaker == "almaram")
+rock_frames <- read.csv('../gest-data/data/rock/frames/1')
+```
