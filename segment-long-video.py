@@ -9,6 +9,7 @@ import uuid
 
 # from moviepy.editor import VideoFileClip, AudioFileClip
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 from oauth2client.client import GoogleCredentials
 
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
@@ -44,7 +45,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds
 # writes out to filename_base/filename_base-id.json
 # with addition of words that match the gesture phrase.
 # gesture_clip_timings is the dict that we want to append to.
-# TODO make this take the whole video and transcribe all at once. 
+# TODO make this take the whole video and transcribe all at once.
 def transcribe_files(vid_base_path, transcript_path, gesture_clip_timings):
     """Transcribe the given audio file synchronously and output the word time
     offsets."""
@@ -126,16 +127,21 @@ def open_clip_timings(timings_file):
 
 
 
-def segment_video(vid_base_path, timings_path, gesture_clip_timings):
-    for gesture_phase in gesture_clip_timings:
-        current_vid = vid_base_path + '/' + str(gesture_phase['phase']['video_fn'])
-        output_vid_path = vid_base_path + '/' + str(gesture_phase['phase']['video_fn']) + '_' + str(gesture_phase['id']) + '.mp4'
-        ffmpeg_extract_subclip(current_vid, gesture_phase['phase']['start_seconds'], gesture_phase['phase']['end_seconds'], targetname=output_vid_path)
+def segment_video(vid_base_path, timings_path, gesture_clips):
+    for gesture_phase in gesture_clips:
+        input_vid = vid_base_path + '/' + str(gesture_phase['phase']['video_fn'])
+        output_vid = vid_base_path + '/' + str(gesture_phase['id']) + '.mp4'
+        s1 = gesture_phase['phase']['start_seconds']
+        s2 = gesture_phase['phase']['end_seconds']
+        with VideoFileClip(input_vid) as video:
+            new = video.subclip(s1, s2)
+            new.write_videofile(output_vid, audio_codec='aac')
+        # ffmpeg_extract_subclip(current_vid, gesture_phase['phase']['start_seconds'], gesture_phase['phase']['end_seconds'], targetname=output_vid_path)
     return
 
 def segment_and_extract(vid_base_path, timings_path, gesture_clip_timings):
     segment_video(vid_base_path, timings_path, gesture_clip_timings)
-    transcribe_files(vid_base_path, timings_path, gesture_clip_timings)
+    # transcribe_files(vid_base_path, timings_path, gesture_clip_timings)
 
 def create_video_subdir(dir_path):
     try:
