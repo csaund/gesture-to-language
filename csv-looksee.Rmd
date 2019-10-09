@@ -19,4 +19,7 @@ just check out the csv interval stats... Not sure I understand this dataset.
 gesture_intervals <- read.csv('../gest-data/data/intervals_df.csv') %>%
   filter(speaker == "almaram")
 rock_frames <- read.csv('../gest-data/data/rock/frames/1')
+
+
+all_frames <- read.csv('../gest-data/data/frames.csv')
 ```
