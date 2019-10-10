@@ -62,6 +62,8 @@ def extract_txt_data(filepath):
 # takes number of seconds (408.908909) and converts to something like
 # MM_S.SS
 # that is searchable in the folder.
+# TODO make this add the leading 0 before single-digit seconds
+# ex 1_4.464464 should be 1_04.464464
 def get_filekey(t):
     keyframe_min = int(math.floor(t / 60))
     keyframe_sec = round(t - (keyframe_min * 60), 6)
