@@ -5,6 +5,7 @@ import pandas as pd
 import itertools
 import csv
 import math
+import json
 import glob, os
 
 ## TODO: make this basepath variable
@@ -70,6 +71,7 @@ def get_filekey(t):
 
 ## requires mapping from video path to specific path.
 ## ex this needs /Users/carolynsaund/github/gest-data/data/rock/keypoints_simple/1
+## somehow successfully returns the keyframe data for that gesture.
 def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     start_filekey = str(get_filekey(start_time))
     end_filekey = str(get_filekey(end_time))
@@ -84,10 +86,12 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     m = [s for s in files if start_filekey in s]
     if len(m) != 1:
         print "panic!! wrong number of matching files:" + str(len(m))
+        print start_filekey
         print m
         return
     all_gesture_keys = []
     i = files.index(m[0])
+    print "starting at " + str(files[i])
     # start at index of first frame
     while is_within_time(s_key, e_key, files[i]):
         ## if this is one of the files we need,
@@ -101,7 +105,12 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
         ## fuck it let's just use a dict for now.
         all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])})
         i+=1
-    print("stopped at ", files[i])
+        if i >= len(files):
+            print "WARNING: GOING BEYOND KEYPOINT TIMES: " + str(files[i-1])
+            break
+    ## the -1 is a hack until I figure out why there's missing keypoint data
+    ## in some of these.
+    print("stopped at ", files[i-1])
     # this will look something like this
     # [
     #   {
@@ -115,9 +124,26 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     # ]
     return all_gesture_keys
 
-def analyze_gestures():
+def analyze_gestures(video_base_path, timings_path):
+    all_gesture_data = []
+    timings = get_timings(timings_path)
+
+    for phase in timings['phrases']:
+        p = phase['phase']
+        vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
+        # TODO  OH GOD PLEASE UPDATE THIS
+        BASE_PATH = vid_path
+        start = p['start_seconds']
+        end = p['end_seconds']
+        specific_gesture_dat = get_keyframes_per_gesture(vid_path, start, end)
+        all_gesture_data.append(specific_gesture_dat)
     return
 
+
+def get_timings(timings_path):
+    with open(timings_path) as f:
+        timings = json.load(f)
+    return timings
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -126,16 +152,15 @@ if __name__ == '__main__':
     parser.add_argument('-base_path', '--base_path', help='base folder path of dataset', required=True)
     #parser.add_argument('-output_path', '--output_path', default='output directory to save wav files', required=True)
     parser.add_argument('-speaker', '--speaker', default='optionally, run only on specific speaker', required=False)
-    parser.add_argument('-frames', '--frames', default='path to frames file', required=False)
 
     args = parser.parse_args()
+    video_path = args.base_path + '/' + args.speaker + '/keypoints_simple/'
     timings_path = args.base_path + '/' + args.speaker + '/timings.json'
 
-    print "reading csv from " + args.frames
-    ## 7.8M frames
-    frames = pd.read_csv(args.frames)
+    print "processing data"
+    get_speaker_gesture_keypoints = analyze_gestures(video_path, timings_path)
 
-    frames.shape
+    print len(get_speaker_gesture_keypoints)
 
 
 ## TODO write unit tests for those bad boys up above
