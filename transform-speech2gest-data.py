@@ -1,3 +1,4 @@
+print "loading modules"
 import argparse
 from tqdm import tqdm
 import subprocess
@@ -33,7 +34,7 @@ def write_data(fp, data):
 
 if __name__ == "__main__":
     phrases = []
-
+    print "loading intervals"
     df_intervals = pd.read_csv(os.path.join(args.base_path, 'intervals_df.csv'))
     if args.speaker:
         df_intervals = df_intervals[df_intervals["speaker"] == args.speaker]
@@ -65,7 +66,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(e)
             print("couldn't save interval: %s"%interval)
-
-
 
     write_data(args.output_path, {"phrases": phrases})
