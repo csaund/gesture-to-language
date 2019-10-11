@@ -62,12 +62,14 @@ def extract_txt_data(filepath):
 # takes number of seconds (408.908909) and converts to something like
 # MM_S.SS
 # that is searchable in the folder.
-# TODO make this add the leading 0 before single-digit seconds
-# ex 1_4.464464 should be 1_04.464464
 def get_filekey(t):
-    keyframe_min = int(math.floor(t / 60))
+    keyframe_min = str(int(math.floor(t / 60)))
     keyframe_sec = round(t - (keyframe_min * 60), 6)
-    filekey = str(keyframe_min) + '_' + str(keyframe_sec)
+
+    if keyframe_sec < 10:
+        keyframe_sec = '0' + str(keyframe_sec)
+
+    filekey = keyframe_min + '_' + str(keyframe_sec)
     return filekey
 
 
@@ -98,11 +100,7 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     while is_within_time(s_key, e_key, files[i]):
         ## if this is one of the files we need,
         ## we're constructing a pd dataset
-        # fn = files[i].split('.txt')[0]
-        # write csv file -- but can't be creating files because then our index gets messed up.
-        #txt_to_csv(files[i])
         # read in data from csv in form of x,y ==> 52 rows of datapoints
-        #dat = pd.read_csv(str(BASE_PATH + fn + '.csv'))
         dat = extract_txt_data(files[i])
         ## fuck it let's just use a dict for now.
         all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])})
