@@ -145,6 +145,9 @@ def get_timings(timings_path):
         timings = json.load(f)
     return timings
 
+def get_all_speaker_gesture_keypoints(video_path, timings_path):
+    return analyze_gestures(video_path, timings_path)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -158,9 +161,8 @@ if __name__ == '__main__':
     timings_path = args.base_path + '/' + args.speaker + '/timings.json'
 
     print "processing data"
-    get_speaker_gesture_keypoints = analyze_gestures(video_path, timings_path)
+    all_speaker_gesture_keypoints = get_all_speaker_gesture_keypoints(video_path, timings_path)
 
-    print len(get_speaker_gesture_keypoints)
 
 
 ## TODO write unit tests for those bad boys up above
