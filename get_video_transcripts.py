@@ -126,6 +126,11 @@ def create_video_subdir(dir_path):
     else:
         print ("Successfully created the directory %s " % dir_path)
 
+
+def get_video_transcript(video_path, transcript_path):
+    create_video_subdir(transcript_path)
+    transcribe_videos(video_path, transcript_path)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -140,5 +145,8 @@ if __name__ == '__main__':
     transcript_path = args.base_path + '/' + args.speaker + '/transcripts'
     # TODO make other script output timings to this place
 
-    create_video_subdir(transcript_path)
-    transcribe_videos(vid_base_path, transcript_path)
+
+    ## TODO a better way to do this is get the whole video transcript, then using the gesture timings,
+    ## match the timing of the transcript to the timing of the gesture. That is strictly a better way
+    ## to do all of this. 
+    get_video_transcript(vid_base_path, transcript_path)

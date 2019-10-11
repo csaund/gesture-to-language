@@ -137,16 +137,13 @@ def analyze_gestures(video_base_path, timings_path):
         end = p['end_seconds']
         specific_gesture_dat = get_keyframes_per_gesture(vid_path, start, end)
         all_gesture_data.append(specific_gesture_dat)
-    return
+    return all_gesture_data
 
 
 def get_timings(timings_path):
     with open(timings_path) as f:
         timings = json.load(f)
     return timings
-
-def get_all_speaker_gesture_keypoints(video_path, timings_path):
-    return analyze_gestures(video_path, timings_path)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -161,7 +158,7 @@ if __name__ == '__main__':
     timings_path = args.base_path + '/' + args.speaker + '/timings.json'
 
     print "processing data"
-    all_speaker_gesture_keypoints = get_all_speaker_gesture_keypoints(video_path, timings_path)
+    all_speaker_gesture_keypoints = analyze_gestures(video_path, timings_path)
 
 
 
