@@ -64,10 +64,30 @@ $ python analyze-transcripts.py megyn-kelly.mp4
 ```
 
 
+## :fire: Hot :fire: Update
+This is all about using the MIT individual gesture dataset, which I think I can do after having downloaded the dataset and running the following commands:
+1. Get the timings into a format I originally made
+```
+$ python transform-speech2gest-data.py --base_path /Users/carolynsaund/github/gest-data/data/ --output_path /Users/carolynsaund/github/gest-data/data/rock/timings.json --speaker rock
+```
+2. Make sure all the youtube videos are downloaded (only do this on the cluster)
+```
+$ sudo python download-youtube.py --base_path /Users/carolynsaund/github/gest-data/data/ --speaker rock
+```
+3. You can get the frame data (more or less) 
+```
+$ sudo python analyze-frames.py --base_path /Users/carolynsaund/github/gest-data/data --speaker rock
+```
+4. TODO: actually match the gesture keyframes to the transcript. 
+    - need to get the transcript for the longer video, but run into limits from google API
+    - get around by asking for smaller segments of time? Like getting, perhaps, only 50 seconds of audio at a time and matching it to the gesture timings? 
+    
+
+
 ## What I want
 * :white_check_mark: A script that takes a long video
 
-* :x: Segments that video into gesture phrases and sub-gestures
+* :white_check_mark: Segments that video into gesture phrases and sub-gestures
 
 * :x: Takes those mini-gesture videos, and classifies the gesture by movement characteristics
 
