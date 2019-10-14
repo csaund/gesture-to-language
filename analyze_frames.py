@@ -9,7 +9,7 @@ import json
 import glob, os
 
 ## TODO: make this basepath variable
-BASE_PATH = "/Users/carolynsaund/github/gest-data/data/rock/keypoints_simple/1/"
+# BASE_PATH = "/Users/carolynsaund/github/gest-data/data/rock/keypoints_simple/1/"
 
 
 # takes time in form of "X_X_IND_m_s.txt"
@@ -18,7 +18,9 @@ def timestring_to_int(time):
     hrs = int(times[-3])
     mins = int(times[-2])
     sec_and_txt_arr = times[-1].split(".")
-    secs = float(sec_and_txt_arr[0]) + float(str("." + str(sec_and_txt_arr[1])))
+    secs = float(sec_and_txt_arr[0])
+    if(len(sec_and_txt_arr) == 3):
+        secs = secs + float(str("." + str(sec_and_txt_arr[1])))
     timesec = (hrs * 60 * 60) + (mins * 60) + secs
     return timesec
 
@@ -37,15 +39,15 @@ def is_within_time(start_time, end_time, question_time):
 # csv version of that text file
 # however it takes the x y and zips them together to make
 # a big vector of x,y pairs.
-def extract_txt_data(filepath):
+def extract_txt_data(bp, filepath):
     fn = filepath.split('.txt')[0]
     inf = fn + '.txt'
     outf = fn + '.csv'
-    with open(BASE_PATH + inf, 'r') as in_file:
+    with open(bp + inf, 'r') as in_file:
         lines = in_file.read().splitlines()
         stripped = [line.replace(","," ").split() for line in lines]
         zipped = zip(stripped[1], stripped[2])
-        with open(BASE_PATH + outf, 'w') as out_file:
+        with open(bp + outf, 'w') as out_file:
             writer = csv.writer(out_file)
             writer.writerow(('x', 'y'))
             i = 0
@@ -54,22 +56,26 @@ def extract_txt_data(filepath):
                 writer.writerow(row)
                 i += 1
     # get the data that we need
-    dat = pd.read_csv(str(BASE_PATH + outf))
+    dat = pd.read_csv(str(bp + outf))
     # clean up after ourselves
-    os.remove(str(BASE_PATH + outf))
+    os.remove(str(bp + outf))
     return dat          # output is a written csv to that location
 
 # takes number of seconds (408.908909) and converts to something like
 # MM_S.SS
 # that is searchable in the folder.
 def get_filekey(t):
-    keyframe_min = str(int(math.floor(t / 60)))
+    keyframe_min = int(math.floor(t / 60))
     keyframe_sec = round(t - (keyframe_min * 60), 6)
+
+    ## add leading 0s to avoid clashes. 
+    if keyframe_min < 10:
+        keyframe_min = '0' + str(keyframe_min)
 
     if keyframe_sec < 10:
         keyframe_sec = '0' + str(keyframe_sec)
 
-    filekey = keyframe_min + '_' + str(keyframe_sec)
+    filekey = str(keyframe_min) + '_' + str(keyframe_sec)
     return filekey
 
 
@@ -79,6 +85,8 @@ def get_filekey(t):
 def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     start_filekey = str(get_filekey(start_time))
     end_filekey = str(get_filekey(end_time))
+    # get the correct folder for the video file.
+
     # I am an absolute LUG. This is for simplicity in file format to get
     # the times for each file
     s_key = "X_X_0_" + start_filekey + ".txt"
@@ -87,6 +95,8 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     # "gest-data/data/rock/keypoints_simple/1/"
     files = sorted(os.listdir(gesture_video_path))
     # find the file that has this specific time.. I don't think there can be a clash??
+    # clashes like this, figure it oot.
+    # ['13_19_2008_0_02_15.535536.txt', '13_27_240_0_12_15.535536.txt']
     m = [s for s in files if start_filekey in s]
     if len(m) != 1:
         print "panic!! wrong number of matching files:" + str(len(m))
@@ -101,7 +111,7 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
         ## if this is one of the files we need,
         ## we're constructing a pd dataset
         # read in data from csv in form of x,y ==> 52 rows of datapoints
-        dat = extract_txt_data(files[i])
+        dat = extract_txt_data(gesture_video_path, files[i])
         ## fuck it let's just use a dict for now.
         all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])})
         i+=1
@@ -131,11 +141,10 @@ def analyze_gestures(video_base_path, timings_path):
     for phase in timings['phrases']:
         p = phase['phase']
         vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
-        # TODO  OH GOD PLEASE UPDATE THIS
-        BASE_PATH = vid_path
         start = p['start_seconds']
         end = p['end_seconds']
-        specific_gesture_dat = get_keyframes_per_gesture(vid_path, start, end)
+        specific_gesture_dat = {'id': phase['id']}
+        specific_gesture_dat['keyframes'] = get_keyframes_per_gesture(vid_path, start, end)
         all_gesture_data.append(specific_gesture_dat)
     return all_gesture_data
 
