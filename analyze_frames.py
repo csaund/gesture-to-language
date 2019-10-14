@@ -67,14 +67,11 @@ def extract_txt_data(bp, filepath):
 def get_filekey(t):
     keyframe_min = int(math.floor(t / 60))
     keyframe_sec = round(t - (keyframe_min * 60), 6)
-
-    ## add leading 0s to avoid clashes. 
+    ## add leading 0s to avoid clashes.
     if keyframe_min < 10:
         keyframe_min = '0' + str(keyframe_min)
-
     if keyframe_sec < 10:
         keyframe_sec = '0' + str(keyframe_sec)
-
     filekey = str(keyframe_min) + '_' + str(keyframe_sec)
     return filekey
 
@@ -85,8 +82,6 @@ def get_filekey(t):
 def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     start_filekey = str(get_filekey(start_time))
     end_filekey = str(get_filekey(end_time))
-    # get the correct folder for the video file.
-
     # I am an absolute LUG. This is for simplicity in file format to get
     # the times for each file
     s_key = "X_X_0_" + start_filekey + ".txt"
@@ -137,8 +132,11 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
 def analyze_gestures(video_base_path, timings_path):
     all_gesture_data = []
     timings = get_timings(timings_path)
-
+    l = len(timings['phrases'])
+    i = 0
     for phase in timings['phrases']:
+        i = i + 1
+        print("%s / %s gesutres processed." % (i, l))
         p = phase['phase']
         vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
         start = p['start_seconds']
