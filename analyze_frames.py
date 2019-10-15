@@ -262,10 +262,12 @@ def get_plot_by_video_time(time_in_mm_ss,
 # BEATS
 # WISH_WASH
 # THIS_THAT
+# THIS_THAT_SPATIAL_MAP
 # TIME_SIDE_SWIPE
 # TIME_FORWARD_SWIPE
 # MIXING
 # BIG_OPENING
+# PALM_DOWN_BLANKET
 def save_id_to_video_type(gest_id, gest_type, labeled_path="/Users/carolynsaund/github/gesture-to-language/manually_labelled_gestures.json"):
     d = {
         "id": gest_id,
