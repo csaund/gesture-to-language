@@ -1,0 +1,36 @@
+{
+    "gestures": [
+        {
+            "id": 73867,
+            "cat": "BEATS"
+        },
+        {
+            "id": 73848,
+            "cat": "THIS_THAT"
+        },
+        {
+            "id": 88132,
+            "cat": "TIME_SIDE_SWIPE"
+        },
+        {
+            "id": 88224,
+            "cat": "TIME_SIDE_SWIPE"
+        },
+        {
+            "id": 88148,
+            "cat": "MIXING"
+        },
+        {
+            "id": 88130,
+            "cat": "WISH_WASH"
+        },
+        {
+            "id": 88131,
+            "cat": "WISH_WASH"
+        },
+        {
+            "id": 84939,
+            "cat": "BIG_OPENING"
+        }
+    ]
+}

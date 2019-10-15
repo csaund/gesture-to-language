@@ -242,7 +242,10 @@ def get_num_frames(gesture_id, all_gesture_data):
     return len(g['keyframes'])
 
 ## helper, so can use all these random vars I have floating around I guess
-def get_plot_by_video_time(video_fn_id, time_in_mm_ss, video_base_path, timings_path):
+def get_plot_by_video_time(time_in_mm_ss,
+                          video_fn_id="2._History_of_Rock_-_Radio_and_Regional_vs_National_Audiences-diqfvS-VlzI.mp4",
+                          video_base_path='/Users/carolynsaund/github/gest-data/data/rock/keypoints_simple/',
+                          timings_path='/Users/carolynsaund/github/gest-data/data/rock/timings.json'):
     ids = get_gesture_ids_from_video_and_timing(video_fn_id, time_in_mm_ss, timings_path)
     if len(ids) > 1:
         print "more than one gesture associated with this time, using gesture %s" % ids[0]
@@ -250,6 +253,27 @@ def get_plot_by_video_time(video_fn_id, time_in_mm_ss, video_base_path, timings_
     print i
     gest = get_single_gesture_from_timings(i, video_base_path, timings_path)
     plot_both_gesture_coords(gest)
+    return
+
+# gest_types include
+# BEATS
+# WISH_WASH
+# THIS_THAT
+# TIME_SIDE_SWIPE
+# TIME_FORWARD_SWIPE
+# MIXING
+# BIG_OPENING
+def save_id_to_video_type(gest_id, gest_type, labeled_path="/Users/carolynsaund/github/gesture-to-language/manually_labelled_gestures.json"):
+    d = {
+        "id": gest_id,
+        "cat": gest_type
+    }
+    with open(labeled_path) as f:
+        labeled_gestures = json.load(f)
+        labeled_gestures['gestures'].append(d)
+        with open(labeled_path, 'w') as f:
+            json.dump(labeled_gestures, f, indent=4)
+    return
 
 
 ################################################################################
