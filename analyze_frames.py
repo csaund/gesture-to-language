@@ -197,8 +197,15 @@ def save_gesture_plots(gesture_ids, all_gestures):
         plot_both_gesture_coords(i)
     return
 
-def plot_dist_of_frame_numbers(all_gestures):
-    
+def plot_dist_of_num_frames_by_gesture(all_gestures):
+    num_frames = []
+    for g in all_gestures:
+        num_frames.append(len(g['keyframes']))
+    plt.plot(range(0, len(all_gestures)), sorted(num_frames))
+    plt.xlabel("gest_num")
+    plt.ylabel("num_frames")
+    plt.title = "number of frames per gesture"
+    plt.show()
 
 ########################################################
 ################### File Stuff ########################
