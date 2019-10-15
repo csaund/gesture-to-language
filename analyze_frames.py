@@ -156,6 +156,25 @@ def arrange_data_by_time(dat_vector):
         flipped_dat.append(a)
     return flipped_dat
 
+def plot_gesture_coords(x_or_y, gesture):
+    coords = [d[x_or_y] for d in gesture['keyframes']]
+    fc = arrange_data_by_time(coords)
+    for v in fc:
+        plt.plot(range(0, len(fc[0])), v)
+    plt.xlabel("Time (days)")
+    plt.ylabel("Progress (magic work units)")
+    plt.title("Carolyn's progress on NZ trip over time")
+    plt.show()
+
+def plot_both_gesture_coords(gesture):
+    plt.subplot(1,2,1)
+    plot_gesture_x_coords(gesture)
+    plt.subplot(1,2,2)
+    plot_gesture_y_coords(gesture)
+    fig, ax = plt.show()
+    fig.savefig('%s.png' % gesture['id'])
+    plt.show()
+    return
 
 
 def plot_gesture_x_coords(gesture):
@@ -164,9 +183,19 @@ def plot_gesture_x_coords(gesture):
     fc = arrange_data_by_time(coords)
     for v in fc:
         plt.plot(range(0, len(fc[0])), v)
-    plt.xlabel("Time")
-    plt.ylabel("Coord")
-    plt.show()
+    plt.xlabel("frame")
+    plt.ylabel("X pixel position")
+    plt.title = 'X coordinates for gesture %s' % gesture['id']
+
+def plot_gesture_y_coords(gesture):
+    ## make an array of all the x coordinates
+    coords = get_x_or_y_coords('y', gesture)
+    fc = arrange_data_by_time(coords)
+    for v in fc:
+        plt.plot(range(0, len(fc[0])), v)
+    plt.xlabel("frame")
+    plt.ylabel("Y pixel position")
+    plt.title = 'X coordinates for gesture %s' % gesture['id']
 
 
 
