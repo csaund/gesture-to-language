@@ -7,6 +7,9 @@ import csv
 import math
 import json
 import glob, os
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 
 ## TODO: make this basepath variable
 # BASE_PATH = "/Users/carolynsaund/github/gest-data/data/rock/keypoints_simple/1/"
@@ -128,6 +131,57 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     #   }
     # ]
     return all_gesture_keys
+
+
+# ex. id=73848, return {id: 73848, keyframes: [{x: [...], y: [...], ...]}}
+def find_gesture_by_id(d_id, all_speaker_gesture_data):
+    dat = [d for d in all_speaker_gesture_data if d['id'] == d_id]
+    # because this returns list of matching items, and only one item will match,
+    # we just take the first element and use that.
+    return dat[0]
+
+
+## takes 'x' or 'y' and gesture, returns list of all coords for that gesture.
+def get_x_or_y_coords(x_or_y, gesture):
+    coords = [d[x_or_y] for d in gesture['keyframes']]
+    return coords
+
+
+def arrange_data_by_time(dat_vector):
+    flipped_dat = []
+    for i in range(len(dat_vector[0])):
+        a = []
+        for d in dat_vector:
+            a.append(d[i])
+        flipped_dat.append(a)
+    return flipped_dat
+
+
+
+def plot_gesture_x_coords(gesture):
+    ## make an array of all the x coordinates
+    coords = get_x_or_y_coords('x', gesture)
+    fc = arrange_data_by_time(coords)
+    for v in fc:
+        plt.plot(range(0, len(fc[0])), v)
+    plt.xlabel("Time")
+    plt.ylabel("Coord")
+    plt.show()
+
+
+
+def plot_coords(keys):
+    # Data for plotting
+    t = np.arange(0.0, 2.0, 0.01)
+    s = 1 + np.sin(2 * np.pi * t)
+    fig, ax = plt.subplots()
+    ax.plot(t, s)
+    ax.set(xlabel='time (s)', ylabel='voltage (mV)',
+           title='About as simple as it gets, folks')
+    ax.grid()
+    fig.savefig("test.png")
+    plt.show()
+    return
 
 def analyze_gestures(video_base_path, timings_path):
     all_gesture_data = []
