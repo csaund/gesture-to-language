@@ -11,9 +11,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-## TODO: make this basepath variable
-# BASE_PATH = "/Users/carolynsaund/github/gest-data/data/rock/keypoints_simple/1/"
 
+########################################################
+############### Getting Actual Keyframes ###############
+########################################################
 
 # takes time in form of "X_X_IND_m_s.txt"
 def timestring_to_int(time):
@@ -119,17 +120,6 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     ## the -1 is a hack until I figure out why there's missing keypoint data
     ## in some of these.
     print("ending at %s" % files[i-1])
-    # this will look something like this
-    # [
-    #   {
-    #       x: [45, 321, 43...]
-    #       y: [732, 21, 78...]
-    #   },
-    #   {
-    #       x: [...]
-    #       y: [...]
-    #   }
-    # ]
     return all_gesture_keys
 
 
@@ -140,6 +130,10 @@ def get_gesture_by_id(d_id, all_speaker_gesture_data):
     # we just take the first element and use that.
     return dat[0]
 
+
+########################################################
+################ All the plotting stuff ################
+########################################################
 
 ## flip so instead of format like
 # [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
@@ -195,6 +189,26 @@ def analyze_gestures(video_base_path, timings_path):
         all_gesture_data.append(specific_gesture_dat)
     return all_gesture_data
 
+# takes [id1, id2, id3] and saves
+# the plot images of those ids
+def save_gesture_plots(gesture_ids, all_gestures):
+    for i in gesture_ids:
+        g = get_gesture_by_id(i, all_gestures)
+        plot_both_gesture_coords(i)
+    return
+
+def plot_dist_of_frame_numbers(all_gestures):
+    
+
+########################################################
+################### File Stuff ########################
+########################################################
+
+def get_timings(timings_path):
+    with open(timings_path) as f:
+        timings = json.load(f)
+    return timings
+
 #88279
 def get_single_gesture_from_timings(gesture_id, video_base_path, timings_path):
     gesture_data = {}
@@ -208,21 +222,6 @@ def get_single_gesture_from_timings(gesture_id, video_base_path, timings_path):
             gesture_data['id'] = phase['id']
             gesture_data['keyframes'] = get_keyframes_per_gesture(vid_path, start, end)
     return gesture_data
-
-
-# takes [id1, id2, id3] and saves
-# the plot images of those ids
-def save_gesture_plots(gesture_ids, all_gestures):
-    for i in gesture_ids:
-        g = get_gesture_by_id(i, all_gestures)
-        plot_both_gesture_coords(i)
-    return
-
-
-def get_timings(timings_path):
-    with open(timings_path) as f:
-        timings = json.load(f)
-    return timings
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

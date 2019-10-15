@@ -74,14 +74,14 @@ $ python transform-speech2gest-data.py --base_path /Users/carolynsaund/github/ge
 ```
 $ sudo python download-youtube.py --base_path /Users/carolynsaund/github/gest-data/data/ --speaker rock
 ```
-3. You can get the frame data (more or less) 
+3. You can get the frame data (more or less)
 ```
 $ sudo python analyze-frames.py --base_path /Users/carolynsaund/github/gest-data/data --speaker rock
 ```
-4. TODO: actually match the gesture keyframes to the transcript. 
+4. TODO: actually match the gesture keyframes to the transcript.
     - need to get the transcript for the longer video, but run into limits from google API
-    - get around by asking for smaller segments of time? Like getting, perhaps, only 50 seconds of audio at a time and matching it to the gesture timings? 
-    
+    - get around by asking for smaller segments of time? Like getting, perhaps, only 50 seconds of audio at a time and matching it to the gesture timings?
+
 
 
 ## What I want
@@ -96,16 +96,22 @@ $ sudo python analyze-frames.py --base_path /Users/carolynsaund/github/gest-data
 * :white_check_mark: Takes those transcripts, and gets their linguistic forms (nltk?)
 
 * :heavy_minus_sign: Takes those linguistic forms, categorize them into linguistic categories by:
-    
+
   * :white_check_mark: sentiment
-    
+
   * :white_check_mark: tfidf
 
   * :x: syntax
-    
+
 * :x: matches up and compares gestures <--> sentences that accompany them
 
 
 ## Evaluation
 * Computationally, see overlap between sentence categories and gesture categories
 * Subjectively, see people's matching abilities (gesture --> candidate sentences from categories)
+
+
+### Known Issues:
+- Currently if a gesture goes to the last frame of the file, it doesn't load the last frame due to a bug in `get_keyframes_per_gesture`. Can't be arsed to fix it because I'm pretty sure I know why it happens and it's literally only the last frame that it happens on.
+- I am very sketched out by the movements when they go into the last frame. It shows movement/keyframes in time periods when the screen is black, so I need to look more into OpenPose to see how they report keyframes when the skeleton seems to disappear... Seems like the gesture should have been cut off but I'm also not sure about how Berkeley did their gesture segementation.
+- Also sketchy is a low number of frames for some gestures. 
