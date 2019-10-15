@@ -116,9 +116,9 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
         if i >= len(files):
             print "WARNING: GOING BEYOND KEYPOINT TIMES: " + str(files[i-1])
             break
-    print("ending at %s" % files[i])
     ## the -1 is a hack until I figure out why there's missing keypoint data
     ## in some of these.
+    print("ending at %s" % files[i-1])
     # this will look something like this
     # [
     #   {
@@ -190,6 +190,7 @@ def analyze_gestures(video_base_path, timings_path):
         start = p['start_seconds']
         end = p['end_seconds']
         specific_gesture_dat = {'id': phase['id']}
+        print("processing gesture id %s" % phase['id'])
         specific_gesture_dat['keyframes'] = get_keyframes_per_gesture(vid_path, start, end)
         all_gesture_data.append(specific_gesture_dat)
     return all_gesture_data
