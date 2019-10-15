@@ -83,52 +83,34 @@ def get_filekey(t):
 ## requires mapping from video path to specific path.
 ## ex this needs /Users/carolynsaund/github/gest-data/data/rock/keypoints_simple/1
 ## somehow successfully returns the keyframe data for that gesture.
+# gesture vid path is something like "gest-data/data/rock/keypoints_simple/1/"
 def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     start_filekey = str(get_filekey(start_time))
     end_filekey = str(get_filekey(end_time))
-    # I am an absolute LUG. This is for simplicity in file format to get
-    # the times for each file
-    s_key = "X_X_0_" + start_filekey + ".txt"
+    s_key = "X_X_0_" + start_filekey + ".txt"  # I am an absolute LUG. This is for simplicity in file format to get times for each file
     e_key = "X_X_0_" + end_filekey + ".txt"
-    # gesture vid path is something like
-    # "gest-data/data/rock/keypoints_simple/1/"
+    print("s_key: %s" % s_key)
+    print("e_key: %s" % e_key)
     files = sorted(os.listdir(gesture_video_path), key=timestring_to_int)
-    # find the file that has this specific time.. I don't think there can be a clash??
-    # clashes like this, figure it oot.
-    # ['13_19_2008_0_02_15.535536.txt', '13_27_240_0_12_15.535536.txt']
     m = [s for s in files if start_filekey in s]
     if len(m) != 1:
-        print "panic!! wrong number of matching files:" + str(len(m))
-        print start_filekey
-        print m
+        print("panic!! wrong number of matching files: %s" % str(len(m)))
+        print(start_filekey)
+        print(m)
         return
     all_gesture_keys = []
     i = files.index(m[0])
-    print("starting at %s" % files[i])
-    # start at index of first frame
+    print("starting at %s" % files[i])   # start at index of first frame
     while is_within_time(s_key, e_key, files[i]):
-        ## if this is one of the files we need,
-        ## we're constructing a pd dataset
-        # read in data from csv in form of x,y ==> 52 rows of datapoints
         dat = extract_txt_data(gesture_video_path, files[i])
-        ## fuck it let's just use a dict for now.
-        all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])})
+        all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])}) # TODO change this to pd
         i+=1
-        if i >= len(files):
-            print "WARNING: GOING BEYOND KEYPOINT TIMES: " + str(files[i-1])
+        if(i >= len(files)):
+            print("WARNING: GOING BEYOND KEYPOINT TIMES: %s" % str(files[i-1]))
             break
-    ## the -1 is a hack until I figure out why there's missing keypoint data
-    ## in some of these.
-    print("ending at %s" % files[i-1])
+    print("ending at %s" % files[i-1]) # the -1 is a hack until I figure out why there's missing keypoint data
     return all_gesture_keys
 
-
-# ex. id=73848, return {id: 73848, keyframes: [{x: [...], y: [...], ...]}}
-def get_gesture_by_id(d_id, all_speaker_gesture_data):
-    dat = [d for d in all_speaker_gesture_data if d['id'] == d_id]
-    # because this returns list of matching items, and only one item will match,
-    # we just take the first element and use that.
-    return dat[0]
 
 
 ########################################################
@@ -207,13 +189,24 @@ def plot_dist_of_num_frames_by_gesture(all_gestures):
     plt.show()
 
 ########################################################
-################### File Stuff ########################
+####################### Helpers ########################
 ########################################################
+# ex. id=73848, return {id: 73848, keyframes: [{x: [...], y: [...], ...]}}
+def get_gesture_by_id(d_id, all_speaker_gesture_data):
+    dat = [d for d in all_speaker_gesture_data if d['id'] == d_id]
+    # because this returns list of matching items, and only one item will match,
+    # we just take the first element and use that.
+    return dat[0]
 
 def get_timings(timings_path):
     with open(timings_path) as f:
         timings = json.load(f)
     return timings
+
+def is_within_time_ez(s, e, q):
+    if q < s or q > e:
+        return False
+    return True
 
 #88279
 def get_single_gesture_from_timings(gesture_id, video_base_path, timings_path):
@@ -229,6 +222,37 @@ def get_single_gesture_from_timings(gesture_id, video_base_path, timings_path):
             gesture_data['keyframes'] = get_keyframes_per_gesture(vid_path, start, end)
     return gesture_data
 
+# takes time in MM_SS.MS
+def get_gesture_ids_from_video_and_timing(video_fn_id, time_in_mm_ss, timings_path):
+    t = get_timings(timings_path)
+    candidates = []
+    # transform a reasonable time to a dumb time.
+    t_to_trans = "X_X_0_%s.txt" % time_in_mm_ss
+    time_in_seconds = timestring_to_int(t_to_trans)
+    all_video_gestures = [p for p in tim['phrases'] if p['phase']['video_fn'] == video_fn_id]
+    for gesture in all_video_gestures:
+        p = gesture['phase']
+        if is_within_time_ez(p['start_seconds'], p['end_seconds'], time_in_seconds):
+            candidates.append(gesture['id'])
+    return candidates
+
+# get number of frames for a particular gesture by gesture id
+def get_num_frames(gesture_id, all_gesture_data):
+    g = get_gesture_by_id(gesture_id, all_gesture_data)
+    return len(g['keyframes'])
+
+## helper, so can use all these random vars I have floating around I guess
+def get_plot_by_video_time(video_fn_id, time_in_mm_ss, video_base_path, timings_path):
+    ids = get_gesture_ids_from_video_and_timing(video_fn_id, time_in_mm_ss, timings_path)
+    if len(ids) > 1:
+        print "more than one gesture associated with this time, using gesture %s" % ids[0]
+    i = ids[0]
+    print i
+    gest = get_single_gesture_from_timings(i, video_base_path, timings_path)
+    plot_both_gesture_coords(gest)
+
+
+################################################################################
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=__doc__,
