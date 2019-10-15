@@ -1,36 +1,56 @@
 {
     "gestures": [
         {
-            "id": 73867,
+            "id": 73867, 
             "cat": "BEATS"
-        },
+        }, 
         {
-            "id": 73848,
+            "id": 73848, 
             "cat": "THIS_THAT"
-        },
+        }, 
         {
-            "id": 88132,
+            "id": 88132, 
             "cat": "TIME_SIDE_SWIPE"
-        },
+        }, 
         {
-            "id": 88224,
+            "id": 88224, 
             "cat": "TIME_SIDE_SWIPE"
-        },
+        }, 
         {
-            "id": 88148,
+            "id": 88148, 
             "cat": "MIXING"
-        },
+        }, 
         {
-            "id": 88130,
+            "id": 88130, 
             "cat": "WISH_WASH"
-        },
+        }, 
         {
-            "id": 88131,
+            "id": 88131, 
             "cat": "WISH_WASH"
-        },
+        }, 
         {
-            "id": 84939,
+            "id": 84939, 
             "cat": "BIG_OPENING"
+        }, 
+        {
+            "id": 94428, 
+            "cat": "THIS_THAT"
+        }, 
+        {
+            "id": 94436, 
+            "cat": "BIG_OPENING"
+        }, 
+        {
+            "id": 94437, 
+            "cat": "PALM_DOWN_BLANKET"
+        }, 
+        {
+            "id": 94444, 
+            "cat": "BIG_OPENING"
+        }, 
+        {
+            "id": 76202, 
+            "cat": "THIS_THAT_SPATIAL_MAP"
         }
     ]
 }

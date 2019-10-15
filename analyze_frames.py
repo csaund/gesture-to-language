@@ -249,6 +249,9 @@ def get_plot_by_video_time(time_in_mm_ss,
     ids = get_gesture_ids_from_video_and_timing(video_fn_id, time_in_mm_ss, timings_path)
     if len(ids) > 1:
         print "more than one gesture associated with this time, using gesture %s" % ids[0]
+    elif len(ids) == 0:
+        print "no gestures found for this time"
+        return
     i = ids[0]
     print i
     gest = get_single_gesture_from_timings(i, video_base_path, timings_path)
@@ -274,6 +277,7 @@ def save_id_to_video_type(gest_id, gest_type, labeled_path="/Users/carolynsaund/
         with open(labeled_path, 'w') as f:
             json.dump(labeled_gestures, f, indent=4)
     return
+
 
 
 ################################################################################
