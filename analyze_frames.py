@@ -91,7 +91,7 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     e_key = "X_X_0_" + end_filekey + ".txt"
     # gesture vid path is something like
     # "gest-data/data/rock/keypoints_simple/1/"
-    files = sorted(os.listdir(gesture_video_path))
+    files = sorted(os.listdir(gesture_video_path), key=timestring_to_int)
     # find the file that has this specific time.. I don't think there can be a clash??
     # clashes like this, figure it oot.
     # ['13_19_2008_0_02_15.535536.txt', '13_27_240_0_12_15.535536.txt']
@@ -103,7 +103,7 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
         return
     all_gesture_keys = []
     i = files.index(m[0])
-    print "starting at " + str(files[i])
+    print("starting at %s" % files[i])
     # start at index of first frame
     while is_within_time(s_key, e_key, files[i]):
         ## if this is one of the files we need,
@@ -116,9 +116,9 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
         if i >= len(files):
             print "WARNING: GOING BEYOND KEYPOINT TIMES: " + str(files[i-1])
             break
+    print("ending at %s" % files[i])
     ## the -1 is a hack until I figure out why there's missing keypoint data
     ## in some of these.
-    print("stopped at ", files[i-1])
     # this will look something like this
     # [
     #   {
@@ -134,19 +134,17 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
 
 
 # ex. id=73848, return {id: 73848, keyframes: [{x: [...], y: [...], ...]}}
-def find_gesture_by_id(d_id, all_speaker_gesture_data):
+def get_gesture_by_id(d_id, all_speaker_gesture_data):
     dat = [d for d in all_speaker_gesture_data if d['id'] == d_id]
     # because this returns list of matching items, and only one item will match,
     # we just take the first element and use that.
     return dat[0]
 
 
-## takes 'x' or 'y' and gesture, returns list of all coords for that gesture.
-def get_x_or_y_coords(x_or_y, gesture):
-    coords = [d[x_or_y] for d in gesture['keyframes']]
-    return coords
-
-
+## flip so instead of format like
+# [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
+# it's in the format of
+# [t1, t1`, t1``], [t2, t2`, t2``], [t3, t3`, t3``]
 def arrange_data_by_time(dat_vector):
     flipped_dat = []
     for i in range(len(dat_vector[0])):
@@ -156,18 +154,20 @@ def arrange_data_by_time(dat_vector):
         flipped_dat.append(a)
     return flipped_dat
 
+
 def plot_both_gesture_coords(gesture):
     plt.subplot(1,2,1)
     plot_coords('x', gesture)
     plt.subplot(1,2,2)
     plot_coords('y', gesture)
-    fig, ax = plt.show()
-    fig.savefig('%s.png' % gesture['id'])
+    plt.title = 'xy coordinates for gesture %s' % gesture['id']
+    plt.savefig('%s.png' % gesture['id'])
     plt.show()
     return
 
+
 def plot_coords(x_y, gesture):
-    coords = get_x_or_y_coords(x_y, gesture)
+    coords = coords = [d[x_y] for d in gesture['keyframes']]
     fc = arrange_data_by_time(coords)
     for v in fc:
         plt.plot(range(0, len(fc[0])), v)
@@ -175,6 +175,8 @@ def plot_coords(x_y, gesture):
     plt.ylabel("%s pixel position" % x_y)
     plt.title = '%s coordinates for gesture %s' % (x_y, gesture['id'])
 
+
+## let's follow 88279 through and see where the bugs are...
 def analyze_gestures(video_base_path, timings_path):
     all_gesture_data = []
     timings = get_timings(timings_path)
@@ -191,6 +193,29 @@ def analyze_gestures(video_base_path, timings_path):
         specific_gesture_dat['keyframes'] = get_keyframes_per_gesture(vid_path, start, end)
         all_gesture_data.append(specific_gesture_dat)
     return all_gesture_data
+
+#88279
+def get_single_gesture_from_timings(gesture_id, video_base_path, timings_path):
+    gesture_data = {}
+    timings = get_timings(timings_path)
+    for phase in timings['phrases']:
+        p = phase['phase']
+        if phase['id'] == gesture_id:
+            start = p['start_seconds']
+            end = p['end_seconds']
+            vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
+            gesture_data['id'] = phase['id']
+            gesture_data['keyframes'] = get_keyframes_per_gesture(vid_path, start, end)
+    return gesture_data
+
+
+# takes [id1, id2, id3] and saves
+# the plot images of those ids
+def save_gesture_plots(gesture_ids, all_gestures):
+    for i in gesture_ids:
+        g = get_gesture_by_id(i, all_gestures)
+        plot_both_gesture_coords(i)
+    return
 
 
 def get_timings(timings_path):
