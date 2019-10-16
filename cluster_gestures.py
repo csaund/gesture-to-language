@@ -10,6 +10,7 @@ import glob, os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import statistics as stat
 
 
 # do difference between t1 and t2 for same frame,
@@ -126,6 +127,38 @@ def palm_horiz(gesture, lr):
         y_min = min(y_min, max_frame_dist)
     return y_min
 
+
+## Total distance from low --> high the wrists move in a single motion
+def wrists_up(gesture, lr):
+    # use hand avg as wrist proxy for now
+    hand_keys = get_rl_hand_keypoints(gesture, lr)
+    total_increase = 0
+    max_single_increase = 0
+    pos = 0
+    going_up = False
+    i = 0
+    for frame in hand_keys:
+        i = i + 1
+        curr_pos = avg(frame['y'])
+        # while we're still going up
+        if curr_pos >= pos:
+            total_increase = total_increase + (curr_pos - pos)
+            pos = curr_pos
+            going_up = True
+        # we're lower than we used to be
+        else:
+            # if we were previously going up
+            if going_up:
+                max_single_increase = max(max_single_increase, total_increase)
+                total_increase = 0
+            going_up = False
+            pos = curr_pos
+    return max_single_increase
+
+## Total distance from high --> low the wrists move
+def wrists_down(gesture):
+    return
+
 ## across all the frames, how much does it go back and forth?
 ## basically, how much do movements switch direction? but on a big scale.
 ## average the amount over the hands
@@ -142,12 +175,13 @@ def get_gesture_features(gesture):
       palm_vert(gesture, 'r'),
       palm_horiz(gesture, 'r'),
       max_hands_apart(gesture),
-      min_hands_together(gesture)
-    #   x_oscillate,    # does it go up and down a lot?
+      min_hands_together(gesture),
+    #   x_oscillate,
     #   y_oscillate,
     #   min_hands_together(gesture),
     #   max_hands_apart(gesture),
-    #   wrists_up,
+      wrists_up(gesture, 'r'),
+      wrists_up(gesture, 'l')
     #   wrists_down,
     #   wrists_outward,
     #   wrists_inward,
@@ -167,6 +201,9 @@ def get_gesture_features(gesture):
 ########################################################
 ####################### Helpers ########################
 ########################################################
+
+def avg(v):
+    return float(sum(v) / len(v))
 
 def get_body_keypoints(gesture):
     return get_keypoints_body_range(gesture, 0, 7)
