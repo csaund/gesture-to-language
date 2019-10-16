@@ -134,15 +134,13 @@ def wrists_up(gesture, lr):
     hand_keys = get_rl_hand_keypoints(gesture, lr)
     total_increase = 0
     max_single_increase = 0
-    pos = 0
+    pos = avg(hand_keys[0]['y'])
     going_up = False
-    i = 0
     for frame in hand_keys:
-        i = i + 1
         curr_pos = avg(frame['y'])
         # while we're still going up
         if curr_pos >= pos:
-            total_increase = total_increase + (curr_pos - pos)
+            total_increase = total_increase + abs(curr_pos - pos)
             pos = curr_pos
             going_up = True
         # we're lower than we used to be
@@ -156,8 +154,78 @@ def wrists_up(gesture, lr):
     return max_single_increase
 
 ## Total distance from high --> low the wrists move
-def wrists_down(gesture):
-    return
+def wrists_down(gesture, lr):
+    # use hand avg as wrist proxy for now
+    hand_keys = get_rl_hand_keypoints(gesture, lr)
+    total_decrease = 0
+    max_single_decrease = 0
+    pos = avg(hand_keys[0]['y'])
+    going_down = False
+    for frame in hand_keys:
+        curr_pos = avg(frame['y'])
+        # while we're still going down
+        if curr_pos <= pos:
+            total_decrease = total_decrease + abs(curr_pos - pos)
+            pos = curr_pos
+            going_down = True
+        # we're higher than we used to be
+        else:
+            # if we were previously going down
+            if going_down:
+                max_single_decrease = max(max_single_decrease, total_decrease)
+                total_decrease = 0
+            going_down = False
+            pos = curr_pos
+    return max_single_decrease
+
+
+## TODO check these bad larries for bugs
+def wrists_outward(gesture):
+    r_hand = get_rl_hand_keypoints(gesture, 'r')
+    l_hand = get_rl_hand_keypoints(gesture, 'l')
+    moving_outward = False
+    total_outward_dist = 0
+    max_outward_dist = 0
+    dist = abs(avg(r_hand[0]['x']) - avg(l_hand[0]['x']))
+    for i in range(0, len(r_hand)-1):
+        curr_dist = abs(avg(r_hand[i]['x']) - avg(l_hand[i]['x']))
+        if curr_dist >= dist:
+            moving_outward = True
+            total_outward_dist = total_outward_dist + abs(curr_dist - dist)
+            dist = curr_dist
+        else:
+            if moving_outward:
+                max_outward_dist = max(max_outward_dist, total_outward_dist)
+                total_outward_dist = 0
+            moving_outward = False
+            dist = curr_dist
+    return max_outward_dist
+
+## TODO check these bad larries for bugs
+def wrists_inward(gesture):
+    r_hand = get_rl_hand_keypoints(gesture, 'r')
+    l_hand = get_rl_hand_keypoints(gesture, 'l')
+    moving_inward = False
+    total_inward_dist = 0
+    max_inward_dist = 0
+    dist = abs(avg(r_hand[0]['x']) - avg(l_hand[0]['x']))
+    for i in range(0, len(r_hand)-1):
+        curr_dist = abs(avg(r_hand[i]['x']) - avg(l_hand[i]['x']))
+        if curr_dist <= dist:
+            moving_inward = True
+            total_inward_dist = total_inward_dist + abs(curr_dist - dist)
+            dist = curr_dist
+        else:
+            if moving_inward:
+                max_inward_dist = max(max_inward_dist, total_inward_dist)
+                total_inward_dist = 0
+            moving_inward = False
+            dist = curr_dist
+    return max_inward_dist
+
+
+
+
 
 ## across all the frames, how much does it go back and forth?
 ## basically, how much do movements switch direction? but on a big scale.
@@ -178,11 +246,10 @@ def get_gesture_features(gesture):
       min_hands_together(gesture),
     #   x_oscillate,
     #   y_oscillate,
-    #   min_hands_together(gesture),
-    #   max_hands_apart(gesture),
       wrists_up(gesture, 'r'),
-      wrists_up(gesture, 'l')
-    #   wrists_down,
+      wrists_up(gesture, 'l'),
+      wrists_down(gesture, 'r'),
+      wrists_down(gesture, 'l'),
     #   wrists_outward,
     #   wrists_inward,
     #   wrists_sweep,
