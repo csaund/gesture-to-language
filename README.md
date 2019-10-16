@@ -110,8 +110,18 @@ $ sudo python analyze-frames.py --base_path /Users/carolynsaund/github/gest-data
 * Computationally, see overlap between sentence categories and gesture categories
 * Subjectively, see people's matching abilities (gesture --> candidate sentences from categories)
 
-
 ### Known Issues:
 - Currently if a gesture goes to the last frame of the file, it doesn't load the last frame due to a bug in `get_keyframes_per_gesture`. Can't be arsed to fix it because I'm pretty sure I know why it happens and it's literally only the last frame that it happens on.
 - I am very sketched out by the movements when they go into the last frame. It shows movement/keyframes in time periods when the screen is black, so I need to look more into OpenPose to see how they report keyframes when the skeleton seems to disappear... Seems like the gesture should have been cut off but I'm also not sure about how Berkeley did their gesture segementation.
-- Also sketchy is a low number of frames for some gestures. 
+- Also sketchy is a low number of frames for some gestures.
+
+### TODOs:
+- figure out how to trim gestures down to meaningful frames...
+- figure out how to compare gestures of different numbers of frames
+    - pad shorter gesture with same value for rest of sequence?
+    - best most common sub-sequence of some minimal frame length...
+    - but needs to be the difference between each point and the last point
+    - but also needs to take into account difference between raw positions (ex. flat vs vertical spread palm)
+- Explore clustering of wrist/body data, then re-cluster based on hand motions...
+- after getting all features, need to normalize across all gestures
+    - and after that, everything that is "minimum" need to change to 1-n

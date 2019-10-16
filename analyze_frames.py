@@ -184,7 +184,7 @@ def plot_dist_of_num_frames_by_gesture(all_gestures):
     for g in all_gestures:
         num_frames.append(len(g['keyframes']))
     num_bins = 5
-    n, bins, patches = plt.hist(num_frames, bins=[0,50,100,200,400,2500], facecolor='blue', alpha=0.5)
+    n, bins, patches = plt.hist(num_frames, bins=[0,20,100,200,400,2500], facecolor='blue', alpha=0.5)
     plt.title = "number of frames per gesture"
     plt.show()
 
