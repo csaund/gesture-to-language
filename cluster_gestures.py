@@ -250,8 +250,8 @@ def get_gesture_features(gesture):
       wrists_up(gesture, 'l'),
       wrists_down(gesture, 'r'),
       wrists_down(gesture, 'l'),
-    #   wrists_outward,
-    #   wrists_inward,
+      wrists_outward(gesture),
+      wrists_inward(gesture)
     #   wrists_sweep,
     #   wrist_arc,
     #   r_hand_rotate,
