@@ -65,6 +65,17 @@ def extract_txt_data(bp, filepath):
     os.remove(str(bp + outf))
     return dat          # output is a written csv to that location
 
+def extract_txt_data_no_csv(basepath, filepath):
+    fn = filepath.split('.txt')[0]
+    inf = basepath + filepath
+    with open(inf, 'r') as in_file:
+        lines = in_file.read().splitlines()
+        x = lines[1].split(" ")
+        y = lines[2].split(" ")
+        x = [int(n) for n in x]
+        y = [int(n) for n in y]
+    return {'x': x, 'y': y}
+
 # takes number of seconds (408.908909) and converts to something like
 # MM_S.SS
 # that is searchable in the folder.
@@ -89,8 +100,6 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     end_filekey = str(get_filekey(end_time))
     s_key = "X_X_0_" + start_filekey + ".txt"  # I am an absolute LUG. This is for simplicity in file format to get times for each file
     e_key = "X_X_0_" + end_filekey + ".txt"
-    print("s_key: %s" % s_key)
-    print("e_key: %s" % e_key)
     files = sorted(os.listdir(gesture_video_path), key=timestring_to_int)
     m = [s for s in files if start_filekey in s]
     if len(m) != 1:
@@ -102,8 +111,10 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     i = files.index(m[0])
     print("starting at %s" % files[i])   # start at index of first frame
     while is_within_time(s_key, e_key, files[i]):
-        dat = extract_txt_data(gesture_video_path, files[i])
-        all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])}) # TODO change this to pd
+        # dat = extract_txt_data(gesture_video_path, files[i])
+        dat = extract_txt_data_no_csv(gesture_video_path, files[i])
+        # all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])}) # TODO change this to pd
+        all_gesture_keys.append(dat) # TODO change this to pd
         i+=1
         if(i >= len(files)):
             print("WARNING: GOING BEYOND KEYPOINT TIMES: %s" % str(files[i-1]))
