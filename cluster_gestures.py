@@ -10,7 +10,8 @@ import glob, os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import statistics as stat
+import uuid
+from analyze_frames import *
 
 
 # do difference between t1 and t2 for same frame,
@@ -147,10 +148,10 @@ def wrists_up(gesture, lr):
         else:
             # if we were previously going up
             if going_up:
-                max_single_increase = max(max_single_increase, total_increase)
                 total_increase = 0
             going_up = False
             pos = curr_pos
+        max_single_increase = max(max_single_increase, total_increase)
     return max_single_increase
 
 ## Total distance from high --> low the wrists move
@@ -172,10 +173,10 @@ def wrists_down(gesture, lr):
         else:
             # if we were previously going down
             if going_down:
-                max_single_decrease = max(max_single_decrease, total_decrease)
                 total_decrease = 0
             going_down = False
             pos = curr_pos
+        max_single_decrease = max(max_single_decrease, total_decrease)
     return max_single_decrease
 
 
@@ -187,7 +188,7 @@ def wrists_outward(gesture):
     total_outward_dist = 0
     max_outward_dist = 0
     dist = abs(avg(r_hand[0]['x']) - avg(l_hand[0]['x']))
-    for i in range(0, len(r_hand)-1):
+    for i in range(1, len(r_hand)-1):
         curr_dist = abs(avg(r_hand[i]['x']) - avg(l_hand[i]['x']))
         if curr_dist >= dist:
             moving_outward = True
@@ -195,10 +196,10 @@ def wrists_outward(gesture):
             dist = curr_dist
         else:
             if moving_outward:
-                max_outward_dist = max(max_outward_dist, total_outward_dist)
                 total_outward_dist = 0
             moving_outward = False
             dist = curr_dist
+        max_outward_dist = max(max_outward_dist, total_outward_dist)
     return max_outward_dist
 
 ## TODO check these bad larries for bugs
@@ -209,7 +210,7 @@ def wrists_inward(gesture):
     total_inward_dist = 0
     max_inward_dist = 0
     dist = abs(avg(r_hand[0]['x']) - avg(l_hand[0]['x']))
-    for i in range(0, len(r_hand)-1):
+    for i in range(1, len(r_hand)-1):
         curr_dist = abs(avg(r_hand[i]['x']) - avg(l_hand[i]['x']))
         if curr_dist <= dist:
             moving_inward = True
@@ -217,14 +218,56 @@ def wrists_inward(gesture):
             dist = curr_dist
         else:
             if moving_inward:
-                max_inward_dist = max(max_inward_dist, total_inward_dist)
                 total_inward_dist = 0
             moving_inward = False
             dist = curr_dist
+        max_inward_dist = max(max_inward_dist, total_inward_dist)
     return max_inward_dist
 
 
+def wrists_moving_apart(gesture):
+    r_hand = get_rl_hand_keypoints(gesture, 'r')
+    l_hand = get_rl_hand_keypoints(gesture, 'l')
+    moving_apart = False
+    total_apart = 0
+    max_dist_apart = 0
+    dist = get_point_dist(avg(r_hand[0]['x']), avg(r_hand[0]['y']), avg(l_hand[0]['x']), avg(l_hand[0]['y']))
+    for i in range(1, len(r_hand)-1):
+        curr_dist = get_point_dist(avg(r_hand[i]['x']), avg(r_hand[i]['y']), avg(l_hand[i]['x']), avg(l_hand[i]['y']))
+        if curr_dist >= dist:
+            moving_apart = True
+            total_apart = total_apart + abs(curr_dist - dist)
+            dist = curr_dist
+        else:
+            if moving_apart:
+                total_apart = 0
+            moving_inward = False
+            dist = curr_dist
+        max_dist_apart = max(max_dist_apart, total_apart)
+    return max_dist_apart
 
+# max velocity over n frames.
+# only goes over r/l hand avg pos
+def max_wrist_velocity(gesture, rl='r', num_frames=5):
+    hand_keys = get_rl_hand_keypoints(gesture, rl)
+    max_frame_diff = 0
+    for i in range(num_frames, len(hand_keys)-1):
+        frame_diff = 0
+        for j in range(1, num_frames):
+            pos1 = get_hand_pos(hand_keys[i-(j-1)])
+            pos2 = get_hand_pos(hand_keys[i-j])
+            frame_diff = frame_diff + get_point_dist(pos1[0], pos1[1], pos2[0], pos2[1])
+        max_frame_diff = max(max_frame_diff, frame_diff)
+    return max_frame_diff
+
+
+def get_hand_pos(hand_keys):
+    return(avg(hand_keys['x']), avg(hand_keys['y']))
+
+def get_point_dist(x1,y1,x2,y2):
+    a = np.array((x1, y1))
+    b = np.array((x2, y2))
+    return np.linalg.norm(a-b)
 
 
 ## across all the frames, how much does it go back and forth?
@@ -236,8 +279,6 @@ def oscillation(gesture):
 
 def get_gesture_features(gesture):
     gesture_features = [
-    #   max_vert_accel,
-    #   max_horiz_accel,
       palm_vert(gesture, 'l'),
       palm_horiz(gesture, 'l'),
       palm_vert(gesture, 'r'),
@@ -251,7 +292,9 @@ def get_gesture_features(gesture):
       wrists_down(gesture, 'r'),
       wrists_down(gesture, 'l'),
       wrists_outward(gesture),
-      wrists_inward(gesture)
+      wrists_inward(gesture),
+      max_wrist_velocity(gesture, 'r'),
+      max_wrist_velocity(gesture, 'l')
     #   wrists_sweep,
     #   wrist_arc,
     #   r_hand_rotate,
@@ -293,6 +336,48 @@ def calculate_distance_between_gestures(g1, g2):
     feat1 = np.array(get_gesture_features(g1))
     feat2 = np.array(get_gesture_features(g2))
     return np.linalg.norm(feat1-feat2)
+
+
+###############################################################
+####################### DIY Clustering ########################
+###############################################################
+class GestureClusters():
+    # all the gesture data for gestures we want to cluster.
+    # the ids of any seed gestures we want to use for our clusters.
+    def __init__(self, all_gesture_data, seeds=[]):
+        self.agd = all_gesture_data
+        self.clusters = {}
+        self.seed_ids = seeds
+        if(len(seeds)):
+            for seed_g in seeds:
+                g = get_gesture_by_id(seed_g, all_gesture_data)
+                cluster_id = uuid.uuid1()
+                c = {'cluster_id': cluster_id, 'seed_id': g['id'], 'gestures': [g]}
+                self.clusters[cluster_id] = c
+
+    def cluster_gestures(gesture_data):
+        gd = gesture_data if gesture_data else self.agd
+        for g in gd:
+            nearest_cluster_id = _get_shortest_cluster_dist(g)
+            self.clusters[nearest_cluster_id]['gestures'].append(g)
+
+
+    def _get_shortest_cluster_dist(g):
+        shortest_dist = 10000
+        closest_cluster_id = ''
+        for k in self.clusters:
+            c = self.clusters[k]
+            dist = _get_cluster_dist(g, c)
+            if dist < shortest_dist:
+                shortest_dist = dist
+                closest_cluster_id = c['cluster_id']
+        return nearest_cluster
+
+    def _get_cluster_dist(g, c):
+        shortest_dist = 10000   # higher than dist could be
+        for c_gesture in c['gestures']:
+            shortest_dist = min(shortest_dist, calculate_distance_between_gestures(g, c_gesture))
+        return shortest_dist
 
 
 if __name__ == '__main__':

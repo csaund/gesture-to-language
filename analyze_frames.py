@@ -39,33 +39,7 @@ def is_within_time(start_time, end_time, question_time):
         return False
     return True
 
-# takes fp to text file, returns dataframe of
-# csv version of that text file
-# however it takes the x y and zips them together to make
-# a big vector of x,y pairs.
-def extract_txt_data(bp, filepath):
-    fn = filepath.split('.txt')[0]
-    inf = fn + '.txt'
-    outf = fn + '.csv'
-    with open(bp + inf, 'r') as in_file:
-        lines = in_file.read().splitlines()
-        stripped = [line.replace(","," ").split() for line in lines]
-        zipped = zip(stripped[1], stripped[2])
-        with open(bp + outf, 'w') as out_file:
-            writer = csv.writer(out_file)
-            writer.writerow(('x', 'y'))
-            i = 0
-            for z in zipped:
-                row = (str(z[0]), str(z[1]))
-                writer.writerow(row)
-                i += 1
-    # get the data that we need
-    dat = pd.read_csv(str(bp + outf))
-    # clean up after ourselves
-    os.remove(str(bp + outf))
-    return dat          # output is a written csv to that location
-
-def extract_txt_data_no_csv(basepath, filepath):
+def extract_txt_data(basepath, filepath):
     fn = filepath.split('.txt')[0]
     inf = basepath + filepath
     with open(inf, 'r') as in_file:
@@ -111,9 +85,7 @@ def get_keyframes_per_gesture(gesture_video_path, start_time, end_time):
     i = files.index(m[0])
     print("starting at %s" % files[i])   # start at index of first frame
     while is_within_time(s_key, e_key, files[i]):
-        # dat = extract_txt_data(gesture_video_path, files[i])
-        dat = extract_txt_data_no_csv(gesture_video_path, files[i])
-        # all_gesture_keys.append({'x': list(dat['x']), 'y': list(dat['y'])}) # TODO change this to pd
+        dat = extract_txt_data(gesture_video_path, files[i])
         all_gesture_keys.append(dat) # TODO change this to pd
         i+=1
         if(i >= len(files)):
@@ -240,7 +212,7 @@ def get_gesture_ids_from_video_and_timing(video_fn_id, time_in_mm_ss, timings_pa
     # transform a reasonable time to a dumb time.
     t_to_trans = "X_X_0_%s.txt" % time_in_mm_ss
     time_in_seconds = timestring_to_int(t_to_trans)
-    all_video_gestures = [p for p in tim['phrases'] if p['phase']['video_fn'] == video_fn_id]
+    all_video_gestures = [p for p in t['phrases'] if p['phase']['video_fn'] == video_fn_id]
     for gesture in all_video_gestures:
         p = gesture['phase']
         if is_within_time_ez(p['start_seconds'], p['end_seconds'], time_in_seconds):
