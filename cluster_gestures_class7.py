@@ -84,8 +84,8 @@ class GestureClusters():
                 c = {
                         'cluster_id': cluster_id,
                         'seed_id': g['id'],
-                        'centroid':
-                        'gestures': [g]}
+                        'centroid': self._get_gesture_features(g),
+                        'gestures': [g['id']]}
                 self.clusters[cluster_id] = c
 
     def cluster_gestures(self, gesture_data, max_cluster_distance=False):
@@ -112,6 +112,7 @@ class GestureClusters():
         print("Number of clusters: %s" % len(self.clusters))
         return
 
+    ## instead of this need to use centroid.
     def _get_shortest_cluster_dist(self, g):
         shortest_dist = 10000
         nearest_cluster_id = ''
