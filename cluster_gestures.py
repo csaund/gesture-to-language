@@ -204,8 +204,8 @@ def get_point_dist(x1,y1,x2,y2):
 ## across all the frames, how much does it go back and forth?
 ## basically, how much do movements switch direction? but on a big scale.
 ## average the amount over the hands
-def oscillation(gesture):
-    return
+# def oscillation(gesture):
+#     return
 
 
 def get_gesture_features(gesture):
