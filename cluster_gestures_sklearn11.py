@@ -13,6 +13,8 @@ import numpy as np
 import uuid
 import operator
 from analyze_frames import *
+from sklearn.neighbors.nearest_centroid import NearestCentroid
+from sklearn.cluster import KMeans
 
 
 # do difference between t1 and t2 for same frame,
@@ -74,26 +76,39 @@ class GestureClusters():
         self.agd = all_gesture_data
         self.clusters = {}
         self.seed_ids = seeds
+        self.clf = NearestCentroid()
         if(len(seeds)):
             for seed_g in seeds:
                 g = self._get_gesture_by_id(seed_g, all_gesture_data)
                 cluster_id = self.c_id
                 self.c_id = self.c_id + 1
-                c = {'cluster_id': cluster_id, 'seed_id': g['id'], 'gestures': [g]}
+                c = {
+                        'cluster_id': cluster_id,
+                        'seed_id': g['id'],
+                        'gestures': [g]}
                 self.clusters[cluster_id] = c
 
-    def cluster_gestures(self, gesture_data, max_cluster_distance=False):
+    def cluster_gestures(self, feat_vecs=False, gesture_data=False, max_cluster_distance=False):
         gd = gesture_data if gesture_data else self.agd
+        all_gest_feats = feat_vecs if feat_vecs else self._get_all_feature_vectors(gd)
+        X = np.array(all_gest_feats)
+        print("fitting KMeans model")
+        kmeans_model = KMeans().fit(X)
+        print(kmeans_model.cluster_centers_)
+        centers = np.array(kmeans_model.cluster_centers_)
+        return kmeans_model
+
+    def _get_all_feature_vectors(self, gesture_data=False):
+        gd = gesture_data if gesture_data else self.agd
+        all_gest_feats = []
+        print("getting feature vectors for gesture")
+        i = 0
+        tot = len(gd)
         for g in gd:
-            print("finding cluster for gesture %s" % g['id'])
-            (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
-            # we're further away than we're allowed to be, OR this is the first cluster.
-            if (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
-                print("nearest cluster distance was %s" % nearest_cluster_dist)
-                self._create_new_cluster(g)
-            else:
-                print("fitting in cluster %s" % nearest_cluster_id)
-                self.clusters[nearest_cluster_id]['gestures'].append(g)
+            print("%s / %s" % (i, tot))
+            i = i+1
+            all_gest_feats.append(self._get_gesture_features(g))
+        return all_gest_feats
 
     def _create_new_cluster(self, seed_gest):
         print("creating new cluster for gesture %s" % seed_gest['id'])
@@ -326,3 +341,41 @@ class GestureClusters():
         feat1 = np.array(self._get_gesture_features(g1))
         feat2 = np.array(self._get_gesture_features(g2))
         return np.linalg.norm(feat1-feat2)
+
+
+
+
+###### Example
+ # clustering dataset
+# from sklearn.cluster import KMeans
+# from sklearn import metrics
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# x1 = np.array([3, 1, 1, 2, 1, 6, 6, 6, 5, 6, 7, 8, 9, 8, 9, 9, 8])
+# x2 = np.array([5, 4, 6, 6, 5, 8, 6, 7, 6, 7, 1, 2, 1, 2, 3, 2, 3])
+#
+# # create new plot and data
+# plt.plot()
+# X = np.array(list(zip(x1, x2))).reshape(len(x1), 2)
+# colors = ['b', 'g', 'c']
+# markers = ['o', 'v', 's']
+#
+# # KMeans algorithm
+# K = 3
+# X = np.array(list(zip(x1, x2))).reshape(len(x1), 2)
+# kmeans_model = KMeans(n_clusters=K).fit(X)
+#
+# print(kmeans_model.cluster_centers_)
+# centers = np.array(kmeans_model.cluster_centers_)
+#
+# plt.plot()
+# plt.title('k means centroids')
+#
+# for i, l in enumerate(kmeans_model.labels_):
+#     plt.plot(x1[i], x2[i], color=colors[l], marker=markers[l],ls='None')
+#     plt.xlim([0, 10])
+#     plt.ylim([0, 10])
+#
+# plt.scatter(centers[:,0], centers[:,1], marker="x", color='r')
+# plt.show()
