@@ -11,6 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import uuid
+import operator
 from analyze_frames import *
 
 
@@ -129,101 +130,60 @@ def palm_horiz(gesture, lr):
     return y_min
 
 
-## Total distance from low --> high the wrists move in a single motion
+## max distance from low --> high the wrists move in a single stroke
 def wrists_up(gesture, lr):
-    # use hand avg as wrist proxy for now
-    hand_keys = get_rl_hand_keypoints(gesture, lr)
-    total_increase = 0
-    max_single_increase = 0
-    pos = avg(hand_keys[0]['y'])
-    going_up = False
-    for frame in hand_keys:
-        curr_pos = avg(frame['y'])
-        # while we're still going up
-        if curr_pos >= pos:
-            total_increase = total_increase + abs(curr_pos - pos)
-            pos = curr_pos
-            going_up = True
-        # we're lower than we used to be
-        else:
-            # if we were previously going up
-            if going_up:
-                total_increase = 0
-            going_up = False
-            pos = curr_pos
-        max_single_increase = max(max_single_increase, total_increase)
-    return max_single_increase
+    wrist_vertical_stroke(gesture, lr, operator.ge)
 
-## Total distance from high --> low the wrists move
+## max distance from high --> low the wrists move in single stroke
 def wrists_down(gesture, lr):
-    # use hand avg as wrist proxy for now
+    wrist_vertical_stroke(gesture, lr, operator.le)
+
+def wrist_vertical_stroke(gesture, lr, relate):
     hand_keys = get_rl_hand_keypoints(gesture, lr)
-    total_decrease = 0
-    max_single_decrease = 0
+    total_motion = 0
+    max_single_stroke = 0
     pos = avg(hand_keys[0]['y'])
-    going_down = False
+    same_direction = False
     for frame in hand_keys:
         curr_pos = avg(frame['y'])
-        # while we're still going down
-        if curr_pos <= pos:
-            total_decrease = total_decrease + abs(curr_pos - pos)
+        if relate(curr_pos, pos):
+            total_motion = total_motion + abs(curr_pos - pos)
             pos = curr_pos
-            going_down = True
-        # we're higher than we used to be
+            same_direction = True
         else:
-            # if we were previously going down
-            if going_down:
-                total_decrease = 0
-            going_down = False
+            if same_direction:
+                total_motion = 0
+            same_direction = False
             pos = curr_pos
-        max_single_decrease = max(max_single_decrease, total_decrease)
-    return max_single_decrease
+        max_single_stroke = max(max_single_stroke, total_motion)
+    return max_single_stroke
 
-
-## TODO check these bad larries for bugs
 def wrists_outward(gesture):
-    r_hand = get_rl_hand_keypoints(gesture, 'r')
-    l_hand = get_rl_hand_keypoints(gesture, 'l')
-    moving_outward = False
-    total_outward_dist = 0
-    max_outward_dist = 0
-    dist = abs(avg(r_hand[0]['x']) - avg(l_hand[0]['x']))
-    for i in range(1, len(r_hand)-1):
-        curr_dist = abs(avg(r_hand[i]['x']) - avg(l_hand[i]['x']))
-        if curr_dist >= dist:
-            moving_outward = True
-            total_outward_dist = total_outward_dist + abs(curr_dist - dist)
-            dist = curr_dist
-        else:
-            if moving_outward:
-                total_outward_dist = 0
-            moving_outward = False
-            dist = curr_dist
-        max_outward_dist = max(max_outward_dist, total_outward_dist)
-    return max_outward_dist
+    wrist_relational_move(gesture, operator.ge)
 
-## TODO check these bad larries for bugs
 def wrists_inward(gesture):
+    wrist_relational_move(gesture, operator.le)
+
+def wrist_relational_move(gesture, relate):
     r_hand = get_rl_hand_keypoints(gesture, 'r')
     l_hand = get_rl_hand_keypoints(gesture, 'l')
-    moving_inward = False
-    total_inward_dist = 0
-    max_inward_dist = 0
+    moving_desired_direction = False
+    total_direction_dist = 0
+    max_direction_dist = 0
     dist = abs(avg(r_hand[0]['x']) - avg(l_hand[0]['x']))
     for i in range(1, len(r_hand)-1):
         curr_dist = abs(avg(r_hand[i]['x']) - avg(l_hand[i]['x']))
-        if curr_dist <= dist:
-            moving_inward = True
-            total_inward_dist = total_inward_dist + abs(curr_dist - dist)
+        if relate(curr_dist, dist):
+            moving_desired_direction = True
+            total_direction_dist = total_direction_dist + abs(curr_dist - dist)
             dist = curr_dist
         else:
-            if moving_inward:
-                total_inward_dist = 0
-            moving_inward = False
+            if moving_desired_direction:
+                total_direction_dist = 0
+            moving_desired_direction = False
             dist = curr_dist
-        max_inward_dist = max(max_inward_dist, total_inward_dist)
-    return max_inward_dist
-
+        max_direction_dist = max(max_direction_dist, total_direction_dist)
+    return max_direction_dist
 
 def wrists_moving_apart(gesture):
     r_hand = get_rl_hand_keypoints(gesture, 'r')
@@ -345,35 +305,48 @@ class GestureClusters():
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
     def __init__(self, all_gesture_data, seeds=[]):
+        # I have no idea what best practices are but I'm almost certain this is
+        # a gross, disgusting anti-pattern for iterating IDs.
+        self.c_id = 0
         self.agd = all_gesture_data
         self.clusters = {}
         self.seed_ids = seeds
         if(len(seeds)):
             for seed_g in seeds:
                 g = get_gesture_by_id(seed_g, all_gesture_data)
-                cluster_id = uuid.uuid1()
+                cluster_id = self.c_id
+                self.c_id = self.c_id + 1
                 c = {'cluster_id': cluster_id, 'seed_id': g['id'], 'gestures': [g]}
                 self.clusters[cluster_id] = c
 
-    def cluster_gestures(gesture_data):
+    def cluster_gestures(self, gesture_data, max_cluster_distance=False):
         gd = gesture_data if gesture_data else self.agd
         for g in gd:
-            nearest_cluster_id = _get_shortest_cluster_dist(g)
-            self.clusters[nearest_cluster_id]['gestures'].append(g)
+            (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
+            if max_cluster_distance and nearest_cluster_dist > max_cluster_distance:
+                new_cluster_id = self.c_id
+                self.c_id = self.c_id + 1
+                c = {'cluster_id': new_cluster_id, 'seed_id': g['id'], 'gestures': [g]}
+                self.clusters[new_cluster_id] = c
+            else:
+                self.clusters[nearest_cluster_id]['gestures'].append(g)
 
+    def report_clusters(self, verbose=False):
+        print("Number of clusters: %s" % len(self.clusters))
+        return
 
-    def _get_shortest_cluster_dist(g):
+    def _get_shortest_cluster_dist(self, g):
         shortest_dist = 10000
-        closest_cluster_id = ''
+        nearest_cluster_id = ''
         for k in self.clusters:
             c = self.clusters[k]
-            dist = _get_cluster_dist(g, c)
+            dist = self._get_cluster_dist(g, c)
             if dist < shortest_dist:
                 shortest_dist = dist
-                closest_cluster_id = c['cluster_id']
-        return nearest_cluster
+                nearest_cluster_id = c['cluster_id']
+        return (nearest_cluster_id, shortest_dist)
 
-    def _get_cluster_dist(g, c):
+    def _get_cluster_dist(self, g, c):
         shortest_dist = 10000   # higher than dist could be
         for c_gesture in c['gestures']:
             shortest_dist = min(shortest_dist, calculate_distance_between_gestures(g, c_gesture))
