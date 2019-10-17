@@ -59,46 +59,20 @@ from analyze_frames import *
 ## Now since we're only working within a single gesture, don't need to worry about
 ## Mismatched timings anymore.
 
-# given time sequence x/y: [[p1, p2, p3], [p1', p2', p3']...] calculate maximum velocity between say 5 frames
-def get_max_velocity(time_seq):
-    return
-
-
-# given time sequence calculate minimum total x difference between palm points
-def get_max_palm_verticalness(time_seq):
-    return
-
-
-# given time sequence calculate minimum total y difference between palm points
-def get_max_palm_horizontalness(time_seq):
-    return
-
-
 # returns minimum distance at any frame between point A on right hand and
 # point A on left hand.
 def min_hands_together(gesture):
-    r_hand_keys = get_rl_hand_keypoints(gesture, 'r')
-    l_hand_keys = get_rl_hand_keypoints(gesture, 'l')
-    min_dist = 1000 # larger than pixel range
-    for i in range(0, len(r_hand_keys)-2):
-        for j in range(0, len(r_hand_keys[i]['x'])-1):
-            r_x = r_hand_keys[i]['x'][j]
-            r_y = r_hand_keys[i]['y'][j]
-            l_x = l_hand_keys[i]['x'][j]
-            l_y = l_hand_keys[i]['y'][j]
-            a = np.array((r_x, r_y))
-            b = np.array((l_x, l_y))
-            dist = np.linalg.norm(a-b)
-            min_dist = min(dist, min_dist)
-    return min_dist
-
+    return hand_togetherness(gesture, 1000, min)
 
 # returns maximum distance at any frame between point A on right hand and
 # point A on left hand
 def max_hands_apart(gesture):
+    return hand_togetherness(gesture, 0, max)
+
+def hand_togetherness(gesture, min_max, relate):
     r_hand_keys = get_rl_hand_keypoints(gesture, 'r')
     l_hand_keys = get_rl_hand_keypoints(gesture, 'l')
-    max_dist = 0 # larger than pixel range
+    max_dist = min_max # larger than pixel range
     for i in range(0, len(r_hand_keys)-2):
         for j in range(0, len(r_hand_keys[i]['x'])-1):
             r_x = r_hand_keys[i]['x'][j]
@@ -108,35 +82,32 @@ def max_hands_apart(gesture):
             a = np.array((r_x, r_y))
             b = np.array((l_x, l_y))
             dist = np.linalg.norm(a-b)
-            max_dist = max(dist, max_dist)
+            max_dist = relate(dist, max_dist)
     return max_dist
 
 # get maximum "verticalness" aka minimum horizontalness of hands
 def palm_vert(gesture, lr):
-    hand_keys = get_rl_hand_keypoints(gesture, lr)
-    x_min = 1000
-    for frame in hand_keys:
-        max_frame_dist = max(frame['x']) - min(frame['x'])
-        x_min = min(x_min, max_frame_dist)
-    return x_min
+    return palm_angle_axis(gesture, lr, 'x')
 
 # get maximum "horizontalness" aka minimum verticalness of hands
 def palm_horiz(gesture, lr):
-    hand_keys = get_rl_hand_keypoints(gesture, lr)
-    y_min = 1000
-    for frame in hand_keys:
-        max_frame_dist = max(frame['y']) - min(frame['y'])
-        y_min = min(y_min, max_frame_dist)
-    return y_min
+    return palm_angle_axis(gesture, lr, 'y')
 
+def palm_angle_axis(gesture, lr, xy):
+    hand_keys = get_rl_hand_keypoints(gesture, lr)
+    p_min = 1000
+    for frame in hand_keys:
+        max_frame_dist = max(frame[xy]) - min(frame[xy])
+        p_min = min(p_min, max_frame_dist)
+    return p_min
 
 ## max distance from low --> high the wrists move in a single stroke
 def wrists_up(gesture, lr):
-    wrist_vertical_stroke(gesture, lr, operator.ge)
+    return wrist_vertical_stroke(gesture, lr, operator.ge)
 
 ## max distance from high --> low the wrists move in single stroke
 def wrists_down(gesture, lr):
-    wrist_vertical_stroke(gesture, lr, operator.le)
+    return wrist_vertical_stroke(gesture, lr, operator.le)
 
 def wrist_vertical_stroke(gesture, lr, relate):
     hand_keys = get_rl_hand_keypoints(gesture, lr)
@@ -159,10 +130,10 @@ def wrist_vertical_stroke(gesture, lr, relate):
     return max_single_stroke
 
 def wrists_outward(gesture):
-    wrist_relational_move(gesture, operator.ge)
+    return wrist_relational_move(gesture, operator.ge)
 
 def wrists_inward(gesture):
-    wrist_relational_move(gesture, operator.le)
+    return wrist_relational_move(gesture, operator.le)
 
 def wrist_relational_move(gesture, relate):
     r_hand = get_rl_hand_keypoints(gesture, 'r')
