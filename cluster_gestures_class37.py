@@ -164,7 +164,7 @@ class GestureClusters():
         self._log("old centroid: %s" % c['centroid'])
         c['centroid'] = map(lambda x: np.average(x), feat_vecs.T)
         self._log("new centroid: %s" % c['centroid'])
-        self.clusters['cluster_id'] = c
+        self.clusters[cluster_id] = c
         e = time.time()
         print("time to update centroid: %s" % str(e-s))
         self._log("time to update centroid: %s" % str(e-s))
