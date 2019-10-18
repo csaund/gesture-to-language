@@ -14,6 +14,7 @@ import numpy as np
 import uuid
 import operator
 from analyze_frames import *
+import time
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 
 
@@ -97,6 +98,8 @@ class GestureClusters():
         i = 0
         l = len(gd)
         for g in gd:
+            g['feature_vec'] = self._get_gesture_features(g)
+            start = time.time()
             i = i + 1
             print("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             self._log("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
@@ -110,17 +113,28 @@ class GestureClusters():
                 self._log("nearest cluster distance was %s" % nearest_cluster_dist)
                 self.clusters[nearest_cluster_id]['gestures'].append(g)
                 self._update_cluster_centroid(nearest_cluster_id)
+            end = time.time()
+            print(end-start)
+            self._log(str(end-start))
         self._write_logs()
 
     def _create_new_cluster(self, seed_gest):
         self._log("creating new cluster for gesture %s" % seed_gest['id'])
         new_cluster_id = self.c_id
         self.c_id = self.c_id + 1
+        print("creating new cluster for gesture %s -- %s" % (seed_gest['id'], new_cluster_id))
         c = {'cluster_id': new_cluster_id,
-             'centroid': self._get_gesture_features(seed_gest),
+             'centroid': g['feature_vec'],
              'seed_id': seed_gest['id'],
              'gestures': [seed_gest]}
         self.clusters[new_cluster_id] = c
+
+    def get_gesture_ids_by_cluster(self, cluster_id):
+        c = self.clusters[cluster_id]
+        ids = []
+        for g in c['gestures']:
+            ids.append(g['id'])
+        return ids
 
     def report_clusters(self, verbose=False):
         self._log("Number of clusters: %s" % len(self.clusters))
@@ -133,8 +147,7 @@ class GestureClusters():
         for k in self.clusters:
             c = self.clusters[k]
             centroid = c['centroid']
-            feats = self._get_gesture_features(g)
-            dist = self._calculate_distance_between_vectors(feats, centroid)
+            dist = self._calculate_distance_between_vectors(g['feature_vec'], centroid)
             if dist < shortest_dist:
                 nearest_cluster_id = c['cluster_id']
             shortest_dist = min(shortest_dist, dist)
@@ -142,17 +155,19 @@ class GestureClusters():
 
     ## TODO check this bad boy for bugs.
     def _update_cluster_centroid(self, cluster_id):
+        s = time.time()
         c = self.clusters[cluster_id]
         ## very very slow.
         ## TODO speed this up using matrix magic.
-        feat_vecs = []
-        for g in c['gestures']:
-            feat_vecs.append(self._get_gesture_features(g))
-        feat_vecs = np.array(feat_vecs)
-        #print("old centroid: %s" % c['centroid'])
+        feat_vecs = [g['feature_vec'] for g in c['gestures']]
+        feat_vecs = np.array(feat_vecs[0])
+        self._log("old centroid: %s" % c['centroid'])
         c['centroid'] = map(lambda x: np.average(x), feat_vecs.T)
-        # print("new centroid: %s" % c['centroid'])
+        self._log("new centroid: %s" % c['centroid'])
         self.clusters['cluster_id'] = c
+        e = time.time()
+        print("time to update centroid: %s" % str(e-s))
+        self._log("time to update centroid: %s" % str(e-s))
         return
 
     # returns minimum distance at any frame between point A on right hand and
