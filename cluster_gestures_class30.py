@@ -1,3 +1,4 @@
+from __future__ import division
 #!/usr/bin/env pythons
 print "importing libs"
 import argparse
@@ -131,22 +132,18 @@ class GestureClusters():
             shortest_dist = min(shortest_dist, dist)
         return (nearest_cluster_id, shortest_dist)
 
+    ## TODO check this bad boy for bugs.
     def _update_cluster_centroid(self, cluster_id):
         c = self.clusters[cluster_id]
-        g_keys = [g['keyframes'] for g in c['gestures']]
-        xs = [f['x'] for f in g_keys[0]]
-        ys = [f['y'] for f in g_keys[0]]
-        z = zip(xs, ys)
-        print "PRINTING NOW"
-        print len(z)
-        print len(z[0])
-        print z[0]
-        zT = z.T
-        print("old centroid: %s" % c['centroid'])
-        c['centroid'] = np.mean(np.array(z.T), axis=0)
-        # dunno if this is necessary but I think it is because of how
-        # python does shallow copies
-        print("new centroid: %s" % c['centroid'])
+        ## very very slow.
+        ## TODO speed this up using matrix magic.
+        feat_vecs = []
+        for g in c['gestures']:
+            feat_vecs.append(self._get_gesture_features(g))
+        feat_vecs = np.array(feat_vecs)
+        #print("old centroid: %s" % c['centroid'])
+        c['centroid'] = map(lambda x: np.average(x), feat_vecs.T)
+        # print("new centroid: %s" % c['centroid'])
         self.clusters['cluster_id'] = c
         return
 
