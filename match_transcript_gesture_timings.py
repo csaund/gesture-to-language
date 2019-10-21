@@ -70,18 +70,50 @@ def match_transcript_to_timing(timings):
 
     # avoid loading all the transcripts into memory at once
     for v in all_videos:
-        transcript = get_video_transcript(video_fn)
+        trans = ""
+        try:
+            trans = get_video_transcript(v)
+        except:
+            print "Couldn't get video transcript for %s. Skipping video" % v
+            continue
+
+        all_words = sorted(flatten([t['words'] for t in trans]), key=word_sort)
+        total_words = len(all_words) - 1
+        # garbage trying to get iterators to work f that
+        # word_iter = iter(all_words)
+        # current_word = next(word_iter)
+
         # break up our dict based on the video transcript.
         # get all the items from our phrases with this video fn
         gestures = [x for x in phrases if x['phase']['video_fn'] == v]
         gs = sorted(gestures, key=sort_start_time)
-        # gs is made up of things that look like this
-        # {u'phase':
-        #   {u'video_fn': u'27._History_of_Rock_-_Rockabilly_Popsters-UYwNGaK4k8U.mp4', u'end_seconds': 477.11044400000003, u'transcript': u'', u'start_seconds': 460.960961},
-        #    u'gestures':
-        #       [{u'end_seconds': 477.11044400000003, u'start_seconds': 460.960961}],
-        #    u'id': 88828}
+        # this will go through all the seconds in the video file
+        word_index = 0
+        for g in gs:
+            gesture_words = []
+            gesture_transcript = ""
+            p = g['phase']
+            end = p['end_seconds']
+            # print "end: %s" % str(end)
+            current_word = all_words[word_index]
+            while (current_word['word_start'] <= end) and (word_index < total_words):
+                # print "current word: "
+                # print current_word
+                gesture_words.append(current_word)
+                gesture_transcript += " " + current_word['word']
+                current_word = all_words[word_index]
+                word_index += 1
+                # print "word index: %s" % word_index
+            ## python shallow copies OH YEAHHHH
+            g['words'] = gesture_words
+            g['transcript'] = gesture_transcript
+    return timings
 
+def word_sort(x):
+    return x['word_start']
+
+def flatten(x):
+    return [val for sublist in x for val in sublist]
 
 def sort_start_time(x):
     return x['phase']['start_seconds']
@@ -99,3 +131,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     timings = get_speaker_timings(args.speaker)
+    timings_with_transcript = match_transcript_to_timing(timings)
+
+from match_transcript_gesture_timings import *
+timings = get_speaker_timings("rock")
+nt = match_transcript_to_timing(timings)
