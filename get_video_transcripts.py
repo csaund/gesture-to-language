@@ -30,90 +30,6 @@ collection = service.documents()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
 
 
-#   "phrases":
-#   [
-#       {
-#         "id": 1,
-#         "phase": {
-#             "start_seconds": 363,
-#             "end_seconds": 378.1
-#         },
-#         "gestures": [
-#             {
-#               "start_seconds": 364,
-#               "end_seconds": 365.5
-#             },
-#             {
-#               "start_seconds": 365.6,
-#               "end_seconds": 366
-#             },
-#         ]
-#     },
-#     ...
-# ]
-# writes out to filename_base/filename_base-id.json
-# with addition of words that match the gesture phrase.
-# gesture_clip_timings is the dict that we want to append to.
-# TODO make this take the whole video and transcribe all at once.
-# def transcribe_videos(vid_base_path, transcript_path):
-#     """Transcribe the given audio file synchronously and output the word time
-#     offsets."""
-#     client = speech.SpeechClient()
-#
-#     ## have to use GCS for long audio files.
-#     with io.open(output_audio_path, 'rb') as audio_file:
-#         content = audio_file.read()
-#
-#     print "sending audio file to recognize"
-#     audio = types.RecognitionAudio(content=content)
-#     config = types.RecognitionConfig(
-#         encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
-#         sample_rate_hertz=48000,
-#         audio_channel_count=2,
-#         language_code='en-US',
-#         enable_word_time_offsets=True)
-#
-#     response = client.recognize(config, audio)
-#
-#     print "got speech result"
-#     output_data = {}
-#     output_data['words'] = []
-#     for result in response.results:
-#         alternative = result.alternatives[0]
-#         output_data["transcript"] = str(alternative.transcript)
-#
-#         ## TODO fix this so we dont' have to do all this setup the first time around...
-#         ## go through and add specific transcripts to each gesture based on timings
-#
-#         ## TODO pass audio as gcs bucket uri
-#         gesture_index = 0
-#         current_gesture = gesture_phrase['gestures'][0]
-#         current_gesture['transcript'] = ""
-#         gesture_phrase_start = gesture_phrase['phase']['start_seconds']
-#         current_gesture['id'] = str(uuid.uuid1())
-#         for i in range(len(alternative.words)):
-#             word_info = alternative.words[i]
-#
-#             ## nanos is super f'ed up in these responses? like they go up and down a bunch?
-#             ## let's just try with seconds and see where we get.
-#             # word_start = word_info.start_time.nanos *  1e-9
-#             # word_end = word_info.start_time.nanos *  1e-9
-#             word_start = word_info.start_time.seconds
-#             word_end = word_info.start_time.seconds
-#             word = {
-#                 "word_info": word_info,
-#                 "word_start": word_start,
-#                 "word_end": word_end
-#             }
-#             outputdata['words'].append(word)
-#
-#     output_transcript_path = transcript_path + '/' + vid_name + '.json'
-#     fn = output_transcript_path
-#     with open(fn, 'w') as f:
-#         json.dump(output_data, f, indent=4)
-#     f.close()
-
-
 #### NEW ####
 def google_transcribe(audio_file_path):
     file_name = audio_file_path
@@ -156,9 +72,31 @@ def google_transcribe(audio_file_path):
     print "streaming results..."
     response = operation.result(timeout=10000)
 
+    transcript = []
     for result in response.results:
-        result.alternatives[0].transcript
-        transcript += result.alternatives[0].transcript
+        out = {}
+        alternative = result.alternatives[0]
+        out["transcript"] = str(alternative.transcript)
+        out["words"] = []
+        for i in range(len(alternative.words)):
+            word_info = alternative.words[i]
+            ## nanos is super f'ed up in these responses? like they go up and down a bunch?
+            ## let's just try with seconds and see where we get.
+            word_start = word_info.start_time.seconds
+            word_end = word_info.end_time.seconds
+            w = word_info.word
+            word = {
+                "word": w,
+                "word_start": word_start,
+                "word_end": word_end
+            }
+            out['words'].append(word)
+        transcript.append(out)
+
+
+    # for result in response.results:
+    #     result.alternatives[0].transcript
+    #     transcript += result.alternatives[0].transcript
 
     # delete_blob(bucket_name, destination_blob_name)
     print "got transcript: "
@@ -167,8 +105,8 @@ def google_transcribe(audio_file_path):
 
 
 def write_transcript(transcript, transcript_path):
-    with open(output_transcript_path, 'w') as f:
-        json.dump(output_transcript_path, f, indent=4)
+    with open(transcript_path, 'w') as f:
+        json.dump(transcript, f, indent=4)
     f.close()
 
 def stereo_to_mono(audio_file_path):
@@ -182,7 +120,7 @@ def frame_rate_channel(audio_file_path):
     channels = wav_file.getnchannels()
     return frame_rate,channels
 
-def upload_transcribe(video_path, transcript_path):
+def upload_transcribe(vid_base_path, transcript_path):
     all_video_files = os.listdir(vid_base_path)
     print "seeing all files:"
     print all_video_files
@@ -201,10 +139,20 @@ def upload_transcribe(video_path, transcript_path):
             subprocess.call(command, shell=True)
 
         transcript = google_transcribe(output_audio_path)
-        output_transcript_path = transcript_path + '/' + vid_name + '.json'
-        write_transcript(transcript, output_transcript_path)
+        return transcript
+        # output_transcript_path = transcript_path + '/' + vid_name + '.json'
+        # write_transcript(transcript, output_transcript_path)
 
     ## TODO upload all of these to "audio_bucket_rock_1" gcs buckets
+
+
+def process_video_files(video_base_path):
+    all_video_files = os.listdir(vid_base_path)
+    print "seeing all files:"
+    print all_video_files
+
+    for video_file in all_video_files:
+
 
 def create_video_subdir(dir_path):
     try:
@@ -222,10 +170,31 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
     blob = bucket.blob(destination_blob_name)
     blob.upload_from_filename(source_file_name)
 
-def get_video_transcript(video_path, transcript_path):
+def get_video_transcripts(video_path, transcript_path):
     create_video_subdir(transcript_path)
     upload_transcribe(video_path, transcript_path)
     # transcribe_videos(video_path, transcript_path)
+
+## TODO temp for testing.
+def temp_test():
+    base_path = "/Users/carolynsaund/github/gest-data/data"
+    speaker = "rock"
+    vid_base_path = base_path + '/' + speaker + '/videos'
+    transcript_path = base_path + '/' + speaker + '/transcripts'
+    transcript = upload_transcribe(vid_base_path, transcript_path)
+    return transcript
+
+def prepare_transcript(transcript):
+    d = {}
+    for i in range(len(transcript)):
+        d[i] = transcript[i]
+    return d
+
+def test_write(transcript):
+    output_transcript_path = "/Users/carolynsaund/github/gest-data/data/rock/transcripts" + '/' + "1._History_of_Rock_-_The_Music_Business_in_the_First_Half_of_the_20th_Century-fcva0f6xkDY.json"
+    with open(output_transcript_path, 'w') as f:
+        json.dump(transcript, f, indent=4)
+    f.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -245,5 +214,7 @@ if __name__ == '__main__':
     ## TODO a better way to do this is get the whole video transcript, then using the gesture timings,
     ## match the timing of the transcript to the timing of the gesture. That is strictly a better way
     ## to do all of this.
+
+
     print "getting video transcripts"
-    get_video_transcript(vid_base_path, transcript_path)
+    get_video_transcripts(vid_base_path, transcript_path)
