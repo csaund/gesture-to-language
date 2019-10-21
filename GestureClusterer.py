@@ -67,7 +67,7 @@ from sklearn.neighbors.nearest_centroid import NearestCentroid
 ###############################################################
 ####################### DIY Clustering ########################
 ###############################################################
-class GestureClusters():
+class GestureClusterer():
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
     def __init__(self, all_gesture_data, seeds=[]):
