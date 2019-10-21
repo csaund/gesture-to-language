@@ -1,22 +1,19 @@
 #!/usr/bin/env python
 print "importing libs"
 import os
-import argparse
 import io
+import argparse
 import subprocess
 import json
-import copy
-import uuid
-
-from pydub import AudioSegment
+## sound stuff
 import wave
+from pydub import AudioSegment
+## Google stuff
 from google.cloud import storage
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
-# import webapp2
-# from google.appengine.api import app_identity
-
+## ffmpeg stuff
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from oauth2client.client import GoogleCredentials
 
@@ -30,37 +27,73 @@ collection = service.documents()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
 
 
+def get_audio_filename_from_path(fp):
+    return fp.split(".wav")[-2].split("/")[-1]
+
+def get_transcript_filepath_from_audio_path(fp):
+    return fp.replace(".wav", ".json")
+
+def get_transcript_from_transcript_filepath(fp):
+    with open(fp, 'r') as f:
+        t = json.loads(f)
+        return t
+
+def get_audio_filepath_from_video_path(fp):
+    return fp.replace("videos", "transcripts").replace("mp4", "wav")
+
+
+def write_transcript(transcript, transcript_path):
+    with open(transcript_path, 'w') as f:
+        json.dump(transcript, f, indent=4)
+    f.close()
+
+def stereo_to_mono(audio_file_path):
+    sound = AudioSegment.from_wav(audio_file_path)
+    sound = sound.set_channels(1)
+    sound.export(audio_file_path, format="wav")
+
+def frame_rate_channel(audio_file_path):
+    wav_file = wave.open(audio_file_path, "rb")
+    frame_rate = wav_file.getframerate()
+    channels = wav_file.getnchannels()
+    return frame_rate,channels
+
+
+def upload_blob(bucket_name, source_file_name, destination_blob_name):
+    """Uploads a file to the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename(source_file_name)
+
+
+def write_transcript(transcript, transcript_path):
+    with open(transcript_path, 'w') as f:
+        json.dump(transcript, f, indent=4)
+    f.close()
+
 #### NEW ####
 def google_transcribe(audio_file_path):
-    file_name = audio_file_path
     print "attempting to transcript file %s" % audio_file_path
-    # frame_rate, channels = frame_rate_channel(file_name)
-    #
-    # if channels > 1:
-    #     stereo_to_mono(file_name)
     bucket_name = bucketname
-    source_file_name = audio_file_path
-    audio_file_name = audio_file_path.split(".wav")[-2].split("/")[-1]
-    print "audio name: %s" % audio_file_name
+    audio_file_name = get_audio_filename_from_path(audio_file_path)
     destination_blob_name = audio_file_name
+
+    ## if we've already transcribed this video, we're done here.
+    if os.path.exists(get_transcript_filepath_from_audio_path(audio_file_path)):
+        return get_transcript_from_transcript_filepath(get_transcript_filepath_from_audio_path(audio_file_path))
 
     frame_rate, channels = frame_rate_channel(audio_file_path)
     if channels > 1:
         stereo_to_mono(audio_file_path)
 
-
-    print "attempting to upload %s to %s as %s" % (source_file_name, bucket_name, destination_blob_name)
-    upload_blob(bucket_name, source_file_name, destination_blob_name)
-
-
+    # upload so we can get a gcs for ourselves.
+    upload_blob(bucket_name, audio_file_name, destination_blob_name)
     gcs_uri = 'gs://' + bucketname + '/' + audio_file_name
-    transcript = ''
 
-    print "got back gcs uri %s" % gcs_uri
-
+    
     client = speech.SpeechClient()
     audio = types.RecognitionAudio(uri=gcs_uri)
-
     config = types.RecognitionConfig(
         encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=frame_rate,
@@ -69,7 +102,7 @@ def google_transcribe(audio_file_path):
 
     # Detects speech in the audio file
     operation = client.long_running_recognize(config, audio)
-    print "streaming results..."
+    print "getting results..."
     response = operation.result(timeout=10000)
 
     transcript = []
@@ -93,66 +126,42 @@ def google_transcribe(audio_file_path):
             out['words'].append(word)
         transcript.append(out)
 
-
-    # for result in response.results:
-    #     result.alternatives[0].transcript
-    #     transcript += result.alternatives[0].transcript
-
+    ## TODO uncomment/implement if I want to do this.
+    # this resource is brilliant:
+    # https://towardsdatascience.com/how-to-use-google-speech-to-text-api-to-transcribe-long-audio-files-1c886f4eb3e9
     # delete_blob(bucket_name, destination_blob_name)
-    print "got transcript: "
-    print transcript
+    print "got transcript"
     return transcript
 
 
-def write_transcript(transcript, transcript_path):
-    with open(transcript_path, 'w') as f:
-        json.dump(transcript, f, indent=4)
-    f.close()
+def get_audio_from_video(vid_filename, id_base_path, transcript_path):
+    vid_name = vid_filename.split(".mp4")[0]
+    input_vid_path = vid_base_path + '/' + vid_filename
+    output_audio_path = transcript_path + '/' + vid_name + '.wav'
+    if(os.path.exists(output_audio_path)):
+        print "Already found wav for %s" % output_audio_path
+        return
+    print "creating wav file"
+    command = ("ffmpeg -i %s -ab 160k -ac 2 -ar 48000 -vn %s" % (input_vid_path, output_audio_path))
+    subprocess.call(command, shell=True)
+    return
 
-def stereo_to_mono(audio_file_path):
-    sound = AudioSegment.from_wav(audio_file_path)
-    sound = sound.set_channels(1)
-    sound.export(audio_file_path, format="wav")
 
-def frame_rate_channel(audio_file_path):
-    wav_file = wave.open(audio_file_path, "rb")
-    frame_rate = wav_file.getframerate()
-    channels = wav_file.getnchannels()
-    return frame_rate,channels
-
-def upload_transcribe(vid_base_path, transcript_path):
+def process_video_files(vid_base_path, transcript_base_path):
     all_video_files = os.listdir(vid_base_path)
     print "seeing all files:"
     print all_video_files
 
     for video_file in all_video_files:
-        print "now on file " + video_file
-        print
+        ## TODO simplify this
+        print "processing file %s" % video_file
         vid_name = video_file.split(".mp4")[0]
-        input_vid_path = vid_base_path + '/' + video_file
-        output_audio_path = transcript_path + '/' + vid_name + '.wav'
+        output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
+        transcript_path = transcript_base_path + '/' + vid_name + '.json'
 
-        #/Users/carolynsaund/github/gest-data/data/rock/transcripts/1._History_of_Rock_-_The_Music_Business_in_the_First_Half_of_the_20th_Century-fcva0f6xkDY.wav
-        if not os.path.exists(output_audio_path):
-            print "creating wav file"
-            command = ("ffmpeg -i %s -ab 160k -ac 2 -ar 48000 -vn %s" % (input_vid_path, output_audio_path))
-            subprocess.call(command, shell=True)
-
+        get_audio_from_video(vid_filename, vid_base_path, transcript_base_path)
         transcript = google_transcribe(output_audio_path)
-        return transcript
-        # output_transcript_path = transcript_path + '/' + vid_name + '.json'
-        # write_transcript(transcript, output_transcript_path)
-
-    ## TODO upload all of these to "audio_bucket_rock_1" gcs buckets
-
-
-def process_video_files(video_base_path):
-    all_video_files = os.listdir(vid_base_path)
-    print "seeing all files:"
-    print all_video_files
-
-    for video_file in all_video_files:
-
+        write_transcript(transcript, transcript_path)
 
 def create_video_subdir(dir_path):
     try:
@@ -163,38 +172,9 @@ def create_video_subdir(dir_path):
         print ("Successfully created the directory %s " % dir_path)
 
 
-def upload_blob(bucket_name, source_file_name, destination_blob_name):
-    """Uploads a file to the bucket."""
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-    blob.upload_from_filename(source_file_name)
-
 def get_video_transcripts(video_path, transcript_path):
     create_video_subdir(transcript_path)
-    upload_transcribe(video_path, transcript_path)
-    # transcribe_videos(video_path, transcript_path)
-
-## TODO temp for testing.
-def temp_test():
-    base_path = "/Users/carolynsaund/github/gest-data/data"
-    speaker = "rock"
-    vid_base_path = base_path + '/' + speaker + '/videos'
-    transcript_path = base_path + '/' + speaker + '/transcripts'
-    transcript = upload_transcribe(vid_base_path, transcript_path)
-    return transcript
-
-def prepare_transcript(transcript):
-    d = {}
-    for i in range(len(transcript)):
-        d[i] = transcript[i]
-    return d
-
-def test_write(transcript):
-    output_transcript_path = "/Users/carolynsaund/github/gest-data/data/rock/transcripts" + '/' + "1._History_of_Rock_-_The_Music_Business_in_the_First_Half_of_the_20th_Century-fcva0f6xkDY.json"
-    with open(output_transcript_path, 'w') as f:
-        json.dump(transcript, f, indent=4)
-    f.close()
+    process_video_files(video_path, transcript_path)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -209,12 +189,6 @@ if __name__ == '__main__':
     vid_base_path = args.base_path + '/' + args.speaker + '/videos'
     transcript_path = args.base_path + '/' + args.speaker + '/transcripts'
     # TODO make other script output timings to this place
-
-
-    ## TODO a better way to do this is get the whole video transcript, then using the gesture timings,
-    ## match the timing of the transcript to the timing of the gesture. That is strictly a better way
-    ## to do all of this.
-
 
     print "getting video transcripts"
     get_video_transcripts(vid_base_path, transcript_path)
