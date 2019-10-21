@@ -30,8 +30,10 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds
 def get_audio_filename_from_path(fp):
     return fp.split(".wav")[-2].split("/")[-1]
 
+
 def get_transcript_filepath_from_audio_path(fp):
     return fp.replace(".wav", ".json")
+
 
 def get_transcript_from_transcript_filepath(fp):
     print "getting transcript from file %s" % fp
@@ -48,10 +50,12 @@ def write_transcript(transcript, transcript_path):
         json.dump(transcript, f, indent=4)
     f.close()
 
+
 def stereo_to_mono(audio_file_path):
     sound = AudioSegment.from_wav(audio_file_path)
     sound = sound.set_channels(1)
     sound.export(audio_file_path, format="wav")
+
 
 def frame_rate_channel(audio_file_path):
     wav_file = wave.open(audio_file_path, "rb")
@@ -72,6 +76,7 @@ def write_transcript(transcript, transcript_path):
     with open(transcript_path, 'w') as f:
         json.dump(transcript, f, indent=4)
     f.close()
+
 
 #### NEW ####
 def google_transcribe(audio_file_path):
@@ -170,6 +175,7 @@ def process_video_files(vid_base_path, transcript_base_path):
             write_transcript(transcript, transcript_path)
             return
         print "Previous file found for %s. Not overwriting." % transcript_path
+
 
 def create_video_subdir(dir_path):
     try:
