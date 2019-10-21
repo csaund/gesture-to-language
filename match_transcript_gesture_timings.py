@@ -62,7 +62,6 @@ def get_video_transcript(video_name):
 
 def match_transcript_to_timing(timings):
     phrases = timings['phrases']
-    # will loading all transcripts be too much for memory? oh well!
 
     # break up timings by transcripts (all videos)
     # then sort by start time because the transcripts are already sorted by start time.
@@ -84,8 +83,8 @@ def match_transcript_to_timing(timings):
         # break up our dict based on the video transcript.
         # get all the items from our phrases with this video fn
         gestures = [x for x in phrases if x['phase']['video_fn'] == v]
-        gs = sorted(gestures, key=sort_start_time)
-        for g in gs:
+        gestures.sort(key=sort_start_time)
+        for g in gestures:
             gesture_words = []
             gesture_transcript = ""
             p = g['phase']
@@ -98,12 +97,13 @@ def match_transcript_to_timing(timings):
                 except StopIteration:
                     break
 
-                # word_index += 1
-                # print "word index: %s" % word_index
             ## python shallow copies OH YEAHHHH
             g['words'] = gesture_words
-            g['transcript'] = gesture_transcript
-    return timings
+            p['transcript'] = gesture_transcript
+
+    # consistency...
+    nt = {'phrases': sorted(timings['phrases'], key=lambda x: (x['phase']['video_fn'], x['phase']['start_seconds']))}
+    return nt
 
 def word_sort(x):
     return x['word_start']
