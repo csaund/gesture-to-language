@@ -78,31 +78,27 @@ def match_transcript_to_timing(timings):
             continue
 
         all_words = sorted(flatten([t['words'] for t in trans]), key=word_sort)
-        total_words = len(all_words) - 1
-        # garbage trying to get iterators to work f that
-        # word_iter = iter(all_words)
-        # current_word = next(word_iter)
+        word_iter = iter(all_words)
+        current_word = next(word_iter)
 
         # break up our dict based on the video transcript.
         # get all the items from our phrases with this video fn
         gestures = [x for x in phrases if x['phase']['video_fn'] == v]
         gs = sorted(gestures, key=sort_start_time)
-        # this will go through all the seconds in the video file
-        word_index = 0
         for g in gs:
             gesture_words = []
             gesture_transcript = ""
             p = g['phase']
             end = p['end_seconds']
-            # print "end: %s" % str(end)
-            current_word = all_words[word_index]
-            while (current_word['word_start'] <= end) and (word_index < total_words):
-                # print "current word: "
-                # print current_word
+            while current_word['word_start'] <= end:
                 gesture_words.append(current_word)
                 gesture_transcript += " " + current_word['word']
-                current_word = all_words[word_index]
-                word_index += 1
+                try:
+                    current_word = next(word_iter)
+                except StopIteration:
+                    break
+
+                # word_index += 1
                 # print "word index: %s" % word_index
             ## python shallow copies OH YEAHHHH
             g['words'] = gesture_words
@@ -133,6 +129,6 @@ if __name__ == '__main__':
     timings = get_speaker_timings(args.speaker)
     timings_with_transcript = match_transcript_to_timing(timings)
 
-from match_transcript_gesture_timings import *
+# from match_transcript_gesture_timings import *
 timings = get_speaker_timings("rock")
 nt = match_transcript_to_timing(timings)
