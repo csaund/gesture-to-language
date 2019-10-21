@@ -19,6 +19,7 @@ from oauth2client.client import GoogleCredentials
 
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 bucketname = "audio_bucket_rock_1"
+transcript_bucketname = "audio_transcript_buckets_1"
 
 from apiclient.discovery import build
 service = build('language', 'v1', developerKey=devKey)
@@ -76,6 +77,14 @@ def write_transcript(transcript, transcript_path):
     with open(transcript_path, 'w') as f:
         json.dump(transcript, f, indent=4)
     f.close()
+
+
+def upload_transcript(transcript_name, transcript_path):
+    print ("uploading %s from %s to %s" % (transcript_name, transcript_path, transcript_bucketname))
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(transcript_bucketname)
+    blob = bucket.blob(transcript_name)
+    blob.upload_from_filename(transcript_path)
 
 
 #### NEW ####
@@ -167,14 +176,18 @@ def process_video_files(vid_base_path, transcript_base_path):
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
         transcript_path = transcript_base_path + '/' + vid_name + '.json'
 
+        transcript_name = vid_name + '.json'
+
         get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
         (transcript, found_previous_transcript) = google_transcribe(output_audio_path)
         # will not rewrite previous file
         if not found_previous_transcript:
             print "No previous file found for %s" % transcript_path
             write_transcript(transcript, transcript_path)
+            upload_transcript(transcript_name ,transcript_path)
             return
         print "Previous file found for %s. Not overwriting." % transcript_path
+        upload_transcript(transcript_name, transcript_path)
 
 
 def create_video_subdir(dir_path):
