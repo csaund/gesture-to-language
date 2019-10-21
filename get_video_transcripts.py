@@ -34,8 +34,9 @@ def get_transcript_filepath_from_audio_path(fp):
     return fp.replace(".wav", ".json")
 
 def get_transcript_from_transcript_filepath(fp):
+    print "getting transcript from file %s" % fp
     with open(fp, 'r') as f:
-        t = json.loads(f)
+        t = json.load(f)
         return t
 
 def get_audio_filepath_from_video_path(fp):
@@ -74,14 +75,17 @@ def write_transcript(transcript, transcript_path):
 
 #### NEW ####
 def google_transcribe(audio_file_path):
-    print "attempting to transcript file %s" % audio_file_path
+    found_previous_transcript = False
+    print "attempting to transcribe file %s" % audio_file_path
     bucket_name = bucketname
     audio_file_name = get_audio_filename_from_path(audio_file_path)
     destination_blob_name = audio_file_name
 
     ## if we've already transcribed this video, we're done here.
     if os.path.exists(get_transcript_filepath_from_audio_path(audio_file_path)):
-        return get_transcript_from_transcript_filepath(get_transcript_filepath_from_audio_path(audio_file_path))
+        print "already found transcript for that audio path."
+        found_previous_transcript = True
+        return (get_transcript_from_transcript_filepath(get_transcript_filepath_from_audio_path(audio_file_path)), found_previous_transcript)
 
     frame_rate, channels = frame_rate_channel(audio_file_path)
     if channels > 1:
@@ -91,7 +95,7 @@ def google_transcribe(audio_file_path):
     upload_blob(bucket_name, audio_file_name, destination_blob_name)
     gcs_uri = 'gs://' + bucketname + '/' + audio_file_name
 
-    
+
     client = speech.SpeechClient()
     audio = types.RecognitionAudio(uri=gcs_uri)
     config = types.RecognitionConfig(
@@ -131,12 +135,11 @@ def google_transcribe(audio_file_path):
     # https://towardsdatascience.com/how-to-use-google-speech-to-text-api-to-transcribe-long-audio-files-1c886f4eb3e9
     # delete_blob(bucket_name, destination_blob_name)
     print "got transcript"
-    return transcript
+    return (transcript, found_previous_transcript)
 
 
-def get_audio_from_video(vid_filename, id_base_path, transcript_path):
-    vid_name = vid_filename.split(".mp4")[0]
-    input_vid_path = vid_base_path + '/' + vid_filename
+def get_audio_from_video(vid_name, id_base_path, transcript_path):
+    input_vid_path = vid_base_path + '/' + vid_name + '.mp4'
     output_audio_path = transcript_path + '/' + vid_name + '.wav'
     if(os.path.exists(output_audio_path)):
         print "Already found wav for %s" % output_audio_path
@@ -159,9 +162,14 @@ def process_video_files(vid_base_path, transcript_base_path):
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
         transcript_path = transcript_base_path + '/' + vid_name + '.json'
 
-        get_audio_from_video(vid_filename, vid_base_path, transcript_base_path)
-        transcript = google_transcribe(output_audio_path)
-        write_transcript(transcript, transcript_path)
+        get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
+        (transcript, found_previous_transcript) = google_transcribe(output_audio_path)
+        # will not rewrite previous file
+        if not found_previous_transcript:
+            print "No previous file found for %s" % transcript_path
+            write_transcript(transcript, transcript_path)
+            return
+        print "Previous file found for %s. Not overwriting." % transcript_path
 
 def create_video_subdir(dir_path):
     try:
@@ -181,14 +189,10 @@ if __name__ == '__main__':
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-base_path', '--base_path', help='base folder path of dataset', required=True)
-    #parser.add_argument('-output_path', '--output_path', default='output directory to save wav files', required=True)
     parser.add_argument('-speaker', '--speaker', default='optionally, run only on specific speaker', required=False)
-
     args = parser.parse_args()
 
     vid_base_path = args.base_path + '/' + args.speaker + '/videos'
     transcript_path = args.base_path + '/' + args.speaker + '/transcripts'
-    # TODO make other script output timings to this place
 
-    print "getting video transcripts"
     get_video_transcripts(vid_base_path, transcript_path)
