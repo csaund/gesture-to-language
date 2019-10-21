@@ -21,6 +21,7 @@ dataset_id = 'my_dataset'
 
 gesture_timings_bucket = "speaker_timings"
 transcript_bucket = "audio_transcript_buckets_1"
+full_bucket = "full_timings_with_transcript_bucket"
 
 
 def read_data(fp):
@@ -41,6 +42,13 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
     print('Blob {} downloaded to {}.'.format(
         source_blob_name,
         destination_file_name))
+
+def upload_blob(bucket_name, source_file_name, destination_blob_name):
+    """Uploads a file to the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename(source_file_name)
 
 def get_speaker_timings(speaker):
     print "getting timings for %s" % speaker
@@ -73,7 +81,7 @@ def match_transcript_to_timing(timings):
         try:
             trans = get_video_transcript(v)
         except:
-            print "Couldn't get video transcript for %s. Skipping video" % v
+            print "Skipping %s." % v
             continue
 
         all_words = sorted(flatten([t['words'] for t in trans]), key=word_sort)
@@ -108,11 +116,24 @@ def match_transcript_to_timing(timings):
 def word_sort(x):
     return x['word_start']
 
+def write_transcript(transcript, transcript_path):
+    with open(transcript_path, 'w') as f:
+        json.dump(transcript, f, indent=4)
+    f.close()
+
 def flatten(x):
     return [val for sublist in x for val in sublist]
 
 def sort_start_time(x):
     return x['phase']['start_seconds']
+
+def add_transcript_data(speaker, base_path):
+    timings = get_speaker_timings(speaker)
+    timings_with_transcript = match_transcript_to_timing(timings)
+    filename = "%s_timings_with_transcript.json" % speaker
+    output_path = "%s/%s/%s" % (base_path, speaker, filename)
+    write_transcript(timings_with_transcript, output_path)
+    upload_blob(full_bucket, output_path, filename)
 
 ## take gesture timings for a speaker
 ## take video transcripts for that speaker
@@ -126,9 +147,6 @@ if __name__ == '__main__':
     # --base_path /Users/carolynsaund/github/gest-data/data --speaker rock
     args = parser.parse_args()
 
-    timings = get_speaker_timings(args.speaker)
-    timings_with_transcript = match_transcript_to_timing(timings)
+    add_transcript_data(args.speaker, args.base_path)
 
 # from match_transcript_gesture_timings import *
-timings = get_speaker_timings("rock")
-nt = match_transcript_to_timing(timings)
