@@ -81,6 +81,7 @@ class GestureClusters():
         self.logs = []
         # todo make this variable
         self.logfile = "/Users/carolynsaund/github/gesture-to-language/log.txt"
+        self.cluster_file = "/Users/carolynsaund/github/gesture-to-language/cluster-tmp.json"
         if(len(seeds)):
             for seed_g in seeds:
                 g = self._get_gesture_by_id(seed_g, all_gesture_data)
@@ -93,7 +94,7 @@ class GestureClusters():
                         'gestures': [g['id']]}
                 self.clusters[cluster_id] = c
 
-    def cluster_gestures(self, gesture_data, max_cluster_distance=False):
+    def cluster_gestures(self, gesture_data, max_cluster_distance=120):
         gd = gesture_data if gesture_data else self.agd
         i = 0
         l = len(gd)
@@ -107,6 +108,7 @@ class GestureClusters():
             # we're further away than we're allowed to be, OR this is the first cluster.
             if (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
                 self._log("nearest cluster distance was %s" % nearest_cluster_dist)
+                print("creating new cluster for gesture %s -- %s" % (g['id'], i))
                 self._create_new_cluster(g)
             else:
                 self._log("fitting in cluster %s" % nearest_cluster_id)
@@ -114,7 +116,6 @@ class GestureClusters():
                 self.clusters[nearest_cluster_id]['gestures'].append(g)
                 self._update_cluster_centroid(nearest_cluster_id)
             end = time.time()
-            print(end-start)
             self._log(str(end-start))
         self._write_logs()
 
@@ -122,9 +123,8 @@ class GestureClusters():
         self._log("creating new cluster for gesture %s" % seed_gest['id'])
         new_cluster_id = self.c_id
         self.c_id = self.c_id + 1
-        print("creating new cluster for gesture %s -- %s" % (seed_gest['id'], new_cluster_id))
         c = {'cluster_id': new_cluster_id,
-             'centroid': g['feature_vec'],
+             'centroid': seed_gest['feature_vec'],
              'seed_id': seed_gest['id'],
              'gestures': [seed_gest]}
         self.clusters[new_cluster_id] = c
@@ -137,8 +137,24 @@ class GestureClusters():
         return ids
 
     def report_clusters(self, verbose=False):
-        self._log("Number of clusters: %s" % len(self.clusters))
+        print("Number of clusters: %s" % len(self.clusters))
+        cluster_lengths = [len(clusters[c]['gestures']) for c in range(1, 47)]
+        print("Avg cluster size: %s" % np.average(cluster_lengths)
+        print("Median cluster size: %s" % np.median(cluster_lengths)
+        print("Largest cluster size: %s" % max(cluster_lengths)
+        cluster_sparsity = [self.get_cluster_sparsity(c) for c in range(1, 47)]
+        print("Avg cluster sparsity: %s" % np.average(cluster_sparsity)
+        print("Median cluster sparsity: %s" % np.median(cluster_sparsity)
         return self.clusters
+
+
+    ## measure of how distant the gestures are... basically avg distance to centroid
+    def get_cluster_sparsity(self, cluster_id):
+        c = self.clusters[cluster_id]
+        cent = c['centroid']
+        dists = [self._calculate_distance_between_vectors(g['feature_vec'], cent) for g in c['gestures']]
+        return np.average(dists)
+
 
     ## instead of this need to use centroid.
     def _get_shortest_cluster_dist(self, g):
@@ -166,7 +182,6 @@ class GestureClusters():
         self._log("new centroid: %s" % c['centroid'])
         self.clusters[cluster_id] = c
         e = time.time()
-        print("time to update centroid: %s" % str(e-s))
         self._log("time to update centroid: %s" % str(e-s))
         return
 
@@ -383,4 +398,9 @@ class GestureClusters():
     def _write_logs(self):
         with open(self.logfile, 'w') as f:
             f.write(self.logs)
+        f.close()
+
+    def write_clusters(self):
+        with open(self.cluster_file, 'w') as f:
+            f.write(self.clusters)
         f.close()
