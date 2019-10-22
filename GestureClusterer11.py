@@ -95,13 +95,15 @@ class GestureClusterer():
                         'centroid': self._get_gesture_features(g),
                         'gestures': [g['id']]}
                 self.clusters[cluster_id] = c
+        self.has_assigned_feature_vecs = False
 
     def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03):
-        print "Clustering gestures"
-        self._assign_feature_vectors()
+        if not self.has_assigned_feature_vecs:
+            self._assign_feature_vectors()
         gd = gesture_data if gesture_data else self.agd
         i = 0
         l = len(gd)
+        print "Clustering gestures"
         for g in tqdm(gd):
             start = time.time()
             i = i + 1
@@ -120,7 +122,13 @@ class GestureClusterer():
                 self._update_cluster_centroid(nearest_cluster_id)
             end = time.time()
             self._log(str(end-start))
+
+        # now recluster based on where the new centroids are
+        self._recluster_by_centroids()
+
         self._write_logs()
+
+
 
     def _assign_feature_vectors(self, gesture_data=None):
         gd = gesture_data if gesture_data else self.agd
@@ -128,8 +136,8 @@ class GestureClusterer():
         for g in tqdm(gd):
             g['feature_vec'] = self._get_gesture_features(g)
         self._normalize_feature_values()
+        self.has_assigned_feature_vecs = True
         return
-
 
     def _normalize_feature_values(self, gesture_data=None):
         print "Normalizing feature vectors."
@@ -152,6 +160,25 @@ class GestureClusterer():
              'seed_id': seed_gest['id'],
              'gestures': [seed_gest]}
         self.clusters[new_cluster_id] = c
+
+    # now that we've done the clustering, recluster and only allow clusters to form around current centroids.
+    def _recluster_by_centroids(self):
+        gd = self.agd
+        print "Reclustering by centroid"
+        # clear old gestures
+        for c in self.clusters:
+            self.clusters[c]['gestures'] = []
+
+        for g in tqdm(gd):
+            min_dist = 1000
+            min_clust = self.clusters[0]
+            for c in self.clusters:
+                d = self._calculate_distance_between_vectors(g['feature_vec'], self.clusters[c]['centroid'])
+                if d < min_dist:
+                    min_dist = d
+                    min_clust = self.clusters[c]
+            min_clust['gestures'].append(g)
+        return
 
     def get_gesture_ids_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
@@ -177,26 +204,6 @@ class GestureClusterer():
         # TODO: average and median centroid distances from each other.
         # TODO: also get minimum and maximum centroid distances.
         return self.clusters
-
-    # now that we've done the clustering, recluster and only allow clusters to form around current centroids.
-    def _recluster_by_centroids(self):
-        gd = self.agd
-        print "Reclustering by centroid"
-        # clear old gestures
-        for c in self.clusters:
-            c['gestures'] = []
-
-        for g in tqdm(gd):
-            min_dist = 1000
-            clust = None
-            for c in new_clusts:
-                d = _calculate_distance_between_vectors(g['feature_vec'], c['centroid'])
-                if d < min_dist:
-                    min_dist = d
-                    clust = c
-            c['gestures'].append(g)
-
-        return
 
 
     ## measure of how distant the gestures are... basically avg distance to centroid

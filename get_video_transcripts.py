@@ -27,6 +27,9 @@ collection = service.documents()
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
 
+# very very helpful google tutorial
+# https://towardsdatascience.com/how-to-use-google-speech-to-text-api-to-transcribe-long-audio-files-1c886f4eb3e9
+
 
 def get_audio_filename_from_path(fp):
     return fp.split(".wav")[-2].split("/")[-1]

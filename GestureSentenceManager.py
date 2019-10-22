@@ -37,7 +37,7 @@ class GestureSentenceManager():
         self.Clusterer.cluster_gestures()
 
     def print_sentences_by_cluster(self, cluster_id):
-        sents = get_sentences_by_cluster(cluster_id)
+        sents = self.get_sentences_by_cluster(cluster_id)
         empties = 0
         for i, s in enumerate(sents):
             if s:
