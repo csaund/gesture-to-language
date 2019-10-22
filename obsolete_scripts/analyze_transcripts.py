@@ -62,53 +62,6 @@ def get_hypernyms(w0):
     return hyp_list
 
 
-def get_transcript_structure(gesture_transcripts):
-    for phrase in gesture_transcripts:
-        phrase_transcript = phrase["phase"]["transcript"]
-        print "analyzing phrase: " + phrase_transcript
-        p_tokens = nltk.word_tokenize(phrase_transcript)
-        phrase["phase"]["tokens"] = p_tokens
-        p_structure = nltk.pos_tag(p_tokens)
-        phrase["phase"]["structure"] = p_structure
-        phrase_sentiment = Analyzer.polarity_scores(phrase_transcript)
-        phrase["sentiment"] = phrase_sentiment
-        token_index = 0
-
-        for gesture in phrase["gestures"]:
-            gesture_transcript = gesture["transcript"]
-            g_tokens = nltk.word_tokenize(gesture_transcript)
-            g_structure = []
-            gesture["hypernyms"] = {}
-            sentiment = Analyzer.polarity_scores(gesture_transcript)
-            gesture["sentiment"] = sentiment
-
-            structure_index = 0
-            for s_index in range(len(g_tokens)):
-                pos_struct = p_structure[token_index]
-                g_structure.append(pos_struct)
-                token_index += 1
-
-                if(pos_struct[1] in POS_I_LIKE):
-                    gesture["hypernyms"][pos_struct[1]] = get_hypernyms(pos_struct[0])
-
-
-            gesture["structure"] = g_structure
-
-
-    return gesture_transcripts
-
-
-def read_file(filepath):
-    with open(filepath) as f:
-        gesture_transcripts = json.load(f)
-    return gesture_transcripts
-
-def write_data(fp, data):
-    with open(fp, 'w') as f:
-        json.dump(data, f, indent=4)
-    f.close()
-
-
 # give this megyn-kelly.mp4 too
 if __name__ == '__main__':
     print "running program"
