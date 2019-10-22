@@ -5,8 +5,7 @@ import subprocess
 import os
 import pandas as pd
 import json
-from google.cloud import storage
-
+from common_helpers import *
 
 ## store it in the CLOUD
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
@@ -28,18 +27,6 @@ def convert_time_to_seconds(time):
     seconds = (float(intervals[0]) * 3600) + (float(intervals[1]) * 60) + float(intervals[2])
     return seconds
 
-
-def write_data(fp, data):
-    with open(fp, 'w') as f:
-        json.dump(data, f, indent=4)
-    f.close()
-
-def upload_to_gcloud_from_path(fn, path):
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    blob = bucket.blob(fn)
-    blob.upload_from_filename(path)
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -53,7 +40,7 @@ if __name__ == "__main__":
 
     if(os.path.exists(output_path)):
         print "found timings path for %s, skipping parsing." % args.speaker
-        upload_to_gcloud_from_path(output_name, output_path)
+        upload_blob(bucket_name, output_name, output_path)
         exit()
 
     phrases = []
@@ -91,4 +78,4 @@ if __name__ == "__main__":
             print("couldn't save interval: %s"%interval)
 
     write_data(output_path, {"phrases": phrases})
-    upload_to_gcloud_from_path(output_name, output_path)
+    upload_blob(bucket_name, output_name, output_path)

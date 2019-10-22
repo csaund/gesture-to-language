@@ -10,6 +10,7 @@ import glob, os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 from common_helpers import *
 
 
@@ -19,8 +20,12 @@ from common_helpers import *
 class SpeakerGestureGetter():
     def __init__(self, base_path, speaker):
         self.video_path = "%s/%s/keypoints_simple/" % (base_path, speaker)
-        self.timings_path = "%s/%s/timings.json/" % (base_path, speaker)
+        self.timings_path = "%s/%s/timings.json" % (base_path, speaker)
+        # self.all_gesture_data = self.analyze_gestures(self.video_path, self.timings_path)
+
+    def perform_gesture_analysis(self):
         self.all_gesture_data = self.analyze_gestures(self.video_path, self.timings_path)
+        return self.all_gesture_data
 
     def get_all_speaker_gesture_keypoints(self):
         return self.all_gesture_data
@@ -28,7 +33,7 @@ class SpeakerGestureGetter():
     # takes number of seconds (408.908909) and converts to something like
     # MM_S.SS
     # that is searchable in the folder.
-    def get_filekey(self, t):
+    def _get_filekey(self, t):
         keyframe_min = int(math.floor(t / 60))
         keyframe_sec = round(t - (keyframe_min * 60), 6)
         ## add leading 0s to avoid clashes.
@@ -58,7 +63,7 @@ class SpeakerGestureGetter():
             return
         all_gesture_keys = []
         i = files.index(m[0])
-        print("starting at %s" % files[i])   # start at index of first frame
+        #  print("starting at %s" % files[i])   # start at index of first frame
         while is_within_time(s_key, e_key, files[i]):
             dat = extract_txt_data(gesture_video_path, files[i])
             all_gesture_keys.append(dat) # TODO change this to pd
@@ -66,7 +71,7 @@ class SpeakerGestureGetter():
             if(i >= len(files)):
                 print("WARNING: GOING BEYOND KEYPOINT TIMES: %s" % str(files[i-1]))
                 break
-        print("ending at %s" % files[i-1]) # the -1 is a hack until I figure out why there's missing keypoint data
+        # print("ending at %s" % files[i-1]) # the -1 is a hack until I figure out why there's missing keypoint data
         return all_gesture_keys
 
 
@@ -113,19 +118,19 @@ class SpeakerGestureGetter():
     ## let's follow 88279 through and see where the bugs are...
     def analyze_gestures(self, video_base_path, timings_path):
         all_gesture_data = []
-        timings = get_timings(timings_path)
+        timings = self.get_timings(timings_path)
         l = len(timings['phrases'])
-        i = 0
-        for phase in timings['phrases']:
-            i = i + 1
-            print("%s / %s gesutres processed." % (i, l))
+        # i = 0
+        for phase in tqdm(timings['phrases']):
+            # i = i + 1
+            #  print("%s / %s gesutres processed." % (i, l))
             p = phase['phase']
             vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
             start = p['start_seconds']
             end = p['end_seconds']
             specific_gesture_dat = {'id': phase['id']}
             print("processing gesture id %s" % phase['id'])
-            specific_gesture_dat['keyframes'] = get_keyframes_per_gesture(vid_path, start, end)
+            specific_gesture_dat['keyframes'] = self.get_keyframes_per_gesture(vid_path, start, end)
             all_gesture_data.append(specific_gesture_dat)
         return all_gesture_data
 
@@ -133,8 +138,8 @@ class SpeakerGestureGetter():
     # the plot images of those ids
     def save_gesture_plots(self, gesture_ids, all_gestures):
         for i in gesture_ids:
-            g = get_gesture_by_id(i, all_gestures)
-            plot_both_gesture_coords(i)
+            g = self.get_gesture_by_id(i, all_gestures)
+            self.plot_both_gesture_coords(i)
         return
 
     def plot_dist_of_num_frames_by_gesture(self, all_gestures):

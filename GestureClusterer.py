@@ -15,8 +15,10 @@ import uuid
 import operator
 from analyze_frames import *
 import time
+from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 
+from common_helpers import *
 
 # do difference between t1 and t2 for same frame,
 # and also difference between p1, p2, p3 etc at same frame
@@ -94,21 +96,21 @@ class GestureClusterer():
                         'gestures': [g['id']]}
                 self.clusters[cluster_id] = c
 
-    def cluster_gestures(self, gesture_data, max_cluster_distance=120):
+    def cluster_gestures(self, gesture_data=None, max_cluster_distance=140):
         gd = gesture_data if gesture_data else self.agd
         i = 0
         l = len(gd)
-        for g in gd:
+        for g in tqdm(gd):
             g['feature_vec'] = self._get_gesture_features(g)
             start = time.time()
             i = i + 1
-            print("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
+            # print("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             self._log("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
             # we're further away than we're allowed to be, OR this is the first cluster.
             if (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
                 self._log("nearest cluster distance was %s" % nearest_cluster_dist)
-                print("creating new cluster for gesture %s -- %s" % (g['id'], i))
+                self._log("creating new cluster for gesture %s -- %s" % (g['id'], i))
                 self._create_new_cluster(g)
             else:
                 self._log("fitting in cluster %s" % nearest_cluster_id)
@@ -131,20 +133,22 @@ class GestureClusterer():
 
     def get_gesture_ids_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
-        ids = []
-        for g in c['gestures']:
-            ids.append(g['id'])
+        ids = [g['id'] for g in c['gestures']]
+        # ids = []
+        # for g in c['gestures']:
+        #     ids.append(g['id'])
         return ids
 
     def report_clusters(self, verbose=False):
         print("Number of clusters: %s" % len(self.clusters))
-        cluster_lengths = [len(clusters[c]['gestures']) for c in range(1, 47)]
-        print("Avg cluster size: %s" % np.average(cluster_lengths)
-        print("Median cluster size: %s" % np.median(cluster_lengths)
-        print("Largest cluster size: %s" % max(cluster_lengths)
-        cluster_sparsity = [self.get_cluster_sparsity(c) for c in range(1, 47)]
-        print("Avg cluster sparsity: %s" % np.average(cluster_sparsity)
-        print("Median cluster sparsity: %s" % np.median(cluster_sparsity)
+        num_clusters = len(self.clusters)
+        cluster_lengths = [len(self.clusters[c]['gestures']) for c in range(1, num_clusters)]
+        print("Avg cluster size: %s" % np.average(cluster_lengths))
+        print("Median cluster size: %s" % np.median(cluster_lengths))
+        print("Largest cluster size: %s" % max(cluster_lengths))
+        cluster_sparsity = [self.get_cluster_sparsity(c) for c in range(1, num_clusters)]
+        print("Avg cluster sparsity: %s" % np.average(cluster_sparsity))
+        print("Median cluster sparsity: %s" % np.median(cluster_sparsity))
         return self.clusters
 
 
@@ -397,7 +401,8 @@ class GestureClusterer():
 
     def _write_logs(self):
         with open(self.logfile, 'w') as f:
-            f.write(self.logs)
+            for l in self.logs:
+                f.write("%s\n" % l)
         f.close()
 
     def write_clusters(self):
