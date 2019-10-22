@@ -118,9 +118,6 @@ if __name__ == '__main__':
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-base_path', '--base_path', help='base folder path of dataset', required=True)
     parser.add_argument('-speaker', '--speaker', default='optionally, run only on specific speaker', required=False)
-    # --base_path /Users/carolynsaund/github/gest-data/data --speaker rock
     args = parser.parse_args()
 
     add_transcript_data(args.speaker, args.base_path)
-
-# from match_transcript_gesture_timings import *
