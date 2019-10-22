@@ -4,7 +4,6 @@ import json
 import os
 from google.cloud import storage
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
-bucket_name = "speaker_timings"
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
 
 ########################################################

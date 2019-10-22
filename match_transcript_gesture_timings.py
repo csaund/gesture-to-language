@@ -9,6 +9,7 @@ import argparse
 from google.cloud import storage
 from google.cloud import bigquery
 from common_helpers import *
+from tqdm import tqdm
 
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 from apiclient.discovery import build
@@ -59,33 +60,47 @@ def match_transcript_to_timing(timings):
             continue
 
         all_words = sorted(flatten([t['words'] for t in trans]), key=word_sort)
-        word_iter = iter(all_words)
-        current_word = next(word_iter)
-
+        # word_iter = iter(all_words)
+        # current_word = next(word_iter)
+        # can't use an iterator here because we need to include some words in
+        # multiple gestures, aka use the words for the gestures that don't have
+        # any words...
+        len_words = len(all_words)
+        current_word = all_words[0]
+        word_i = 0
         # break up our dict based on the video transcript.
         # get all the items from our phrases with this video fn
         gestures = [x for x in phrases if x['phase']['video_fn'] == v]
         gestures.sort(key=sort_start_time)
-        for g in gestures:
+        print "Getting gestures for video %s" % v
+        for g in tqdm(gestures):
             gesture_words = []
-            gesture_transcript = ""
             p = g['phase']
             end = p['end_seconds']
-            while current_word['word_start'] <= end:
+            while current_word['word_start'] <= end and word_i < len(all_words):
+                current_word = all_words[word_i]
                 gesture_words.append(current_word)
-                gesture_transcript += " " + current_word['word']
-                try:
-                    current_word = next(word_iter)
-                except StopIteration:
-                    break
+                word_i += 1
 
             ## python shallow copies OH YEAHHHH
-            g['words'] = gesture_words
-            p['transcript'] = gesture_transcript
+            # if we don't have any words, just take the one before and the next 3.
+            g['words'] = gesture_words if gesture_words else get_word_range(word_i, all_words)
+            words = [g['word'] for g in g['words']]
+            p['transcript'] = ' '.join(words)
+
 
     # consistency...
     nt = {'phrases': sorted(timings['phrases'], key=lambda x: (x['phase']['video_fn'], x['phase']['start_seconds']))}
     return nt
+
+def get_word_range(start_range, words):
+    BEGIN_RANGE = -1
+    END_RANGE = 3
+    if (start_range + 3) >= len(words):
+        return(words[-(END_RANGE+1):])
+    else:
+        return(words[(start_range + BEGIN_RANGE):(start_range + END_RANGE)])
+
 
 def word_sort(x):
     return x['word_start']
@@ -121,3 +136,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     add_transcript_data(args.speaker, args.base_path)
+
+# from match_transcript_gesture_timings import *
