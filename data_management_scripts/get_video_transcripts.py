@@ -122,7 +122,7 @@ def google_transcribe(audio_file_path):
 
     gcs_uri = 'gs://' + bucketname + '/' + audio_file_name
 
-
+    frame_rate, channels = frame_rate_channel(audio_file_path)
     client = speech.SpeechClient()
     audio = types.RecognitionAudio(uri=gcs_uri)
     config = types.RecognitionConfig(
