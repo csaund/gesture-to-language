@@ -16,6 +16,7 @@ from google.cloud.speech import types
 ## ffmpeg stuff
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from oauth2client.client import GoogleCredentials
+from tqdm import tqdm
 
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 bucketname = "audio_bucket_rock_1"
@@ -90,26 +91,35 @@ def upload_transcript(transcript_name, transcript_path):
     blob.upload_from_filename(transcript_path)
 
 
-#### NEW ####
-def google_transcribe(audio_file_path):
-    found_previous_transcript = False
-    print "attempting to transcribe file %s" % audio_file_path
+def upload_audio(audio_file_path):
+    bucketname = "audio_bucket_rock_1"
     bucket_name = bucketname
+    print "uploading %s to %s" % (audio_file_path, bucket_name)
     audio_file_name = get_audio_filename_from_path(audio_file_path)
     destination_blob_name = audio_file_name
-
-    ## if we've already transcribed this video, we're done here.
-    if os.path.exists(get_transcript_filepath_from_audio_path(audio_file_path)):
-        print "already found transcript for that audio path."
-        found_previous_transcript = True
-        return (get_transcript_from_transcript_filepath(get_transcript_filepath_from_audio_path(audio_file_path)), found_previous_transcript)
 
     frame_rate, channels = frame_rate_channel(audio_file_path)
     if channels > 1:
         stereo_to_mono(audio_file_path)
 
     # upload so we can get a gcs for ourselves.
-    upload_blob(bucket_name, audio_file_name, destination_blob_name)
+    upload_blob(bucket_name, audio_file_path, destination_blob_name)
+    gcs_uri = 'gs://' + bucketname + '/' + audio_file_name
+
+
+#### NEW ####
+def google_transcribe(audio_file_path):
+    found_previous_transcript = False
+    print "attempting to transcribe file %s" % audio_file_path
+    bucket_name = bucketname
+    audio_file_name = get_audio_filename_from_path(audio_file_path)
+
+    # ## if we've already transcribed this video, we're done here.
+    if os.path.exists(get_transcript_filepath_from_audio_path(audio_file_path)):
+        print "already found transcript for that audio path."
+        found_previous_transcript = True
+        return (get_transcript_from_transcript_filepath(get_transcript_filepath_from_audio_path(audio_file_path)), found_previous_transcript)
+
     gcs_uri = 'gs://' + bucketname + '/' + audio_file_name
 
 
@@ -159,7 +169,6 @@ def get_audio_from_video(vid_name, id_base_path, transcript_path):
     input_vid_path = vid_base_path + '/' + vid_name + '.mp4'
     output_audio_path = transcript_path + '/' + vid_name + '.wav'
     if(os.path.exists(output_audio_path)):
-        print "Already found wav for %s" % output_audio_path
         return
     print "creating wav file"
     command = ("ffmpeg -i %s -ab 160k -ac 2 -ar 48000 -vn %s" % (input_vid_path, output_audio_path))
@@ -168,29 +177,38 @@ def get_audio_from_video(vid_name, id_base_path, transcript_path):
 
 
 def process_video_files(vid_base_path, transcript_base_path):
+    print "Getting speech results from videos"
     all_video_files = os.listdir(vid_base_path)
-    print "seeing all files:"
-    print all_video_files
-
-    for video_file in all_video_files:
+    for video_file in tqdm(all_video_files):
         ## TODO simplify this
-        print "processing file %s" % video_file
         vid_name = video_file.split(".mp4")[0]
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
         transcript_path = transcript_base_path + '/' + vid_name + '.json'
 
         transcript_name = vid_name + '.json'
 
-        get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
+        #  get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
         (transcript, found_previous_transcript) = google_transcribe(output_audio_path)
         # will not rewrite previous file
         if not found_previous_transcript:
             print "No previous file found for %s" % transcript_path
             write_transcript(transcript, transcript_path)
-            upload_transcript(transcript_name ,transcript_path)
-            return
+            upload_transcript(transcript_name, transcript_path)
+            continue
         print "Previous file found for %s. Not overwriting." % transcript_path
         upload_transcript(transcript_name, transcript_path)
+
+def get_wavs_from_video(vid_base_path, transcript_base_path):
+    print "Generating wavs from video"
+    all_video_files = os.listdir(vid_base_path)
+    for video_file in tqdm(all_video_files):
+        vid_name = video_file.split(".mp4")[0]
+        output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
+        if ".mkv." in output_audio_path:
+            continue
+        get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
+        ## TODO make this whole thing respond well to multiple video types
+        upload_audio(output_audio_path)
 
 
 def create_video_subdir(dir_path):
@@ -204,6 +222,7 @@ def create_video_subdir(dir_path):
 
 def get_video_transcripts(video_path, transcript_path):
     create_video_subdir(transcript_path)
+    get_wavs_from_video(video_path, transcript_path)
     process_video_files(video_path, transcript_path)
 
 if __name__ == '__main__':

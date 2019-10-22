@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+print "loading modules"
 import argparse
 from subprocess import call
 
@@ -17,6 +18,7 @@ parser.add_argument('-speaker', '--speaker',
 args = parser.parse_args()
 
 BASE_PATH = args.base_path
+print "loading intervals"
 df = pd.read_csv(os.path.join(BASE_PATH, "intervals_df.csv"))
 
 if args.speaker:
