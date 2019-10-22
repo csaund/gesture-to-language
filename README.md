@@ -125,3 +125,11 @@ $ sudo python analyze-frames.py --base_path /Users/carolynsaund/github/gest-data
 - Explore clustering of wrist/body data, then re-cluster based on hand motions...
 - after getting all features, need to normalize across all gestures
     - and after that, everything that is "minimum" need to change to 1-n
+
+
+YEEEEE DOGGIE let's get transcripts from all our speakers. 
+`$ python download_youtube.py --base_path PATH_TO_DATA --speaker SPEAKER_YOU_WANT`
+`$ python transform_speech2gest_data.py --base_path PATH_TO_DATA --speaker SPEAKER_YOU_WANT`
+`$ python get_video_transcripts.py --base_path PATH_TO_DATA --speaker SPEAKER_YOU_WANT`
+`$ python match_transcript_gesture_timings.py --base_path PATH_TO_DATA --speaker SPEAKER_YOU_WANT`
+baddabingbaddaboom, transcripts and matched up timings to muck about with. 
