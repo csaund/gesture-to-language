@@ -3,6 +3,9 @@ from SpeakerGestureGetter import *
 from GestureClusterer import *
 from common_helpers import *
 
+
+## the following commands assume you have a full transcript in the cloud
+## and also all the timings.
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("/Users/carolynsaund/github/gest-data/data", "rock")
 # GSM.load_gestures()

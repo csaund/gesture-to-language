@@ -31,3 +31,6 @@ $ id = 76398
 $ get_single_gesture_from_timings(id, video_base_path, timings_path)
 ```
 to play with single gesture data.
+
+
+Remember to delete gesture-to-lang-copy 

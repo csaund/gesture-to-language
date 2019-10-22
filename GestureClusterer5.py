@@ -96,12 +96,13 @@ class GestureClusterer():
                         'gestures': [g['id']]}
                 self.clusters[cluster_id] = c
 
-    def cluster_gestures(self, gesture_data=None, max_cluster_distance=140):
+    def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03):
+        print "Clustering gestures"
+        self._assign_feature_vectors()
         gd = gesture_data if gesture_data else self.agd
         i = 0
         l = len(gd)
         for g in tqdm(gd):
-            g['feature_vec'] = self._get_gesture_features(g)
             start = time.time()
             i = i + 1
             # print("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
@@ -120,6 +121,27 @@ class GestureClusterer():
             end = time.time()
             self._log(str(end-start))
         self._write_logs()
+
+    def _assign_feature_vectors(self, gesture_data=None):
+        gd = gesture_data if gesture_data else self.agd
+        print "Getting initial feature vectors."
+        for g in tqdm(gd):
+            g['feature_vec'] = self._get_gesture_features(g)
+        self._normalize_feature_values()
+        return
+
+
+    def _normalize_feature_values(self, gesture_data=None):
+        print "Normalizing feature vectors."
+        gd = gesture_data if gesture_data else self.agd
+        feat_vecs = np.array([g['feature_vec'] for g in self.agd])
+        feats_norm = np.array(map(lambda v: v / np.linalg.norm(v), feat_vecs.T))
+        feat_vecs_normalized = feats_norm.T
+        print "Reassigning normalized vectors"
+        for i in tqdm(range(len(gd))):
+            gd[i]['feature_vec'] = list(feat_vecs_normalized[i])
+        return
+
 
     def _create_new_cluster(self, seed_gest):
         self._log("creating new cluster for gesture %s" % seed_gest['id'])
@@ -152,7 +174,29 @@ class GestureClusterer():
         print("Avg cluster sparsity: %s" % np.average(cluster_sparsity))
         print("Median cluster sparsity: %s" % np.median(cluster_sparsity))
         print("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd)))
+        # TODO: average and median centroid distances from each other.
+        # TODO: also get minimum and maximum centroid distances.
         return self.clusters
+
+    # now that we've done the clustering, recluster and only allow clusters to form around current centroids.
+    def _recluster_by_centroids(self):
+        gd = self.agd
+        print "Reclustering by centroid"
+        # clear old gestures
+        for c in self.clusters:
+            c['gestures'] = []
+
+        for g in tqdm(gd):
+            min_dist = 1000
+            clust = None
+            for c in new_clusts:
+                d = _calculate_distance_between_vectors(g['feature_vec'], c['centroid'])
+                if d < min_dist:
+                    min_dist = d
+                    clust = c
+            c['gestures'].append(g)
+
+        return
 
 
     ## measure of how distant the gestures are... basically avg distance to centroid
@@ -417,3 +461,9 @@ class GestureClusterer():
 
     def delete_log_file(self):
         os.remove(self.logfile)
+
+    ## a random helper for me to find centroids.
+    def _calc_dist_between_random_gestures(self):
+        i = random.randrange(0, len(self.agd))
+        j = random.randrange(0, len(self.agd))
+        return self._calculate_distance_between_vectors(self.agd[i]['feature_vec'], self.agd[j]['feature_vec'])

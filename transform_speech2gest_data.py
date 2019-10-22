@@ -67,7 +67,8 @@ if __name__ == "__main__":
             phrases.append({
                 "id": interval['interval_id'],
                 "phase": phase,
-                "gestures": gestures
+                "gestures": gestures,
+                "speaker": args.speaker
             })
             # input_fn = os.path.join(args.base_path, interval['speaker'], "videos", interval["video_fn"])
             # output_fn = os.path.join(args.output_path, "%s_%s_%s-%s.mp4"%(interval["speaker"], interval["video_fn"], str(start_time), str(end_time)))
