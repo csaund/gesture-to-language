@@ -17,10 +17,14 @@ class GestureSentenceManager():
         self.speaker = speaker
         self.SpeakerGestures = SpeakerGestureGetter(base_path, speaker)
         # self.Clusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
-        self.cluster_bucket_name = "%s_clusters"
+        self.cluster_bucket_name = "%s_clusters" % speaker
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
+        self.gesture_transcript = None
         self.get_transcript()
         # now we have clusters, now need to get the corresponding sentences for those clusters.
+
+    def report_clusters(self):
+        self.Clusterer.report_clusters()
 
     def load_gestures(self):
         self.SpeakerGestures.perform_gesture_analysis()
@@ -28,6 +32,17 @@ class GestureSentenceManager():
     def cluster_gestures(self):
         self.Clusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
         self.Clusterer.cluster_gestures()
+
+    def print_sentences_by_cluster(self, cluster_id):
+        sents = get_sentences_by_cluster(cluster_id)
+        empties = 0
+        for i, s in enumerate(sents):
+            if s:
+                print "%s. %s" % (i, s)
+            else:
+                empties += 1
+        print "Along with %s empty strings." % empties
+        print
 
     def get_sentences_by_cluster(self, cluster_id):
         self.get_transcript()
@@ -59,4 +74,4 @@ class GestureSentenceManager():
 
     def upload_clusters(self):
         self.Clusterer.write_clusters()
-        upload_blob(self.cluster_bucket_name, self.Clusterer.cluster_file, self.bucket_name)
+        upload_blob(self.cluster_bucket_name, self.Clusterer.cluster_file, self.cluster_bucket_name)

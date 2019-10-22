@@ -16,7 +16,6 @@ from common_helpers import *
 
 ## given a speaker name and path to their keypoints and gesture timings,
 ## loads all the gesture data to be analyzed.
-
 class SpeakerGestureGetter():
     def __init__(self, base_path, speaker):
         self.video_path = "%s/%s/keypoints_simple/" % (base_path, speaker)
@@ -115,21 +114,16 @@ class SpeakerGestureGetter():
         plt.title = '%s coordinates for gesture %s' % (x_y, gesture['id'])
 
 
-    ## let's follow 88279 through and see where the bugs are...
     def analyze_gestures(self, video_base_path, timings_path):
         all_gesture_data = []
         timings = self.get_timings(timings_path)
         l = len(timings['phrases'])
-        # i = 0
         for phase in tqdm(timings['phrases']):
-            # i = i + 1
-            #  print("%s / %s gesutres processed." % (i, l))
             p = phase['phase']
             vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
             start = p['start_seconds']
             end = p['end_seconds']
             specific_gesture_dat = {'id': phase['id']}
-            print("processing gesture id %s" % phase['id'])
             specific_gesture_dat['keyframes'] = self.get_keyframes_per_gesture(vid_path, start, end)
             all_gesture_data.append(specific_gesture_dat)
         return all_gesture_data
@@ -151,10 +145,7 @@ class SpeakerGestureGetter():
         plt.title = "number of frames per gesture"
         plt.show()
 
-    ########################################################
-    ####################### Helpers ########################
-    ########################################################
-    # ex. id=73848, return {id: 73848, keyframes: [{x: [...], y: [...], ...]}}
+
     def get_gesture_by_id(self, d_id, all_speaker_gesture_data):
         dat = [d for d in all_speaker_gesture_data if d['id'] == d_id]
         # because this returns list of matching items, and only one item will match,
@@ -171,7 +162,6 @@ class SpeakerGestureGetter():
             return False
         return True
 
-    #88279
     def get_single_gesture_from_timings(self, gesture_id, video_base_path, timings_path):
         gesture_data = {}
         timings = get_data_from_path(timings_path)

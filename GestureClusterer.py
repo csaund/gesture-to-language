@@ -82,8 +82,8 @@ class GestureClusterer():
         self.clf = NearestCentroid()
         self.logs = []
         # todo make this variable
-        self.logfile = "/Users/carolynsaund/github/gesture-to-language/log.txt"
-        self.cluster_file = "/Users/carolynsaund/github/gesture-to-language/cluster-tmp.json"
+        self.logfile = "/Users/carolynsaund/github/gesture-to-language/cluster_logs.txt"
+        self.cluster_file = "/Users/carolynsaund/github/gesture-to-language/cluster_tmp.json"
         if(len(seeds)):
             for seed_g in seeds:
                 g = self._get_gesture_by_id(seed_g, all_gesture_data)
@@ -142,13 +142,16 @@ class GestureClusterer():
     def report_clusters(self, verbose=False):
         print("Number of clusters: %s" % len(self.clusters))
         num_clusters = len(self.clusters)
-        cluster_lengths = [len(self.clusters[c]['gestures']) for c in range(1, num_clusters)]
+        cluster_lengths = [len(self.clusters[c]['gestures']) for c in range(0, num_clusters)]
+        print("Cluster lengths: %s" % cluster_lengths)
         print("Avg cluster size: %s" % np.average(cluster_lengths))
         print("Median cluster size: %s" % np.median(cluster_lengths))
         print("Largest cluster size: %s" % max(cluster_lengths))
-        cluster_sparsity = [self.get_cluster_sparsity(c) for c in range(1, num_clusters)]
+        cluster_sparsity = [self.get_cluster_sparsity(c) for c in range(0, num_clusters)]
+        print("Cluster sparsities: %s" % cluster_sparsity)
         print("Avg cluster sparsity: %s" % np.average(cluster_sparsity))
         print("Median cluster sparsity: %s" % np.median(cluster_sparsity))
+        print("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd)))
         return self.clusters
 
 
@@ -367,7 +370,6 @@ class GestureClusterer():
     ########################################################
     ####################### Helpers ########################
     ########################################################
-
     def _avg(self, v):
         return float(sum(v) / len(v))
 
@@ -407,5 +409,11 @@ class GestureClusterer():
 
     def write_clusters(self):
         with open(self.cluster_file, 'w') as f:
-            f.write(self.clusters)
+            json.dump(self.clusters, f, indent=4)
         f.close()
+
+    def delete_cluster_file(self):
+        os.remove(self.cluster_file)
+
+    def delete_log_file(self):
+        os.remove(self.logfile)
