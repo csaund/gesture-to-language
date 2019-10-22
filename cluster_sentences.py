@@ -15,11 +15,11 @@ from nltk.cluster import KMeansClusterer
 from gensim.models import Word2Vec
 
 ## SKLEARN
-from sklearn import cluster
-from sklearn import metrics
-from sklearn.cluster import KMeans
-from sklearn.manifold import TSNE
-from sklearn.feature_extraction.text import TfidfVectorizer
+# from sklearn import cluster
+# from sklearn import metrics
+# from sklearn.cluster import KMeans
+# from sklearn.manifold import TSNE
+# from sklearn.feature_extraction.text import TfidfVectorizer
 
 #stop_words = list(set(nltk.corpus.stopwords.words('english')))
 NUM_CLUSTERS=2

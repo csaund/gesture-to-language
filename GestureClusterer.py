@@ -1,3 +1,4 @@
+from __future__ import division
 #!/usr/bin/env pythons
 print "importing libs"
 import argparse
@@ -13,9 +14,11 @@ import numpy as np
 import uuid
 import operator
 from analyze_frames import *
+import time
+from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
-from sklearn.cluster import KMeans
 
+from common_helpers import *
 
 # do difference between t1 and t2 for same frame,
 # and also difference between p1, p2, p3 etc at same frame
@@ -66,7 +69,7 @@ from sklearn.cluster import KMeans
 ###############################################################
 ####################### DIY Clustering ########################
 ###############################################################
-class GestureClusters():
+class GestureClusterer():
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
     def __init__(self, all_gesture_data, seeds=[]):
@@ -77,6 +80,10 @@ class GestureClusters():
         self.clusters = {}
         self.seed_ids = seeds
         self.clf = NearestCentroid()
+        self.logs = []
+        # todo make this variable
+        self.logfile = "/Users/carolynsaund/github/gesture-to-language/cluster_logs.txt"
+        self.cluster_file = "/Users/carolynsaund/github/gesture-to-language/cluster_tmp.json"
         if(len(seeds)):
             for seed_g in seeds:
                 g = self._get_gesture_by_id(seed_g, all_gesture_data)
@@ -85,58 +92,105 @@ class GestureClusters():
                 c = {
                         'cluster_id': cluster_id,
                         'seed_id': g['id'],
-                        'gestures': [g]}
+                        'centroid': self._get_gesture_features(g),
+                        'gestures': [g['id']]}
                 self.clusters[cluster_id] = c
 
-    def cluster_gestures(self, feat_vecs=False, gesture_data=False, max_cluster_distance=False):
+    def cluster_gestures(self, gesture_data=None, max_cluster_distance=140):
         gd = gesture_data if gesture_data else self.agd
-        all_gest_feats = feat_vecs if feat_vecs else self._get_all_feature_vectors(gd)
-        X = np.array(all_gest_feats)
-        print("fitting KMeans model")
-        kmeans_model = KMeans().fit(X)
-        print(kmeans_model.cluster_centers_)
-        centers = np.array(kmeans_model.cluster_centers_)
-        return kmeans_model
-
-    def _get_all_feature_vectors(self, gesture_data=False):
-        gd = gesture_data if gesture_data else self.agd
-        all_gest_feats = []
-        print("getting feature vectors for gesture")
         i = 0
-        tot = len(gd)
-        for g in gd:
-            print("%s / %s" % (i, tot))
-            i = i+1
-            all_gest_feats.append(self._get_gesture_features(g))
-        return all_gest_feats
+        l = len(gd)
+        for g in tqdm(gd):
+            g['feature_vec'] = self._get_gesture_features(g)
+            start = time.time()
+            i = i + 1
+            # print("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
+            self._log("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
+            (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
+            # we're further away than we're allowed to be, OR this is the first cluster.
+            if (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
+                self._log("nearest cluster distance was %s" % nearest_cluster_dist)
+                self._log("creating new cluster for gesture %s -- %s" % (g['id'], i))
+                self._create_new_cluster(g)
+            else:
+                self._log("fitting in cluster %s" % nearest_cluster_id)
+                self._log("nearest cluster distance was %s" % nearest_cluster_dist)
+                self.clusters[nearest_cluster_id]['gestures'].append(g)
+                self._update_cluster_centroid(nearest_cluster_id)
+            end = time.time()
+            self._log(str(end-start))
+        self._write_logs()
 
     def _create_new_cluster(self, seed_gest):
-        print("creating new cluster for gesture %s" % seed_gest['id'])
+        self._log("creating new cluster for gesture %s" % seed_gest['id'])
         new_cluster_id = self.c_id
         self.c_id = self.c_id + 1
-        c = {'cluster_id': new_cluster_id, 'seed_id': seed_gest['id'], 'gestures': [seed_gest]}
+        c = {'cluster_id': new_cluster_id,
+             'centroid': seed_gest['feature_vec'],
+             'seed_id': seed_gest['id'],
+             'gestures': [seed_gest]}
         self.clusters[new_cluster_id] = c
+
+    def get_gesture_ids_by_cluster(self, cluster_id):
+        c = self.clusters[cluster_id]
+        ids = [g['id'] for g in c['gestures']]
+        # ids = []
+        # for g in c['gestures']:
+        #     ids.append(g['id'])
+        return ids
 
     def report_clusters(self, verbose=False):
         print("Number of clusters: %s" % len(self.clusters))
-        return
+        num_clusters = len(self.clusters)
+        cluster_lengths = [len(self.clusters[c]['gestures']) for c in range(0, num_clusters)]
+        print("Cluster lengths: %s" % cluster_lengths)
+        print("Avg cluster size: %s" % np.average(cluster_lengths))
+        print("Median cluster size: %s" % np.median(cluster_lengths))
+        print("Largest cluster size: %s" % max(cluster_lengths))
+        cluster_sparsity = [self.get_cluster_sparsity(c) for c in range(0, num_clusters)]
+        print("Cluster sparsities: %s" % cluster_sparsity)
+        print("Avg cluster sparsity: %s" % np.average(cluster_sparsity))
+        print("Median cluster sparsity: %s" % np.median(cluster_sparsity))
+        print("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd)))
+        return self.clusters
 
+
+    ## measure of how distant the gestures are... basically avg distance to centroid
+    def get_cluster_sparsity(self, cluster_id):
+        c = self.clusters[cluster_id]
+        cent = c['centroid']
+        dists = [self._calculate_distance_between_vectors(g['feature_vec'], cent) for g in c['gestures']]
+        return np.average(dists)
+
+
+    ## instead of this need to use centroid.
     def _get_shortest_cluster_dist(self, g):
         shortest_dist = 10000
         nearest_cluster_id = ''
         for k in self.clusters:
             c = self.clusters[k]
-            dist = self._get_cluster_dist(g, c)
+            centroid = c['centroid']
+            dist = self._calculate_distance_between_vectors(g['feature_vec'], centroid)
             if dist < shortest_dist:
-                shortest_dist = dist
                 nearest_cluster_id = c['cluster_id']
+            shortest_dist = min(shortest_dist, dist)
         return (nearest_cluster_id, shortest_dist)
 
-    def _get_cluster_dist(self, g, c):
-        shortest_dist = 10000   # higher than dist could be
-        for c_gesture in c['gestures']:
-            shortest_dist = min(shortest_dist, self._calculate_distance_between_gestures(g, c_gesture))
-        return shortest_dist
+    ## TODO check this bad boy for bugs.
+    def _update_cluster_centroid(self, cluster_id):
+        s = time.time()
+        c = self.clusters[cluster_id]
+        ## very very slow.
+        ## TODO speed this up using matrix magic.
+        feat_vecs = [g['feature_vec'] for g in c['gestures']]
+        feat_vecs = np.array(feat_vecs[0])
+        self._log("old centroid: %s" % c['centroid'])
+        c['centroid'] = map(lambda x: np.average(x), feat_vecs.T)
+        self._log("new centroid: %s" % c['centroid'])
+        self.clusters[cluster_id] = c
+        e = time.time()
+        self._log("time to update centroid: %s" % str(e-s))
+        return
 
     # returns minimum distance at any frame between point A on right hand and
     # point A on left hand.
@@ -316,7 +370,6 @@ class GestureClusters():
     ########################################################
     ####################### Helpers ########################
     ########################################################
-
     def _avg(self, v):
         return float(sum(v) / len(v))
 
@@ -342,40 +395,25 @@ class GestureClusters():
         feat2 = np.array(self._get_gesture_features(g2))
         return np.linalg.norm(feat1-feat2)
 
+    def _calculate_distance_between_vectors(self, v1, v2):
+        return np.linalg.norm(np.array(v1) - np.array(v2))
 
+    def _log(self, s):
+        self.logs.append(s)
 
+    def _write_logs(self):
+        with open(self.logfile, 'w') as f:
+            for l in self.logs:
+                f.write("%s\n" % l)
+        f.close()
 
-###### Example
- # clustering dataset
-# from sklearn.cluster import KMeans
-# from sklearn import metrics
-# import numpy as np
-# import matplotlib.pyplot as plt
-#
-# x1 = np.array([3, 1, 1, 2, 1, 6, 6, 6, 5, 6, 7, 8, 9, 8, 9, 9, 8])
-# x2 = np.array([5, 4, 6, 6, 5, 8, 6, 7, 6, 7, 1, 2, 1, 2, 3, 2, 3])
-#
-# # create new plot and data
-# plt.plot()
-# X = np.array(list(zip(x1, x2))).reshape(len(x1), 2)
-# colors = ['b', 'g', 'c']
-# markers = ['o', 'v', 's']
-#
-# # KMeans algorithm
-# K = 3
-# X = np.array(list(zip(x1, x2))).reshape(len(x1), 2)
-# kmeans_model = KMeans(n_clusters=K).fit(X)
-#
-# print(kmeans_model.cluster_centers_)
-# centers = np.array(kmeans_model.cluster_centers_)
-#
-# plt.plot()
-# plt.title('k means centroids')
-#
-# for i, l in enumerate(kmeans_model.labels_):
-#     plt.plot(x1[i], x2[i], color=colors[l], marker=markers[l],ls='None')
-#     plt.xlim([0, 10])
-#     plt.ylim([0, 10])
-#
-# plt.scatter(centers[:,0], centers[:,1], marker="x", color='r')
-# plt.show()
+    def write_clusters(self):
+        with open(self.cluster_file, 'w') as f:
+            json.dump(self.clusters, f, indent=4)
+        f.close()
+
+    def delete_cluster_file(self):
+        os.remove(self.cluster_file)
+
+    def delete_log_file(self):
+        os.remove(self.logfile)

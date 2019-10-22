@@ -5,19 +5,21 @@ import subprocess
 import os
 import pandas as pd
 import json
+from common_helpers import *
 
+## store it in the CLOUD
+devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
+bucket_name = "speaker_timings"
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-base_path', '--base_path', help='base folder path of dataset', required=True)
-parser.add_argument('-output_path', '--output_path', default='output directory to save cropped intervals', required=True)
-parser.add_argument('-speaker', '--speaker', default='optionally, run only on specific speaker', required=False)
+## don't think this is necessary...?
+# from apiclient.discovery import build
+# service = build('language', 'v1', developerKey=devKey)
+# collection = service.documents()
 
-args = parser.parse_args()
-
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
 
 ## read data from gesture data area
 ## transform into json I suppose
-
 def convert_time_to_seconds(time):
     # might not work with longer ones?
     intervals = time.split(':')
@@ -25,14 +27,22 @@ def convert_time_to_seconds(time):
     seconds = (float(intervals[0]) * 3600) + (float(intervals[1]) * 60) + float(intervals[2])
     return seconds
 
-
-def write_data(fp, data):
-    with open(fp, 'w') as f:
-        json.dump(data, f, indent=4)
-    f.close()
-
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-base_path', '--base_path', help='base folder path of dataset', required=True)
+    parser.add_argument('-speaker', '--speaker', default='optionally, run only on specific speaker', required=False)
+
+    args = parser.parse_args()
+    output_path = args.base_path + '/' + args.speaker + '/timings.json'
+    output_name = args.speaker + '_timings.json'
+
+    if(os.path.exists(output_path)):
+        print "found timings path for %s, skipping parsing." % args.speaker
+        upload_blob(bucket_name, output_name, output_path)
+        exit()
+
     phrases = []
     print "loading intervals"
     df_intervals = pd.read_csv(os.path.join(args.base_path, 'intervals_df.csv'))
@@ -67,4 +77,5 @@ if __name__ == "__main__":
             print(e)
             print("couldn't save interval: %s"%interval)
 
-    write_data(args.output_path, {"phrases": phrases})
+    write_data(output_path, {"phrases": phrases})
+    upload_blob(bucket_name, output_name, output_path)
