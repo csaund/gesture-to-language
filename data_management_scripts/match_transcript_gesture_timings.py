@@ -25,6 +25,8 @@ gesture_timings_bucket = "speaker_timings"
 transcript_bucket = "audio_transcript_buckets_1"
 full_bucket = "full_timings_with_transcript_bucket"
 
+## TODO get full transcript and work across syntacic units
+
 def get_speaker_timings(speaker):
     print "getting timings for %s" % speaker
     outfile_path = "tmp.json"

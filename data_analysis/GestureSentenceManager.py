@@ -3,6 +3,7 @@ from SpeakerGestureGetter import *
 from GestureClusterer import *
 import json
 import os
+from termcolor import colored
 
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
@@ -47,9 +48,15 @@ class GestureSentenceManager():
     def print_sentences_by_cluster(self, cluster_id):
         sents = self.get_sentences_by_cluster(cluster_id)
         empties = 0
+        c = 0
+        colors = ['red', 'blue']
         for i, s in enumerate(sents):
             if s:
-                print "%s. %s" % (i, s)
+                print colored("%s. %s" % (i, s), colors[c])
+                if c:
+                    c = 0
+                else:
+                    c = 1
             else:
                 empties += 1
         print "Along with %s empty strings." % empties
@@ -86,3 +93,26 @@ class GestureSentenceManager():
     def upload_clusters(self):
         self.Clusterer.write_clusters()
         upload_blob(self.cluster_bucket_name, self.Clusterer.cluster_file, self.cluster_bucket_name)
+
+
+
+
+
+
+
+def print_sentences_by_cluster(GSM, cluster_id):
+    sents = GSM.get_sentences_by_cluster(cluster_id)
+    empties = 0
+    c = 0
+    colors = ['red', 'blue']
+    for i, s in enumerate(sents):
+        if s:
+            print colored("%s. %s" % (i, s), colors[c])
+            if c:
+                c = 0
+            else:
+                c = 1
+        else:
+            empties += 1
+    print "Along with %s empty strings." % empties
+    print

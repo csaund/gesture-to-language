@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import uuid
 import operator
+import random
 # from analyze_frames import *
 import time
 from tqdm import tqdm
@@ -64,7 +65,10 @@ from common_helpers import *
 ## Now since we're only working within a single gesture, don't need to worry about
 ## Mismatched timings anymore.
 
+## see which feature is most influential in clustering
 
+## TODO limit number of clusters
+## check distance for clusters with only 1
 
 ###############################################################
 ####################### DIY Clustering ########################
@@ -418,6 +422,26 @@ class GestureClusterer():
         ]
         return gesture_features
 
+    # TODO manually make some features more/less important
+    # report importance of each individual feature in clustering
+    # try seeding with some gestures? -- bias, but since we're doing it based on prior gesture research it's ok
+
+    # TODO check what audio features are in original paper
+
+    ## Audio for agent is bad -- TTS is garbaggio
+    ## assumes there is good prosody in voice (TTS there isn't)
+
+    ## Co-optimize gesture-language clustering (learn how)
+    ## KL distance for two clusters?
+
+    ## Frame intro of paper
+
+    # learn similarity of sentences from within one gesture
+    # how to map gesture clusters <--> sentence clusters
+    ## in the end want to optimize overlapping clusters btw gesture/language
+
+    # probabilistic mapping of sentence (from gesture) to sentence cluster
+
     ########################################################
     ####################### Helpers ########################
     ########################################################
@@ -458,6 +482,23 @@ class GestureClusterer():
                 f.write("%s\n" % l)
         f.close()
 
+    def get_closest_gesture_to_centroid(self, cluster_id):
+        c = self.clusters[cluster_id]
+        cent = c['centroid']
+        min_d = 1000
+        g_id = 0
+        for g in c['gestures']:
+            dist = self._calculate_distance_between_vectors(g['feature_vec'], cent)
+            if dist < min_d:
+                g_id = g['id']
+                dist = min_d
+        return g_id
+
+    def get_random_gesture_id_from_cluster(self, cluster_id):
+        c = self.clusters[cluster_id]
+        i = random.randrange(0, len(c['gestures']))
+        return c['gestures'][i]['id']
+
     def write_clusters(self):
         with open(self.cluster_file, 'w') as f:
             json.dump(self.clusters, f, indent=4)
@@ -474,3 +515,24 @@ class GestureClusterer():
         i = random.randrange(0, len(self.agd))
         j = random.randrange(0, len(self.agd))
         return self._calculate_distance_between_vectors(self.agd[i]['feature_vec'], self.agd[j]['feature_vec'])
+
+
+#
+#
+# def get_closest_gesture_to_centroid(GSM, cluster_id):
+#     c = GSM.Clusterer.clusters[cluster_id]
+#     cent = c['centroid']
+#     min_d = 1000
+#     g_id = 0
+#     for g in c['gestures']:
+#         dist = GSM.Clusterer._calculate_distance_between_vectors(g['feature_vec'], cent)
+#         if dist < min_d:
+#             g_id = g['id']
+#             dist = min_d
+#     return g_id
+#
+#
+# def get_random_gesture_id_from_cluster(GSM, cluster_id):
+#     c = GSM.Clusterer.clusters[cluster_id]
+#     i = random.randrange(0, len(c['gestures']))
+#     return c['gestures'][i]['id']
