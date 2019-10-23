@@ -33,4 +33,31 @@ $ get_single_gesture_from_timings(id, video_base_path, timings_path)
 to play with single gesture data.
 
 
-Remember to delete gesture-to-lang-copy 
+Remember to delete gesture-to-lang-copy
+
+
+
+TODO
+- figure out gesture cluster <--> sentence cluster mapping -- how to do?
+- see which feature is most influential in clustering
+- limit number of clusters
+- check distance for clusters with only 1 feature
+- manually make some features more/less important
+- report importance of each individual feature in clustering
+- try seeding with some gestures? -- bias, but since we're doing it based on prior gesture research it's ok
+
+    # TODO check what audio features are in original paper
+
+    ## Audio for agent is bad -- TTS is garbaggio
+    ## assumes there is good prosody in voice (TTS there isn't)
+
+    ## Co-optimize gesture-language clustering (learn how)
+    ## KL distance for two clusters?
+
+- Frame intro of paper
+
+- learn similarity of sentences from within one gesture
+    # how to map gesture clusters <--> sentence clusters
+    ## in the end want to optimize overlapping clusters btw gesture/language
+
+    # probabilistic mapping of sentence (from gesture) to sentence cluster
