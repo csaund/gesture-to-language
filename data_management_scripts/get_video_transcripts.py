@@ -184,9 +184,10 @@ def process_video_files(vid_base_path, transcript_base_path):
         vid_name = video_file.split(".mp4")[0]
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
         transcript_path = transcript_base_path + '/' + vid_name + '.json'
-
         transcript_name = vid_name + '.json'
 
+        if ".mkv." in output_audio_path:
+            continue
         #  get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
         (transcript, found_previous_transcript) = google_transcribe(output_audio_path)
         # will not rewrite previous file
@@ -198,7 +199,7 @@ def process_video_files(vid_base_path, transcript_base_path):
         print "Previous file found for %s. Not overwriting." % transcript_path
         upload_transcript(transcript_name, transcript_path)
 
-def get_wavs_from_video(vid_base_path, transcript_base_path):
+def get_wavs_from_video(vid_base_path, transcript_base_path, upload_audio):
     print "Generating wavs from video"
     all_video_files = os.listdir(vid_base_path)
     for video_file in tqdm(all_video_files):
@@ -208,7 +209,8 @@ def get_wavs_from_video(vid_base_path, transcript_base_path):
             continue
         get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
         ## TODO make this whole thing respond well to multiple video types
-        upload_audio(output_audio_path)
+        if upload_audio:
+            upload_audio(output_audio_path)
 
 
 def create_video_subdir(dir_path):
@@ -220,9 +222,9 @@ def create_video_subdir(dir_path):
         print ("Successfully created the directory %s " % dir_path)
 
 
-def get_video_transcripts(video_path, transcript_path):
+def get_video_transcripts(video_path, transcript_path, upload_audio):
     create_video_subdir(transcript_path)
-    get_wavs_from_video(video_path, transcript_path)
+    get_wavs_from_video(video_path, transcript_path, upload_audio)
     process_video_files(video_path, transcript_path)
 
 if __name__ == '__main__':
@@ -231,9 +233,10 @@ if __name__ == '__main__':
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-base_path', '--base_path', help='base folder path of dataset', required=True)
     parser.add_argument('-speaker', '--speaker', default='optionally, run only on specific speaker', required=False)
+    parser.add_argument('-upload_audio', '--upload_audio', default=False, required=False)
     args = parser.parse_args()
 
     vid_base_path = args.base_path + '/' + args.speaker + '/videos'
     transcript_path = args.base_path + '/' + args.speaker + '/transcripts'
 
-    get_video_transcripts(vid_base_path, transcript_path)
+    get_video_transcripts(vid_base_path, transcript_path, args.upload_audio)

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import uuid
 import operator
-from analyze_frames import *
+# from analyze_frames import *
 import time
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid

@@ -138,3 +138,4 @@ if __name__ == '__main__':
     add_transcript_data(args.speaker, args.base_path)
 
 # from match_transcript_gesture_timings import *
+# sudo python match_transcript_gesture_timings.py --base_path /Users/carolynsaund/github/gest-data/data --speaker rock

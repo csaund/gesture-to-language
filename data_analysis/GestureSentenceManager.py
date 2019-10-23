@@ -1,8 +1,14 @@
 #!/usr/bin/env pythons
 from SpeakerGestureGetter import *
 from GestureClusterer import *
-from common_helpers import *
+import json
+import os
 
+devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
+
+from google.cloud import storage
+from common_helpers import *
 
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
@@ -10,6 +16,8 @@ from common_helpers import *
 # GSM = GestureSentenceManager("/Users/carolynsaund/github/gest-data/data", "rock")
 # GSM.load_gestures()
 # GSM.cluster_gestures()
+# report = GSM.report_clusters()
+# GSM.print_sentences_by_cluster(0)
 
 ## manages gesture and sentence stuff.
 class GestureSentenceManager():
