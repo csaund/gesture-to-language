@@ -119,11 +119,13 @@ class GestureClusterer():
                 self._log("nearest cluster distance was %s" % nearest_cluster_dist)
                 self._log("creating new cluster for gesture %s -- %s" % (g['id'], i))
                 self._create_new_cluster(g)
+                g['cluster_id'] = self.c_id
             else:
                 self._log("fitting in cluster %s" % nearest_cluster_id)
                 self._log("nearest cluster distance was %s" % nearest_cluster_dist)
                 self.clusters[nearest_cluster_id]['gestures'].append(g)
                 self._update_cluster_centroid(nearest_cluster_id)
+                g['cluster_id'] = neartest_cluster_id
             end = time.time()
             self._log(str(end-start))
 
