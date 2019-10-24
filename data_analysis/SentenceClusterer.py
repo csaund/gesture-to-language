@@ -19,6 +19,7 @@ from sklearn import cluster
 from sklearn import metrics
 from sklearn.manifold import TSNE
 
+
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
 from common_helpers import *
@@ -32,7 +33,7 @@ class SentenceClusterer():
     def __init__(self, speaker):
         transcript_bucket = "full_timings_with_transcript_bucket"
         speaker_transcript_name = "%s_timings_with_transcript.json" % speaker
-        temp_file = "tempfile.json"
+        temp_file = "sentence_cluster_tempfile.json"
         # TODO make all of this more seamless -- make the temp file somewhere else
         # and delete it there too (like in common_helpers.py)
         download_blob(transcript_bucket, speaker_transcript_name, temp_file)
