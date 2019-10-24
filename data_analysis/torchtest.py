@@ -172,9 +172,7 @@ print "C2 similarity: %s " % (np.inner(c2_test, c2_mat)).max()
 class SentenceClusterer():
     def __init__(self):
         print "oh boy we're in for it now."
-        self.initialize_encoder()
         self.embed_fn = self.initialize_encoder("/tmp/sentence-encoder")
-
 
     def initialize_encoder(self, module):
         with tf.compat.v1.Graph().as_default():
