@@ -71,6 +71,9 @@ class SentenceClusterer():
     def get_sentence_embedding(self, s):
         return self.embed_fn([s])
 
+    def get_paragraph_embedding(self, p):
+        return self.embed_fn(p)
+
     # takes two strings
     def get_sentence_similarity(self, s1, s2):
         s1_mat = self.embed_fn([s1])

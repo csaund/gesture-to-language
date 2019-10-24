@@ -164,7 +164,8 @@ class SpeakerGestureGetter():
         plt.show()
 
 
-    def get_gesture_by_id(self, d_id, all_speaker_gesture_data):
+    def get_gesture_by_id(self, d_id, all_speaker_gesture_data=None):
+        agd = all_speaker_gesture_data if all_speaker_gesture_data else self.all_gesture_data
         dat = [d for d in all_speaker_gesture_data if d['id'] == d_id]
         # because this returns list of matching items, and only one item will match,
         # we just take the first element and use that.

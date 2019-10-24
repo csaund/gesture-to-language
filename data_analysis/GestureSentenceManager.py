@@ -89,12 +89,27 @@ class GestureSentenceManager():
     def get_gestures_by_ids(self, g_ids):
         self.get_transcript()
         p = self.gesture_transcript['phrases']
+        dat = [d for d in p if d['id'] in g_ids]
+        return dat
 
     def upload_clusters(self):
         self.Clusterer.write_clusters()
         upload_blob(self.cluster_bucket_name, self.Clusterer.cluster_file, self.cluster_bucket_name)
 
 
+    ## search for a specific phrase that may appear in the transcript of these gestures.
+    def get_gesture_clusters_by_transcript_phrase(self, phrase):
+        clusters_containing_phrase = []
+        for k in self.Clusterer.clusters:
+            g_ids = self.Clusterer.get_gesture_ids_by_cluster(k)
+            gests = self.get_gestures_by_ids(g_ids)
+            transcripts = [g['phase']['transcript'] for g in gests]
+            count = 0
+            for t in transcripts:
+                if phrase in t:
+                    count += 1
+            if count:
+                clusters_containing_phrase.append((k, count))
 
 
 

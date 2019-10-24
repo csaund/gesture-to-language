@@ -186,6 +186,11 @@ class GestureClusterer():
             min_clust['gestures'].append(g)
         return
 
+    def get_sentences_by_cluster(self, cluster_id):
+        c = self.clusters[cluster_id]
+        sents = [g['phase']['transcript'] for g in c['gestures']]
+        return sents
+
     def get_gesture_ids_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
         ids = [g['id'] for g in c['gestures']]
