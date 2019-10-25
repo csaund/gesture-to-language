@@ -77,6 +77,7 @@ class GestureSentenceManager():
                       "%s_timings_with_transcript.json" % self.speaker,
                       fp)
         self.gesture_transcript = read_data(fp)
+        os.remove(fp)
 
     def get_gesture_by_id(self, g_id):
         self.get_transcript()

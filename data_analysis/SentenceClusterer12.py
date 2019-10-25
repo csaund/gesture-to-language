@@ -17,12 +17,13 @@ from nltk import sentiment as sent
 
 tf.compat.v1.disable_eager_execution()
 
-MAX_CLUSTER_SIZE = 50
+MAX_CLUSTER_SIZE = 70
 CLUSTER_SIMILARITY_TOLERANCE = 0.6
 
 # from NewSentenceClusterer import *
 # SC = SentenceClusterer("/Users/carolynsaund/github/gest-data/data", "rock")
 # SC.cluster_sentences(gd)
+# if you previously saved a run of agd from this, so you don't need to get sentence embeddings again.
 
 class SentenceClusterer():
     def __init__(self, base_path, speaker, seeds=[]):
@@ -287,121 +288,6 @@ class SentenceClusterer():
 
 
 
-    def _log(self, s):
-        self.logs.append(s)
-
-    def _write_logs(self):
-        with open(self.logfile, 'w') as f:
-            for l in self.logs:
-                f.write("%s\n" % l)
-        f.close()
-
-    ## TODO make use of these?
-    #############################################################
-    ####### EVERYTHING BELOW HERE IS NOT IN USE YET #############
-    def wnexpand(set):
-          res=Set(set)
-          #print res
-          lst = []
-          for w in set:
-           for ss in wn.synsets(morph(w)):
-             top = Set(ss.lemma_names())
-             res = res.union(top)
-             for sim in ss.similar_tos():
-                 res=res.union(Set(sim.lemma_names()))
-          for u in res:
-           lst.append(u.encode('ascii','ignore'))
-          return lst
-
-
-    def morph(w0):
-          u = wn.morphy(str(w0))
-          if (u == None):
-           #print w0
-           return w0
-          else:
-           w = u.encode('ascii','ignore')
-           print w
-           return w
-
-    def get_hypernyms(w0):
-        syn = wn.synsets(w0)
-
-        ## dunno when TF this happens
-        if type(syn) != list:
-            return syn.name()
-        ## sometimes it's an empty list??
-        elif len(syn) == 0:
-            return []
-
-        # most of the time I want hypernyms tho
-        hyp_list = list(set([hy.name().split('.')[0] for hy in syn]))
-        return hyp_list
-
-
-    def get_sentence_sentiment_vector(self, sent, sentiment_model):
-        sent_vec =[]
-        numw = 0
-        for w in sent:
-            try:
-                if numw == 0:
-                    sent_vec = sentiment_model[w]
-                else:
-                    sent_vec = np.add(sent_vec, sentiment_model[w])
-                numw+=1
-            except:
-                pass
-        return np.asarray(sent_vec) / numw
-
-
-    def cluster_by_sentiment(self, transcript=None):
-        print "clustering by sentiment"
-        trans = transcript if transcript else self.transcript_with_timings
-        sentences = self.get_sentences(trans)
-        sentences = self._drop_empties(sentences)
-        sentiment_model = Word2Vec(sentences, min_count=1)
-        X= map(lambda s: self.get_sentence_sentiment_vector(s, sentiment_model), sentences)
-
-        kclusterer = KMeansClusterer(NUM_CLUSTERS, distance=nltk.cluster.util.cosine_distance, repeats=25)
-        assigned_clusters = kclusterer.cluster(X, assign_clusters=True)
-
-        kmeans_sentiment = cluster.KMeans(n_clusters=NUM_CLUSTERS)
-        kmeans_sentiment.fit(X)
-
-        labels = kmeans_sentiment.labels_
-        centroids = kmeans_sentiment.cluster_centers_
-
-        silhouette_score = metrics.silhouette_score(X, labels, metric='euclidean')
-        model = TSNE(n_components=2, random_state=0)
-        np.set_printoptions(suppress=True)
-        Y=model.fit_transform(X)
-        plt.scatter(Y[:, 0], Y[:, 1], c=assigned_clusters, s=290,alpha=.5)
-
-        for j in range(len(sentences)):
-           plt.annotate(assigned_clusters[j],xy=(Y[j][0], Y[j][1]),xytext=(0,0),textcoords='offset points')
-           print ("%s %s" % (assigned_clusters[j],  sentences[j]))
-
-        return kmeans_sentiment
-
-    def _drop_empties(self, v):
-        print "Dropping %s empty strings." % v.count('')
-        return [i for i in v if i != '']
-
-    def cluster_by_tfidf(self, transcript):
-        print "clustering by hypernym"
-        hypernyms = self.get_hypernyms(transcript)
-
-        hypes_list = [x['hypernyms'] for x in hypernyms]
-        joined_lists = [' '.join(l) for l in hypes_list]
-
-        tfidf_vectorizer = TfidfVectorizer()
-        tfidf = tfidf_vectorizer.fit_transform(joined_lists)
-
-        tdidf_kmeans = KMeans(n_clusters=NUM_CLUSTERS).fit(tfidf)
-
-        return tdidf_kmeans
-
-
     def count_videos_with_phrase(self, phrase):
         vids = []
         p = self.agd['phrases']
@@ -415,33 +301,116 @@ class SentenceClusterer():
         return set(zip(vids, counts))
 
 
-def _add_gesture_to_cluster(sc, g, cluster_id):
-    sc.clusters[cluster_id]['gestures'].append(g)
-    sc.clusters[cluster_id]['sentences'].append(g['phase']['transcript'])
-    if len(sc.clusters[cluster_id]['sentences']) > MAX_CLUSTER_SIZE:
-        sc._break_cluster(cluster_id)
-    else:
-        # this is like updating the centroid.
-        sc.clusters[cluster_id]['cluster_embedding'] = sc.embed_fn(sc.clusters[cluster_id]['sentences'])
-        g['sentence_cluster_id'] = cluster_id
+    def _log(self, s):
+        self.logs.append(s)
 
+    def _write_logs(self):
+        with open(self.logfile, 'w') as f:
+            for l in self.logs:
+                f.write("%s\n" % l)
+        f.close()
 
-def _recluster_singletons(sc):
-    clusters = sc.clusters
-    single_cluster_ids = [sc.clusters[c]['cluster_id'] for c in sc.clusters.keys() if len(sc.clusters[c]['sentences']) == 1]
-    for single_id in single_cluster_ids:
-        (most_sim_cluster_id, sim) = sc._get_most_similar_cluster(sc.clusters[single_id]['gestures'][0])
-        _add_gesture_to_cluster(sc, sc.clusters[single_id]['gestures'][0], most_sim_cluster_id)
-        del sc.clusters[single_id]
-
-
-def find_cluster_ids_for_phrase(sc, phrase):
-    c_ids = []
-    for c in sc.clusters.keys():
-        count = 0
-        for s in sc.clusters[c]['sentences']:
-            if phrase in s.lower():
-                count += 1
-        if count:
-            c_ids.append((sc.clusters[c]['cluster_id'], count))
-    return c_ids
+    ## TODO make use of these?
+    #############################################################
+    ####### EVERYTHING BELOW HERE IS NOT IN USE YET #############
+    # def wnexpand(set):
+    #       res=Set(set)
+    #       #print res
+    #       lst = []
+    #       for w in set:
+    #        for ss in wn.synsets(morph(w)):
+    #          top = Set(ss.lemma_names())
+    #          res = res.union(top)
+    #          for sim in ss.similar_tos():
+    #              res=res.union(Set(sim.lemma_names()))
+    #       for u in res:
+    #        lst.append(u.encode('ascii','ignore'))
+    #       return lst
+    #
+    #
+    # def morph(w0):
+    #       u = wn.morphy(str(w0))
+    #       if (u == None):
+    #        #print w0
+    #        return w0
+    #       else:
+    #        w = u.encode('ascii','ignore')
+    #        print w
+    #        return w
+    #
+    # def get_hypernyms(w0):
+    #     syn = wn.synsets(w0)
+    #
+    #     ## dunno when TF this happens
+    #     if type(syn) != list:
+    #         return syn.name()
+    #     ## sometimes it's an empty list??
+    #     elif len(syn) == 0:
+    #         return []
+    #
+    #     # most of the time I want hypernyms tho
+    #     hyp_list = list(set([hy.name().split('.')[0] for hy in syn]))
+    #     return hyp_list
+    #
+    #
+    # def get_sentence_sentiment_vector(self, sent, sentiment_model):
+    #     sent_vec =[]
+    #     numw = 0
+    #     for w in sent:
+    #         try:
+    #             if numw == 0:
+    #                 sent_vec = sentiment_model[w]
+    #             else:
+    #                 sent_vec = np.add(sent_vec, sentiment_model[w])
+    #             numw+=1
+    #         except:
+    #             pass
+    #     return np.asarray(sent_vec) / numw
+    #
+    #
+    # def cluster_by_sentiment(self, transcript=None):
+    #     print "clustering by sentiment"
+    #     trans = transcript if transcript else self.transcript_with_timings
+    #     sentences = self.get_sentences(trans)
+    #     sentences = self._drop_empties(sentences)
+    #     sentiment_model = Word2Vec(sentences, min_count=1)
+    #     X= map(lambda s: self.get_sentence_sentiment_vector(s, sentiment_model), sentences)
+    #
+    #     kclusterer = KMeansClusterer(NUM_CLUSTERS, distance=nltk.cluster.util.cosine_distance, repeats=25)
+    #     assigned_clusters = kclusterer.cluster(X, assign_clusters=True)
+    #
+    #     kmeans_sentiment = cluster.KMeans(n_clusters=NUM_CLUSTERS)
+    #     kmeans_sentiment.fit(X)
+    #
+    #     labels = kmeans_sentiment.labels_
+    #     centroids = kmeans_sentiment.cluster_centers_
+    #
+    #     silhouette_score = metrics.silhouette_score(X, labels, metric='euclidean')
+    #     model = TSNE(n_components=2, random_state=0)
+    #     np.set_printoptions(suppress=True)
+    #     Y=model.fit_transform(X)
+    #     plt.scatter(Y[:, 0], Y[:, 1], c=assigned_clusters, s=290,alpha=.5)
+    #
+    #     for j in range(len(sentences)):
+    #        plt.annotate(assigned_clusters[j],xy=(Y[j][0], Y[j][1]),xytext=(0,0),textcoords='offset points')
+    #        print ("%s %s" % (assigned_clusters[j],  sentences[j]))
+    #
+    #     return kmeans_sentiment
+    #
+    # def _drop_empties(self, v):
+    #     print "Dropping %s empty strings." % v.count('')
+    #     return [i for i in v if i != '']
+    #
+    # def cluster_by_tfidf(self, transcript):
+    #     print "clustering by hypernym"
+    #     hypernyms = self.get_hypernyms(transcript)
+    #
+    #     hypes_list = [x['hypernyms'] for x in hypernyms]
+    #     joined_lists = [' '.join(l) for l in hypes_list]
+    #
+    #     tfidf_vectorizer = TfidfVectorizer()
+    #     tfidf = tfidf_vectorizer.fit_transform(joined_lists)
+    #
+    #     tdidf_kmeans = KMeans(n_clusters=NUM_CLUSTERS).fit(tfidf)
+    #
+    #     return tdidf_kmeans

@@ -84,11 +84,12 @@ def write_transcript(transcript, transcript_path):
 
 
 def upload_transcript(transcript_name, transcript_path):
-    print ("uploading %s from %s to %s" % (transcript_name, transcript_path, transcript_bucketname))
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(transcript_bucketname)
-    blob = bucket.blob(transcript_name)
-    blob.upload_from_filename(transcript_path)
+    self.upload_blob(transcript_bucketname, transcript_path, transcript_name)
+    # print ("uploading %s from %s to %s" % (transcript_name, transcript_path, transcript_bucketname))
+    # storage_client = storage.Client()
+    # bucket = storage_client.get_bucket(transcript_bucketname)
+    # blob = bucket.blob(transcript_name)
+    # blob.upload_from_filename(transcript_path)
 
 
 def upload_audio(audio_file_path):
