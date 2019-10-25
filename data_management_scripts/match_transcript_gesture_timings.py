@@ -53,7 +53,7 @@ def match_transcript_to_timing(timings):
     all_videos = list(set([p['phase']['video_fn'] for p in phrases]))
 
     # avoid loading all the transcripts into memory at once
-    for v in all_videos:
+    for v in tqdm(all_videos):
         trans = ""
         try:
             trans = get_video_transcript(v)
@@ -75,7 +75,7 @@ def match_transcript_to_timing(timings):
         gestures = [x for x in phrases if x['phase']['video_fn'] == v]
         gestures.sort(key=sort_start_time)
         print "Getting gestures for video %s" % v
-        for g in tqdm(gestures):
+        for g in gestures:
             gesture_words = []
             p = g['phase']
             end = p['end_seconds']
