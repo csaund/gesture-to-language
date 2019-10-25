@@ -165,7 +165,7 @@ class SentenceClusterer():
                 furthest_sentence_g = g
                 min_sim = sim
         # then get the 20 sentences closest to THAT sentence.
-        sorted(gs, key=lambda x: self.get_gesture_sentence_similarity(x, g), reverse=True)
+        gs.sort(key=lambda x: self.get_gesture_sentence_similarity(x, g), reverse=True)
         c1_gs = gs[:(len(gs)/2)]
         c2_gs = gs[(len(gs)/2):]
         self._create_new_cluster_by_gestures(c1_gs)
@@ -400,6 +400,19 @@ class SentenceClusterer():
         tdidf_kmeans = KMeans(n_clusters=NUM_CLUSTERS).fit(tfidf)
 
         return tdidf_kmeans
+
+
+    def count_videos_with_phrase(self, phrase):
+        vids = []
+        p = self.agd['phrases']
+        for g in p:
+            if phrase in g['phase']['transcript'].lower():
+                vids.append(g['phase']['video_fn'])
+        counts = []
+        for vid in vids:
+            counts.append(vids.count(vid))
+
+        return set(zip(vids, counts))
 
 
 def _add_gesture_to_cluster(sc, g, cluster_id):
