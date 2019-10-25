@@ -263,7 +263,7 @@ class SentenceClusterer():
         v = []
         for c in self.clusters:
             v.append(len(self.clusters[c]['sentences']))
-        print "cluster lengths: %s" % v
+        # print "cluster lengths: %s" % v
         for k in self.clusters:
             sim = np.inner(g['sentence_embedding'], self.clusters[k]['cluster_embedding']).max()
             if sim > max_sim:
