@@ -1,4 +1,5 @@
 *.mp4
+*.txt
 *.wav
 *.pyc
 rock-clusters.json

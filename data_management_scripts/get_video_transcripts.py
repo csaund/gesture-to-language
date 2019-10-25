@@ -166,8 +166,8 @@ def google_transcribe(audio_file_path):
     return (transcript, found_previous_transcript)
 
 
-def get_audio_from_video(vid_name, id_base_path, transcript_path):
-    input_vid_path = vid_base_path + '/' + vid_name + '.mp4'
+def get_audio_from_video(vid_name, id_base_path, transcript_path, mp4_or_mkv=".mp4"):
+    input_vid_path = vid_base_path + '/' + vid_name + mp4_or_mkv
     output_audio_path = transcript_path + '/' + vid_name + '.wav'
     if(os.path.exists(output_audio_path)):
         return
@@ -204,11 +204,12 @@ def get_wavs_from_video(vid_base_path, transcript_base_path, upload_audio):
     print "Generating wavs from video"
     all_video_files = os.listdir(vid_base_path)
     for video_file in tqdm(all_video_files):
-        vid_name = video_file.split(".mp4")[0]
+        mp4_or_mkv = '.mp4' if ".mp4" in video_file else ".mkv"
+        vid_name = video_file.split(".mp4")[0].split(".mkv")[0]
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
-        if ".mkv." in output_audio_path:
-            continue
-        get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
+        # if ".mkv." in output_audio_path:
+        #     continue
+        get_audio_from_video(vid_name, vid_base_path, transcript_base_path, mp4_or_mkv)
         ## TODO make this whole thing respond well to multiple video types
         if upload_audio:
             upload_audio(output_audio_path)
