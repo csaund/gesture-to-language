@@ -17,7 +17,7 @@ from nltk import sentiment as sent
 
 tf.compat.v1.disable_eager_execution()
 
-MAX_CLUSTER_SIZE = 70
+MAX_CLUSTER_SIZE = 90
 CLUSTER_SIMILARITY_TOLERANCE = 0.6
 
 # from NewSentenceClusterer import *
@@ -207,18 +207,6 @@ class SentenceClusterer():
         # print "time to create new cluster: %s" % str(e-s)
         self.clusters[new_cluster_id] = c
 
-
-    def find_cluster_ids_for_phrase(self, phrase):
-        c_ids = []
-        for c in self.clusters.keys():
-            count = 0
-            for s in self.clusters[c]['sentences']:
-                if phrase in s.lower():
-                    count += 1
-            if count:
-                c_ids.append((self.clusters[c]['cluster_id'], count))
-        return c_ids
-
     def _create_new_cluster(self, seed_gest):
         s = time.time()
         self._log("creating new cluster for gesture %s" % seed_gest['id'])
@@ -291,14 +279,33 @@ class SentenceClusterer():
     def count_videos_with_phrase(self, phrase):
         vids = []
         p = self.agd['phrases']
+        total = 0
         for g in p:
             if phrase in g['phase']['transcript'].lower():
                 vids.append(g['phase']['video_fn'])
+                total += 1
         counts = []
         for vid in vids:
             counts.append(vids.count(vid))
+        print "total occurances: %s" % total
+        print len(list(set(vids)))
+        return list(set(zip(vids, counts))).sorted(key=lambda x: x[1])
 
-        return set(zip(vids, counts))
+
+    def find_cluster_ids_for_phrase(self, phrase):
+        c_ids = []
+        total = 0
+        for c in self.clusters.keys():
+            count = 0
+            for s in self.clusters[c]['sentences']:
+                if phrase in s.lower():
+                    count += 1
+            if count:
+                c_ids.append((self.clusters[c]['cluster_id'], count))
+                total += count
+
+        print "total occurances: %s" % total
+        return c_ids.sorted(key=lambda x: x[1])
 
 
     def _log(self, s):
