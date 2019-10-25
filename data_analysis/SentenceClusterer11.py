@@ -206,6 +206,18 @@ class SentenceClusterer():
         # print "time to create new cluster: %s" % str(e-s)
         self.clusters[new_cluster_id] = c
 
+
+    def find_cluster_ids_for_phrase(self, phrase):
+        c_ids = []
+        for c in self.clusters.keys():
+            count = 0
+            for s in self.clusters[c]['sentences']:
+                if phrase in s.lower():
+                    count += 1
+            if count:
+                c_ids.append((self.clusters[c]['cluster_id'], count))
+        return c_ids
+
     def _create_new_cluster(self, seed_gest):
         s = time.time()
         self._log("creating new cluster for gesture %s" % seed_gest['id'])
@@ -408,3 +420,15 @@ def _recluster_singletons(sc):
         (most_sim_cluster_id, sim) = sc._get_most_similar_cluster(sc.clusters[single_id]['gestures'][0])
         _add_gesture_to_cluster(sc, sc.clusters[single_id]['gestures'][0], most_sim_cluster_id)
         del sc.clusters[single_id]
+
+
+def find_cluster_ids_for_phrase(sc, phrase):
+    c_ids = []
+    for c in sc.clusters.keys():
+        count = 0
+        for s in sc.clusters[c]['sentences']:
+            if phrase in s.lower():
+                count += 1
+        if count:
+            c_ids.append((sc.clusters[c]['cluster_id'], count))
+    return c_ids
