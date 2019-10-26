@@ -1,6 +1,7 @@
 #!/usr/bin/env pythons
 from SpeakerGestureGetter import *
 from GestureClusterer import *
+from SentenceClusterer import *
 import json
 import os
 from termcolor import colored
@@ -28,13 +29,18 @@ class GestureSentenceManager():
         self.base_path = base_path
         self.speaker = speaker
         self.SpeakerGestures = SpeakerGestureGetter(base_path, speaker)
-        # self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
         self.cluster_bucket_name = "%s_clusters" % speaker
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
         self.gesture_transcript = None
         self.gesture_sentence_clusters = {}
         self.get_transcript()
+
+
+    def _initialize_sentence_clusterer(self):
+        self.SentenceClusterer = SentenceClusterer(self.base_path, self.speaker)
         # now we have clusters, now need to get the corresponding sentences for those clusters.
+    def cluster_sentences_gesture_independent(self):
+        self.SentenceClusterer.cluster_gestures()
 
     def report_clusters(self):
         self.GestureClusterer.report_clusters()
@@ -73,10 +79,10 @@ class GestureSentenceManager():
     def get_sentence_clusters_by_gesture_clusters(self):
         if(self.gesture_sentence_clusters):
             return self.gesture_sentence_clusters
-
         for k in self.GestureClusterer.clusters:
-            self.gesture_sentence_clusters[k] = self.SentenceClusterer.create_new_cluster_by_gestures(self.GestureClusterer.clusters[k]['gestures'])
-
+            g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gestures']]
+            gests = self.get_gestures_by_ids(g_ids)
+            self.gesture_sentence_clusters[k] = self.SentenceClusterer.create_new_cluster_by_gestures(gests)
         # well now we have the sentence clusters for the gestures... can compare some stuff?
 
     def get_transcript(self):
@@ -142,3 +148,13 @@ def print_sentences_by_cluster(GSM, cluster_id):
             empties += 1
     print "Along with %s empty strings." % empties
     print
+
+
+
+def get_sentence_clusters_by_gesture_clusters(GSM):
+    if(GSM.gesture_sentence_clusters):
+        return GSM.gesture_sentence_clusters
+    for k in GSM.GestureClusterer.clusters:
+        g_ids = [g['id'] for g in GSM.GestureClusterer.clusters[k]['gestures']]
+        gests = GSM.get_gestures_by_ids(g_ids)
+        GSM.gesture_sentence_clusters[k] = GSM.SentenceClusterer._create_new_cluster_by_gestures(gests)
