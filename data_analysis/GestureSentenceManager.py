@@ -28,22 +28,23 @@ class GestureSentenceManager():
         self.base_path = base_path
         self.speaker = speaker
         self.SpeakerGestures = SpeakerGestureGetter(base_path, speaker)
-        # self.Clusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
+        # self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
         self.cluster_bucket_name = "%s_clusters" % speaker
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
         self.gesture_transcript = None
+        self.gesture_sentence_clusters = {}
         self.get_transcript()
         # now we have clusters, now need to get the corresponding sentences for those clusters.
 
     def report_clusters(self):
-        self.Clusterer.report_clusters()
+        self.GestureClusterer.report_clusters()
 
     def load_gestures(self):
         self.SpeakerGestures.perform_gesture_analysis()
 
     def cluster_gestures(self):
-        self.Clusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
-        self.Clusterer.cluster_gestures()
+        self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
+        self.GestureClusterer.cluster_gestures()
 
     def print_sentences_by_cluster(self, cluster_id):
         sents = self.get_sentences_by_cluster(cluster_id)
@@ -64,10 +65,19 @@ class GestureSentenceManager():
 
     def get_sentences_by_cluster(self, cluster_id):
         self.get_transcript()
-        gesture_ids = self.Clusterer.get_gesture_ids_by_cluster(cluster_id)
+        gesture_ids = self.GestureClusterer.get_gesture_ids_by_cluster(cluster_id)
         p = self.gesture_transcript['phrases']
         sentences = [d['phase']['transcript'] for d in p if d['id'] in gesture_ids]
         return sentences
+
+    def get_sentence_clusters_by_gesture_clusters(self):
+        if(self.gesture_sentence_clusters):
+            return self.gesture_sentence_clusters
+
+        for k in self.GestureClusterer.clusters:
+            self.gesture_sentence_clusters[k] = self.SentenceClusterer.create_new_cluster_by_gestures(self.GestureClusterer.clusters[k]['gestures'])
+
+        # well now we have the sentence clusters for the gestures... can compare some stuff?
 
     def get_transcript(self):
         if self.gesture_transcript:
@@ -94,15 +104,15 @@ class GestureSentenceManager():
         return dat
 
     def upload_clusters(self):
-        self.Clusterer.write_clusters()
-        upload_blob(self.cluster_bucket_name, self.Clusterer.cluster_file, self.cluster_bucket_name)
+        self.GestureClusterer.write_clusters()
+        upload_blob(self.cluster_bucket_name, self.GestureClusterer.cluster_file, self.cluster_bucket_name)
 
 
     ## search for a specific phrase that may appear in the transcript of these gestures.
     def get_gesture_clusters_by_transcript_phrase(self, phrase):
         clusters_containing_phrase = []
-        for k in self.Clusterer.clusters:
-            g_ids = self.Clusterer.get_gesture_ids_by_cluster(k)
+        for k in self.GestureClusterer.clusters:
+            g_ids = self.GestureClusterer.get_gesture_ids_by_cluster(k)
             gests = self.get_gestures_by_ids(g_ids)
             transcripts = [g['phase']['transcript'] for g in gests]
             count = 0

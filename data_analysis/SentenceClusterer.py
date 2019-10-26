@@ -169,8 +169,8 @@ class SentenceClusterer():
         gs.sort(key=lambda x: self.get_gesture_sentence_similarity(x, g), reverse=True)
         c1_gs = gs[:(len(gs)/2)]
         c2_gs = gs[(len(gs)/2):]
-        self._create_new_cluster_by_gestures(c1_gs)
-        self._create_new_cluster_by_gestures(c2_gs)
+        self.create_new_cluster_by_gestures(c1_gs)
+        self.create_new_cluster_by_gestures(c2_gs)
         del self.clusters[cluster_id]
 
     def _assign_feature_vectors(self, gesture_data=None):
@@ -192,7 +192,7 @@ class SentenceClusterer():
             del self.clusters[single_id]
 
 
-    def _create_new_cluster_by_gestures(self, gests):
+    def create_new_cluster_by_gestures(self, gests):
         new_cluster_id = self.c_id
         sents = [g['phase']['transcript'] for g in gests]
         self.c_id = self.c_id + 1
