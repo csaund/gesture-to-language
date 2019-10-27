@@ -131,30 +131,30 @@ class GestureSentenceManager():
 
 
 
-
-def print_sentences_by_cluster(GSM, cluster_id):
-    sents = GSM.get_sentences_by_cluster(cluster_id)
-    empties = 0
-    c = 0
-    colors = ['red', 'blue']
-    for i, s in enumerate(sents):
-        if s:
-            print colored("%s. %s" % (i, s), colors[c])
-            if c:
-                c = 0
-            else:
-                c = 1
-        else:
-            empties += 1
-    print "Along with %s empty strings." % empties
-    print
-
-
-
-def get_sentence_clusters_by_gesture_clusters(GSM):
-    if(GSM.gesture_sentence_clusters):
-        return GSM.gesture_sentence_clusters
-    for k in GSM.GestureClusterer.clusters:
-        g_ids = [g['id'] for g in GSM.GestureClusterer.clusters[k]['gestures']]
-        gests = GSM.get_gestures_by_ids(g_ids)
-        GSM.gesture_sentence_clusters[k] = GSM.SentenceClusterer._create_new_cluster_by_gestures(gests)
+#
+# def print_sentences_by_cluster(GSM, cluster_id):
+#     sents = GSM.get_sentences_by_cluster(cluster_id)
+#     empties = 0
+#     c = 0
+#     colors = ['red', 'blue']
+#     for i, s in enumerate(sents):
+#         if s:
+#             print colored("%s. %s" % (i, s), colors[c])
+#             if c:
+#                 c = 0
+#             else:
+#                 c = 1
+#         else:
+#             empties += 1
+#     print "Along with %s empty strings." % empties
+#     print
+#
+#
+#
+# def get_sentence_clusters_by_gesture_clusters(GSM):
+#     if(GSM.gesture_sentence_clusters):
+#         return GSM.gesture_sentence_clusters
+#     for k in GSM.GestureClusterer.clusters:
+#         g_ids = [g['id'] for g in GSM.GestureClusterer.clusters[k]['gestures']]
+#         gests = GSM.get_gestures_by_ids(g_ids)
+#         GSM.gesture_sentence_clusters[k] = GSM.SentenceClusterer._create_new_cluster_by_gestures(gests)

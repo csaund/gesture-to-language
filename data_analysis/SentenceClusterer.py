@@ -103,6 +103,10 @@ class SentenceClusterer():
         p_mat = self.clusters[cluster_id]['cluster_embedding']
         return np.inner(s_mat, p_mat).max()
 
+    def get_distance_between_clusters(self, c_id1, c_id2):
+        c1 = self.clusters[c_id1]['cluster_embedding']
+        c2 = self.clusters[c_id2]['cluster_embedding']
+        return np.inner(c1, c2).max()
 
     def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5):
         # if not self.has_assigned_feature_vecs:
