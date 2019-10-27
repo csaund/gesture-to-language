@@ -108,6 +108,11 @@ class SentenceClusterer():
         c2 = self.clusters[c_id2]['cluster_embedding']
         return np.inner(c1, c2).max()
 
+    def get_distance_between_sentence_groups(self, sents1, sents2):
+        c1 = self.embed_fn(sents1)
+        c2 = self.embed_fn(sents2)
+        return np.inner(c1, c2).max()
+
     def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5):
         # if not self.has_assigned_feature_vecs:
         #     self._assign_feature_vectors()
