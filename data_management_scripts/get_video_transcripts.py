@@ -171,7 +171,9 @@ def get_audio_from_video(vid_name, id_base_path, transcript_path, mp4_or_mkv=".m
     output_audio_path = transcript_path + '/' + vid_name + '.wav'
     if(os.path.exists(output_audio_path)):
         return
-    print "creating wav file"
+    print
+    print "creating wav file: %s" % output_audio_path
+    print
     command = ("ffmpeg -i %s -ab 160k -ac 2 -ar 48000 -vn %s" % (input_vid_path, output_audio_path))
     subprocess.call(command, shell=True)
     return
