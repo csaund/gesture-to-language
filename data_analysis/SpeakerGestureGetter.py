@@ -1,5 +1,5 @@
 #!/usr/bin/env pythons
-print "importing libs"
+print "importing for libs SpeakerGestureGetter"
 import argparse
 import pandas as pd
 import itertools
@@ -66,15 +66,10 @@ class SpeakerGestureGetter():
         i = files.index(m[0])
         #  print("starting at %s" % files[i])   # start at index of first frame
         l = len(files)
-        while is_within_time(s_key, e_key, files[i]) and i < len(files):
+        while i < len(files) and is_within_time(s_key, e_key, files[i]):
             dat = extract_txt_data(gesture_video_path, files[i])
             all_gesture_keys.append(dat) # TODO change this to pd
-            # shouldn't need this anymore since added check in while loop
-            # i+=1
-            # if(i >= len(files)):
-            #     print("WARNING: GOING BEYOND KEYPOINT TIMES: %s" % str(files[i-1]))
-            #     break
-        # print("ending at %s" % files[i-1]) # the -1 is a hack until I figure out why there's missing keypoint data
+            i+=1
         return all_gesture_keys
 
 
@@ -124,9 +119,12 @@ class SpeakerGestureGetter():
         phrases = timings['phrases']
         ## TODO try this out...?
         # all_gesture_data = [self.get_data_per_gesture(g, video_base_path + str(g['phase']['video_fn'].split('.')[0]) + '/') for g in phrases]
-
         l = len(timings['phrases'])
+        print "analyzing %s gestures" % l
+        i = 0
         for phase in tqdm(timings['phrases']):
+            # print i
+            # i += 1
             p = phase['phase']
             vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
             start = p['start_seconds']

@@ -84,7 +84,7 @@ def write_transcript(transcript, transcript_path):
 
 
 def upload_transcript(transcript_name, transcript_path):
-    self.upload_blob(transcript_bucketname, transcript_path, transcript_name)
+    upload_blob(transcript_bucketname, transcript_path, transcript_name)
     # print ("uploading %s from %s to %s" % (transcript_name, transcript_path, transcript_bucketname))
     # storage_client = storage.Client()
     # bucket = storage_client.get_bucket(transcript_bucketname)
@@ -182,13 +182,13 @@ def process_video_files(vid_base_path, transcript_base_path):
     all_video_files = os.listdir(vid_base_path)
     for video_file in tqdm(all_video_files):
         ## TODO simplify this
-        vid_name = video_file.split(".mp4")[0]
+        vid_name = video_file.split(".mp4")[0].split(".mkv")[0]
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
         transcript_path = transcript_base_path + '/' + vid_name + '.json'
         transcript_name = vid_name + '.json'
 
-        if ".mkv." in output_audio_path:
-            continue
+        # if ".mkv." in output_audio_path:
+        #     continue
         #  get_audio_from_video(vid_name, vid_base_path, transcript_base_path)
         (transcript, found_previous_transcript) = google_transcribe(output_audio_path)
         # will not rewrite previous file
@@ -200,7 +200,7 @@ def process_video_files(vid_base_path, transcript_base_path):
         print "Previous file found for %s. Not overwriting." % transcript_path
         upload_transcript(transcript_name, transcript_path)
 
-def get_wavs_from_video(vid_base_path, transcript_base_path, upload_audio):
+def get_wavs_from_video(vid_base_path, transcript_base_path, should_upload_audio):
     print "Generating wavs from video"
     all_video_files = os.listdir(vid_base_path)
     for video_file in tqdm(all_video_files):
@@ -211,7 +211,7 @@ def get_wavs_from_video(vid_base_path, transcript_base_path, upload_audio):
         #     continue
         get_audio_from_video(vid_name, vid_base_path, transcript_base_path, mp4_or_mkv)
         ## TODO make this whole thing respond well to multiple video types
-        if upload_audio:
+        if should_upload_audio:
             upload_audio(output_audio_path)
 
 

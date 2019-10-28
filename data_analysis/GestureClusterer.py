@@ -1,6 +1,6 @@
 from __future__ import division
 #!/usr/bin/env pythons
-print "importing libs"
+print "importing libs for GestureClusterer"
 import argparse
 import pandas as pd
 import itertools

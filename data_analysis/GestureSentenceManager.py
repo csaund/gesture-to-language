@@ -20,6 +20,7 @@ from common_helpers import *
 # GSM.cluster_gestures()
 # report = GSM.report_clusters()
 # GSM.print_sentences_by_cluster(0)
+# GSM.cluster_sentences_gesture_independent()
 
 ## manages gesture and sentence stuff.
 class GestureSentenceManager():
@@ -34,6 +35,7 @@ class GestureSentenceManager():
         self.gesture_transcript = None
         self.gesture_sentence_clusters = {}
         self.get_transcript()
+        self.agd = None
 
 
     def _initialize_sentence_clusterer(self):
@@ -46,7 +48,7 @@ class GestureSentenceManager():
         self.GestureClusterer.report_clusters()
 
     def load_gestures(self):
-        self.SpeakerGestures.perform_gesture_analysis()
+        self.agd = self.SpeakerGestures.perform_gesture_analysis()
 
     def cluster_gestures(self):
         self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
@@ -83,6 +85,7 @@ class GestureSentenceManager():
             g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gestures']]
             gests = self.get_gestures_by_ids(g_ids)
             self.gesture_sentence_clusters[k] = self.SentenceClusterer.create_new_cluster_by_gestures(gests)
+        return self.gesture_sentence_clusters
         # well now we have the sentence clusters for the gestures... can compare some stuff?
 
     def get_transcript(self):
