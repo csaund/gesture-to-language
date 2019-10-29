@@ -144,6 +144,8 @@ class SentenceClusterer():
                 self._add_gesture_to_cluster(g, nearest_cluster_id, max_number_clusters)
                 ed = time.time()
                 # print "time to fit the cluster: %s" % str(ed - st)
+            if not i % 200:
+                self._recluster_singletons()
             e = time.time()
             # print "time to cluster sentence: %s" % str(e-s)
         # now recluster based on where the new centroids are
