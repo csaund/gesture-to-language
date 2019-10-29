@@ -36,13 +36,14 @@ class GestureSentenceManager():
         self.gesture_sentence_clusters = {}
         self.get_transcript()
         self.agd = None
+        self._initialize_sentence_clusterer()
 
 
     def _initialize_sentence_clusterer(self):
         self.SentenceClusterer = SentenceClusterer(self.base_path, self.speaker)
         # now we have clusters, now need to get the corresponding sentences for those clusters.
     def cluster_sentences_gesture_independent(self):
-        self.SentenceClusterer.cluster_gestures()
+        self.SentenceClusterer.cluster_sentences()
 
     def report_clusters(self):
         self.GestureClusterer.report_clusters()
