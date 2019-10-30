@@ -202,6 +202,16 @@ def report_gesture_cluster_overlap_with_sentence_clusters(gsm):
     print "number of unique gesture-sentence matches: %s/%s" % (len(unique_matches), len(gsm.GestureClusterer.clusters))
     print "unique matches: %s" % unique_matches
 
+
+def report_sentence_cluster_overlap_with_gesture_clusters(gsm):
+    lens = []
+    unique_matches = []
+    for k in gsm.SentenceClusterer.clusters:
+        g_cluster_ids = gsm.SentenceClusterer.clusters[k]['gesture_cluster_ids']
+        lens.append(len(g_cluster_ids))
+    print "avg number of gesture clusters for sentence cluster: %s" % str(float(sum(lens)) / float(len(lens)))
+
+
 #
 # def print_sentences_by_cluster(GSM, cluster_id):
 #     sents = GSM.get_sentences_by_cluster(cluster_id)
