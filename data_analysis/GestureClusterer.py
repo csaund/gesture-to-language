@@ -204,12 +204,12 @@ class GestureClusterer():
     def report_clusters(self, verbose=False):
         print("Number of clusters: %s" % len(self.clusters))
         num_clusters = len(self.clusters)
-        cluster_lengths = [len(self.clusters[c]['gestures']) for c in range(0, num_clusters)]
+        cluster_lengths = [len(self.clusters[c]['gestures']) for c in self.clusters.keys()]
         print("Cluster lengths: %s" % cluster_lengths)
         print("Avg cluster size: %s" % np.average(cluster_lengths))
         print("Median cluster size: %s" % np.median(cluster_lengths))
         print("Largest cluster size: %s" % max(cluster_lengths))
-        cluster_sparsity = [self.get_cluster_sparsity(c) for c in range(0, num_clusters)]
+        cluster_sparsity = [self.get_cluster_sparsity(c) for c in self.clusters.keys()]
         print("Cluster sparsities: %s" % cluster_sparsity)
         print("Avg cluster sparsity: %s" % np.average(cluster_sparsity))
         print("Median cluster sparsity: %s" % np.median(cluster_sparsity))

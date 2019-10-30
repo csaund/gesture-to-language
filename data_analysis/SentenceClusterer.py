@@ -22,7 +22,7 @@ CLUSTER_SIMILARITY_TOLERANCE = 0.6
 MAX_NUMBER_CLUSTERS = 10000
 
 # from NewSentenceClusterer import *
-# SC = SentenceClusterer("/Users/carolynsaund/github/gest-data/data", "rock")
+# SC = SentenceClusterer("~/github/gest-data/data", "rock")
 # SC.cluster_sentences(gd)
 # if you previously saved a run of agd from this, so you don't need to get sentence embeddings again.
 
@@ -33,8 +33,8 @@ class SentenceClusterer():
         print "oh boy we're in for it now."
         self.embed_fn = self.initialize_encoder("/tmp/sentence-encoder")
         self.has_assigned_feature_vecs = False
-        self.logfile = "/Users/carolynsaund/github/gesture-to-language/sentence_cluster_logs.txt"
-        self.cluster_file = "/Users/carolynsaund/github/gesture-to-language/sentence_cluster_tmp.json"
+        self.logfile = "~/github/gesture-to-language/sentence_cluster_logs.txt"
+        self.cluster_file = "~/github/gesture-to-language/sentence_cluster_tmp.json"
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
         self.clusters = {}
         self.logs = []

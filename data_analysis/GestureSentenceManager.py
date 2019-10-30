@@ -18,6 +18,8 @@ from pandas.plotting import parallel_coordinates
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
+
 
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
@@ -51,6 +53,7 @@ class GestureSentenceManager():
         # now we have clusters, now need to get the corresponding sentences for those clusters.
     def cluster_sentences_gesture_independent(self):
         self.SentenceClusterer.cluster_sentences()
+        self.sentenceClusters = self.SentenceClusterer.clusters
 
     def report_clusters(self):
         self.GestureClusterer.report_clusters()
@@ -59,16 +62,21 @@ class GestureSentenceManager():
         self.agd = {}
         agd_bucket = "all_gesture_data"
         try:
-            get_data_from_blob(agd_bucket, "%s_agd.json" % self.speaker)
+            d = get_data_from_blob(agd_bucket, "%s_agd.json" % self.speaker)
+            self.SpeakerGestures.all_gesture_data = d
         except:
+            print "loading data"
             self.agd = self.SpeakerGestures.perform_gesture_analysis()
-            write_data(self.agd, "tmp.json")
+            print "writing data"
+            write_data("tmp.json", str(self.agd))
+            print "uploading data"
             upload_blob(agd_bucket, "tmp.json", "%s_agd.json" % self.speaker)
             os.remove("tmp.json")
 
     def cluster_gestures(self):
         self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
         self.GestureClusterer.cluster_gestures()
+        self.gestureClusters = self.GestureClusterer.clusters
 
     def print_sentences_by_cluster(self, cluster_id):
         sents = self.get_sentences_by_cluster(cluster_id)
@@ -117,7 +125,7 @@ class GestureSentenceManager():
     def get_gesture_by_id(self, g_id):
         self.get_transcript()
         p = self.gesture_transcript['phrases']
-        dat = [d for d in p if d['id'] == d_id]
+        dat = [d for d in p if d['id'] == g_id]
         # because this returns list of matching items, and only one item will match,
         # we just take the first element and use that.
         return dat[0]
@@ -146,7 +154,17 @@ class GestureSentenceManager():
                     count += 1
             if count:
                 clusters_containing_phrase.append((k, count))
-        return clusters_containing_phrase
+        return sorted(clusters_containing_phrase, key=lambda x: x[1], reverse=True)
+
+
+    def create_word_cloud_by_gesture_cluster(self, g_cluster_id):
+        words = []
+        c = self.gestureClusters[g_cluster_id]
+        for gesture in c['gestures']:
+            g = self.get_gesture_by_id(gesture['id'])
+            words.append(g['phase']['transcript'])
+        words
+
 
     # takes sentence cluster ID
     # returns list of all gesture clusters in which corresponding
@@ -307,6 +325,60 @@ class GestureSentenceManager():
         plt.show()
 
 
+
+
+def create_word_cloud_by_gesture_cluster(gsm, g_cluster_id):
+    stopwords = set(STOPWORDS)
+    stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+    words = []
+    c = gsm.gestureClusters[g_cluster_id]
+    for gesture in c['gestures']:
+        g = get_gesture_by_id(gsm, gesture['id'])
+        words.append(g['phase']['transcript'])
+    all_words = " ".join(words)
+    wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+
+
+def create_word_cloud_by_sentence_cluster(gsm, s_cluster_id):
+    stopwords = set(STOPWORDS)
+    stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+    words = []
+    c = gsm.sentenceClusters[s_cluster_id]
+    all_words = " ".join(c['sentences'])
+    wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+    # plt.show()
+
+
+## I'm more disappointed in myself than you will ever be in me.
+def show_wordclouds_by_sentence_clusters(gsm, s_cluster_ids=None):
+    s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(gsm.sentenceClusters[c]['sentences'])) for c in gsm.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
+    for i in range(0, len(s_cluster_ids)):
+        plt.subplot(3, 3, i+1)
+        create_word_cloud_by_sentence_cluster(gsm, s_cluster_ids[i])
+        plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
+    plt.show()
+
+
+## look, no one's happy about this.
+def show_wordclouds_by_gesture_clusters(gsm, g_cluster_ids=None):
+    g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(gsm.gestureClusters[c]['gestures'])) for c in gsm.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
+    for i in range(0, len(g_cluster_ids)):
+        plt.subplot(3, 3, i+1)
+        create_word_cloud_by_gesture_cluster(gsm, g_cluster_ids[i])
+        plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
+    plt.show()
+
+def get_gesture_by_id(gsm, g_id):
+    gsm.get_transcript()
+    p = gsm.gesture_transcript['phrases']
+    dat = [d for d in p if d['id'] == g_id]
+    # because this returns list of matching items, and only one item will match,
+    # we just take the first element and use that.
+    return dat[0]
 
 
 # def print_sentences_by_cluster(GSM, cluster_id):

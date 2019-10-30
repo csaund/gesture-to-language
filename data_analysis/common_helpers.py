@@ -95,3 +95,8 @@ def write_data(fp, data):
     with open(fp, 'w') as f:
         json.dump(data, f, indent=4)
     f.close()
+
+def write_data_serialize(fp, data):
+    with open(fp, 'w') as f:
+        json.dumps(data, f, indent=4)
+    f.close()
