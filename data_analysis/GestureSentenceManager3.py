@@ -226,7 +226,7 @@ class GestureSentenceManager():
         lens = []
         unique_matches = []
         for g_cluster_id in self.GestureClusterer.clusters:
-            s_cluster_ids = get_sentence_cluster_ids_for_gesture_cluster(self, g_cluster_id)
+            s_cluster_ids = self.get_sentence_cluster_ids_for_gesture_cluster(self, g_cluster_id)
             print "Sentence clusters represented in g_cluster %s: %s" % (g_cluster_id, s_cluster_ids)
             lens.append(len(s_cluster_ids))
             if len(s_cluster_ids) == 1:
@@ -256,13 +256,13 @@ class GestureSentenceManager():
 
 
     def plot_sentence_gesture_map_parallel(self):
-        df = get_sentence_gesture_data_parallel(self)
+        df = self.get_sentence_gesture_data_parallel()
         plt.figure()
         parallel_coordinates(df, 'SID').legend(loc='center left', bbox_to_anchor=(1, 0.5))
         plt.show()
 
     def network(self):
-        df = get_sentence_gesture_data_network(self)
+        df = self.get_sentence_gesture_data_network()
         G = nx.from_pandas_edgelist(df, 'from', 'to')
         nx.draw(G, with_labels=True)
         plt.show()
@@ -270,7 +270,7 @@ class GestureSentenceManager():
     def get_sentence_gesture_data_network(self):
         key = self.SentenceClusterer.clusters.keys()[0]
         if not self.SentenceClusterer.clusters[key]['gesture_cluster_ids']:
-            assign_gesture_cluster_ids_for_sentence_clusters(self)
+            self.assign_gesture_cluster_ids_for_sentence_clusters()
         from_ = []
         to_ = []
         for k in self.SentenceClusterer.clusters:
@@ -284,7 +284,7 @@ class GestureSentenceManager():
     def get_sentence_gesture_data_parallel(self):
         key = self.SentenceClusterer.clusters.keys()[0]
         if not self.SentenceClusterer.clusters[key]['gesture_cluster_ids']:
-            assign_gesture_cluster_ids_for_sentence_clusters(self)
+            self.assign_gesture_cluster_ids_for_sentence_clusters()
         columns = ["SCID", "GCID"]
         rows = []
         for k in self.SentenceClusterer.clusters:
@@ -330,7 +330,7 @@ class GestureSentenceManager():
         words = []
         c = self.gestureClusters[g_cluster_id]
         for gesture in c['gestures']:
-            g = get_gesture_by_id(self, gesture['id'])
+            g = self.get_gesture_by_id(gesture['id'])
             words.append(g['phase']['transcript'])
         all_words = " ".join(words)
         wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
@@ -355,7 +355,7 @@ class GestureSentenceManager():
         s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(s_cluster_ids)):
             plt.subplot(3, 3, i+1)
-            create_word_cloud_by_sentence_cluster(self, s_cluster_ids[i])
+            self.create_word_cloud_by_sentence_cluster(s_cluster_ids[i])
             plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
         plt.show()
 
@@ -365,9 +365,23 @@ class GestureSentenceManager():
         g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(g_cluster_ids)):
             plt.subplot(3, 3, i+1)
-            create_word_cloud_by_gesture_cluster(self, g_cluster_ids[i])
+            self.create_word_cloud_by_gesture_cluster(g_cluster_ids[i])
             plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
         plt.show()
+
+
+
+
+def init_new_gsm(oldGSM):
+    newGSM = GestureSentenceManager(oldGSM.base_path, oldGSM.speaker)
+    newGSM.base_path = oldGSM.base_path
+    newGSM.speaker = oldGSM.speaker
+    newGSM.agd = oldGSM.agd
+    newGSM.gestureClusters = oldGSM.gestureClusters
+    newGSM.sentenceClusters = oldGSM.sentenceClusters
+    newGSM.GestureClusterer = oldGSM.GestureClusterer
+    newGSM.SentenceClusterer = oldGSM.SentenceClusterer
+    return newGSM
 
 
 # def print_sentences_by_cluster(GSM, cluster_id):
