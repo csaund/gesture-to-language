@@ -5,12 +5,19 @@ from SentenceClusterer import *
 import json
 import os
 from termcolor import colored
-
+import numpy as np
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
 
 from google.cloud import storage
 from common_helpers import *
+
+# from matplotlib_venn import venn3, venn3_circles
+# from matplotlib import pyplot as plt
+from pandas.plotting import parallel_coordinates
+import networkx as nx
+
+
 
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
@@ -174,7 +181,7 @@ def get_cluster_id_for_gesture(gsm, g_id):
             return k
 
 
-def get_gesture_cluster_ids_for_sentence_clusters(gsm):
+def assign_gesture_cluster_ids_for_sentence_clusters(gsm):
     for k in gsm.SentenceClusterer.clusters:
         g_cluster_ids = get_gesture_clusters_for_sentence_cluster(gsm, k)
         gsm.SentenceClusterer.clusters[k]['gesture_cluster_ids'] = g_cluster_ids
@@ -198,6 +205,7 @@ def report_gesture_cluster_overlap_with_sentence_clusters(gsm):
         if len(s_cluster_ids) == 1:
             unique_matches.append((g_cluster_id, s_cluster_ids))
     print "avg number sentence clusters: %s" % str(float(sum(lens)) / float(len(lens)))
+    print "sd of lengths of gesture clusters: %s" % str(np.std(lens))
     print
     print "number of unique gesture-sentence matches: %s/%s" % (len(unique_matches), len(gsm.GestureClusterer.clusters))
     print "unique matches: %s" % unique_matches
@@ -209,10 +217,123 @@ def report_sentence_cluster_overlap_with_gesture_clusters(gsm):
     for k in gsm.SentenceClusterer.clusters:
         g_cluster_ids = gsm.SentenceClusterer.clusters[k]['gesture_cluster_ids']
         lens.append(len(g_cluster_ids))
+        if len(g_cluster_ids) == 1:
+            unique_matches.append((k, g_cluster_ids))
+    print "number of gestures per sentence cluster: %s" % str(lens)
     print "avg number of gesture clusters for sentence cluster: %s" % str(float(sum(lens)) / float(len(lens)))
+    print "sd of lengths of gesture clusters: %s" % str(np.std(lens))
+    print
+    print "number of unique matches: %s/%s" % (len(unique_matches), len(gsm.SentenceClusterer.clusters))
+    print "unique matches: %s" % unique_matches
 
 
-#
+
+def plot_sentence_gesture_map_parallel(gsm):
+    df = get_sentence_gesture_data_parallel(gsm)
+    plt.figure()
+    parallel_coordinates(df, 'SID').legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.show()
+
+def network(gsm):
+    df = get_sentence_gesture_data_network(gsm)
+    G = nx.from_pandas_edgelist(df, 'from', 'to')
+    nx.draw(G, with_labels=True)
+    plt.show()
+
+def get_sentence_gesture_data_network(gsm):
+    key = gsm.SentenceClusterer.clusters.keys()[0]
+    if not gsm.SentenceClusterer.clusters[key]['gesture_cluster_ids']:
+        assign_gesture_cluster_ids_for_sentence_clusters(gsm)
+    from_ = []
+    to_ = []
+    for k in gsm.SentenceClusterer.clusters:
+        c = gsm.SentenceClusterer.clusters[k]
+        for g in c['gesture_cluster_ids']:
+            from_.append(k)
+            to_.append(g)
+    df = pd.DataFrame({"from": from_, "to": to_})
+    return df
+
+def get_sentence_gesture_data_parallel(gsm):
+    key = gsm.SentenceClusterer.clusters.keys()[0]
+    if not gsm.SentenceClusterer.clusters[key]['gesture_cluster_ids']:
+        assign_gesture_cluster_ids_for_sentence_clusters(gsm)
+    columns = ["SCID", "GCID"]
+    rows = []
+    for k in gsm.SentenceClusterer.clusters:
+        c = gsm.SentenceClusterer.clusters[k]
+        for g in c['gesture_cluster_ids']:
+            rows.append({'SCID': float(k), 'GCID': float(g) * 3, 'SID': float(k)})
+    df = pd.DataFrame(rows)
+    return df
+
+def networkTEST(gsm):
+    key = gsm.SentenceClusterer.clusters.keys()[0]
+    if not gsm.SentenceClusterer.clusters[key]['gesture_cluster_ids']:
+        assign_gesture_cluster_ids_for_sentence_clusters(gsm)
+    edges = []
+    nodes = []
+    node_sizes_ = []
+    node_colors_ = []
+    for g in gsm.GestureClusterer.clusters:
+        name = 'G' + g
+        nodes.append(name)
+        node_sizes_.append(len(gsm.GestureClusterer.clusters[g]))
+        node_colors_.append('green')
+    for k in gsm.SentenceClusterer.clusters:
+        c = gsm.SentenceClusterer.clusters[k]
+        name = 'S' + k
+        nodes.append(name)
+        node_sizes_.append(len(c['gestures']))
+        node_colors_.append('blue')
+        for g in c['gesture_cluster_ids']:
+            edges.append((name, 'G' + g))
+        break
+    g = nx.Graph()
+    g.add_nodes_from(nodes)
+    g.add_edges_from(edges)
+    nx.draw(g, node_size=node_sizes_, node_color=node_colors_)
+    plt.show()
+    # for k in gsm.SentenceClusterer.clusters:
+    #     c = gsm.SentenceClusterer.clusters[k]
+    #     for g in c['gesture_cluster_ids']:
+    #         from_.append(k)
+    #         to_.append(g)
+    #     node_sizes_.append(len())
+    # df = pd.DataFrame({"from": from_, "to": to_})
+    # return df
+
+
+
+
+
+######
+import sys, networkx as nx, matplotlib.pyplot as plt
+
+# Create a list of 10 nodes numbered [0, 9]
+nodes = range(10)
+node_sizes = []
+labels = {}
+for n in nodes:
+        node_sizes.append( 100 * n )
+        labels[n] = 100 * n
+
+# Node sizes: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900]
+
+# Connect each node to its successor
+edges = [ (i, i+1) for i in range(len(nodes)-1) ]
+
+# Create the graph and draw it with the node labels
+g = nx.Graph()
+g.add_nodes_from(nodes)
+g.add_edges_from(edges)
+
+nx.draw_random(g, node_size = node_sizes, labels=labels, with_labels=True)
+plt.show()
+#####
+
+
+
 # def print_sentences_by_cluster(GSM, cluster_id):
 #     sents = GSM.get_sentences_by_cluster(cluster_id)
 #     empties = 0
