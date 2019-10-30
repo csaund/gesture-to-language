@@ -16,7 +16,7 @@ from common_helpers import *
 # from matplotlib import pyplot as plt
 from pandas.plotting import parallel_coordinates
 import networkx as nx
-matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 ## the following commands assume you have a full transcript in the cloud
@@ -56,7 +56,15 @@ class GestureSentenceManager():
         self.GestureClusterer.report_clusters()
 
     def load_gestures(self):
-        self.agd = self.SpeakerGestures.perform_gesture_analysis()
+        self.agd = {}
+        agd_bucket = "all_gesture_data"
+        try:
+            get_data_from_blob(agd_bucket, "%s_agd.json" % self.speaker)
+        except:
+            self.agd = self.SpeakerGestures.perform_gesture_analysis()
+            write_data(self.agd, "tmp.json")
+            upload_blob(agd_bucket, "tmp.json", "%s_agd.json" % self.speaker)
+            os.remove("tmp.json")
 
     def cluster_gestures(self):
         self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)

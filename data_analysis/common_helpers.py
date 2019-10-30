@@ -53,6 +53,12 @@ def get_data_from_path(data_path):
         data = json.load(f)
     return data
 
+def get_data_from_blob(bucket_name, source_blob_name):
+    download_blob(bucket_name, source_blob_name, "tmp")
+    d = get_data_from_path("tmp")
+    os.remove("tmp")
+    return d
+
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
     storage_client = storage.Client()
