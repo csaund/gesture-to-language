@@ -132,8 +132,52 @@ class GestureSentenceManager():
             if count:
                 clusters_containing_phrase.append((k, count))
 
+        # takes sentence cluster ID
+        # returns list of all gesture clusters in which corresponding
+        # sentences appear
+        def get_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
+            c = self.SentenceClusterer.clusters[s_cluster_id]
+            g_cluster_ids = [g['id'] for g in c['gestures']]
+            c_ids = []
+            for g in g_cluster_ids:
+                c_ids.append(self.get_cluster_id_for_gesture(g))
+            return list(set(c_ids))
+            # now get the cluster id for each gesture
+
+        # TODO I can make this more clever -- gesture cluster gestures
+        # have gesture_cluster_id in them, match those?
+        def get_cluster_id_for_gesture(self, g_id):
+            for k in self.GestureClusterer.clusters:
+                g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gestures']]
+                if g_id in g_ids:
+                    return k
 
 
+# takes sentence cluster ID
+# returns list of all gesture clusters in which corresponding
+# sentences appear
+def get_gesture_clusters_for_sentence_cluster(gsm, s_cluster_id):
+    c = gsm.SentenceClusterer.clusters[s_cluster_id]
+    g_cluster_ids = [g['id'] for g in c['gestures']]
+    c_ids = []
+    for g in g_cluster_ids:
+        c_ids.append(get_cluster_id_for_gesture(gsm, g))
+    return list(set(c_ids))
+    # now get the cluster id for each gesture
+
+# TODO I can make this more clever -- gesture cluster gestures
+# have gesture_cluster_id in them, match those?
+def get_cluster_id_for_gesture(gsm, g_id):
+    for k in gsm.GestureClusterer.clusters:
+        g_ids = [g['id'] for g in gsm.GestureClusterer.clusters[k]['gestures']]
+        if g_id in g_ids:
+            return k
+
+
+def get_gesture_cluster_ids_for_sentence_clusters(gsm):
+    for k in gsm.SentenceClusterer.clusters:
+        g_cluster_ids = get_gesture_clusters_for_sentence_cluster(k)
+        gsm.SentenceClusterer.clusters[k]['gesture_cluster_ids'] = g_cluster_ids
 
 #
 # def print_sentences_by_cluster(GSM, cluster_id):
