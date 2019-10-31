@@ -426,6 +426,51 @@ def get_words_by_gesture_cluster(gsm, g_cluster_id):
         words.append(g['phase']['transcript'])
     return words.split(" ")
 
+
+def create_word_cloud_by_gesture_cluster(gsm, g_cluster_id, filter_synax=""):
+    stopwords = set(STOPWORDS)
+    stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+    all_words = get_words_by_gesture_cluster(gsm, g_cluster_ids)
+    if filter_syntax:
+        all_words = filter_words_by_syntax(all_words, filter_syntax)
+    all_words = " ".join(all_words)
+    wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+
+
+def create_word_cloud_by_sentence_cluster(gsm, s_cluster_id, filter_syntax=""):
+    stopwords = set(STOPWORDS)
+    stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+    all_words = get_words_by_sentence_cluster(gsm, s_cluster_id)
+    if filter_syntax:
+        all_words = filter_words_by_syntax(all_words, filter_syntax)
+    all_words = " ".join(all_words)
+    wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis("off")
+    # plt.show()
+
+
+## I'm more disappointed in mygsm than you will ever be in me.
+def show_wordclouds_by_sentence_clusters(gsm, s_cluster_ids=None, filter_syntax=""):
+    s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(gsm.sentenceClusters[c]['sentences'])) for c in gsm.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
+    for i in range(0, len(s_cluster_ids)):
+        plt.subplot(3, 3, i+1)
+        create_word_cloud_by_sentence_cluster(gsm, s_cluster_ids[i], filter_syntax)
+        plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
+    plt.show()
+
+
+## look, no one's happy about this.
+def show_wordclouds_by_gesture_clusters(gsm, g_cluster_ids=None, filter_syntax=""):
+    g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(gsm.gestureClusters[c]['gestures'])) for c in gsm.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
+    for i in range(0, len(g_cluster_ids)):
+        plt.subplot(3, 3, i+1)
+        create_word_cloud_by_gesture_cluster(gsm, g_cluster_ids[i], filter_syntax)
+        plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
+    plt.show()
+
 # def print_sentences_by_cluster(GSM, cluster_id):
 #     sents = GSM.get_sentences_by_cluster(cluster_id)
 #     empties = 0
