@@ -371,6 +371,8 @@ class GestureSentenceManager():
 
 
 
+    # TODO chord diagram
+
 
 def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.base_path, oldGSM.speaker)

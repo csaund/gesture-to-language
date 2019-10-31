@@ -1,5 +1,6 @@
 # gesture-to-language
 
+
 Takes data from UC Berkeleys [gesture data set](http://people.eecs.berkeley.edu/~shiry/speech2gesture/) and clusters gestures by high-level feature vectors detected by motion data. 
 
 0. Download the gesture data according to instructions. 
@@ -63,4 +64,6 @@ Now you can look at things going on.
 - figure out how to trim gestures down to meaningful frames...
 - write more/debug high-level features
 - Explore clustering of wrist/body data, then re-cluster based on hand motions...
-
+- Visualizations -- chord diagram? network diagram? 
+- new sentence clusterings using nltk: Wu-Palmer, Jiang-Conrath distance.
+- metric to compare quality of clustering 
