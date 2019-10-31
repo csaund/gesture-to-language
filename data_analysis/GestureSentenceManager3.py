@@ -324,15 +324,23 @@ class GestureSentenceManager():
         df.plot.scatter(x='num_sentences', y="num_g_clusters")
         plt.show()
 
-    def create_word_cloud_by_gesture_cluster(self, g_cluster_id):
-        stopwords = set(STOPWORDS)
-        stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+    def get_words_by_sentence_cluster(self, s_cluster_id):
+        c = self.sentenceClusters[s_cluster_id]
+        all_words = " ".join(c['sentences'])
+        return all_words
+
+    def get_words_by_gesture_cluster(self, g_cluster_id):
         words = []
         c = self.gestureClusters[g_cluster_id]
         for gesture in c['gestures']:
             g = self.get_gesture_by_id(gesture['id'])
             words.append(g['phase']['transcript'])
-        all_words = " ".join(words)
+        return words
+
+    def create_word_cloud_by_gesture_cluster(self, g_cluster_id):
+        stopwords = set(STOPWORDS)
+        stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+        all_words = self.get_words_by_gesture_cluster(g_cluster_ids)
         wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
@@ -341,9 +349,7 @@ class GestureSentenceManager():
     def create_word_cloud_by_sentence_cluster(self, s_cluster_id):
         stopwords = set(STOPWORDS)
         stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-        words = []
-        c = self.sentenceClusters[s_cluster_id]
-        all_words = " ".join(c['sentences'])
+        all_words = self.get_words_by_sentence_cluster(s_cluster_id)
         wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
@@ -384,6 +390,27 @@ def init_new_gsm(oldGSM):
     newGSM.GestureClusterer = oldGSM.GestureClusterer
     newGSM.SentenceClusterer = oldGSM.SentenceClusterer
     return newGSM
+
+
+def get_wordcount_data(gsm):
+    wordcounts = [float(len(g['phase']['transcript'].split(' '))) for g in gsm.gesture_transcript['phrases']]
+    wc = [w for w in wordcounts if w > 1]
+    return wc
+
+def histogram_of_word_count(gsm):
+    wc = np.array(get_wordcount_data(gsm))
+    n, bins, patches = plt.hist(wc, bins=30, range=[0,100], normed=True, facecolor='green', alpha=0.75)
+    plt.xlabel('wordcount')
+    plt.ylabel('num occurances')
+    # plt.axes([0, 200, 0, .03])
+    plt.grid(True)
+    plt.show()
+
+
+def get_gesture_ids_fewer_than_n_words(gsm, n):
+    ids = [g['id'] for g in gsm.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < n and len(g['phase']['transcript'].split(' ')) > 1]
+    return ids
+
 
 
 # def print_sentences_by_cluster(GSM, cluster_id):
