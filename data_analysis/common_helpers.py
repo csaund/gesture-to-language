@@ -2,6 +2,7 @@ from __future__ import division
 #!/usr/bin/env pythons
 import json
 import os
+import nltk
 
 devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
@@ -100,3 +101,16 @@ def write_data_serialize(fp, data):
     with open(fp, 'w') as f:
         json.dumps(data, f, indent=4)
     f.close()
+
+
+# takes array of words, returns B.O.W. that only has particular wordtype
+def filter_words_by_syntax(words, wordtype="NN"):
+    tagged = nltk.pos_tag(words)
+    ws = [w[0] for w in tagged if w[1] in wordtype]
+    return ws
+
+# takes words, returns B.O.W. that excludes particular wordtpe
+def filter_words_out_by_syntax(words, wordtype="NN"):
+    tagged = nltk.pos_tag(words)
+    ws = [w[0] for w in tagged if w[1] not in wordtype]
+    return ws
