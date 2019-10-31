@@ -12,6 +12,7 @@ import time
 
 print "loading nltk"
 ## TODO: use this?
+import nltk
 from nltk.corpus import wordnet as wn
 from nltk import sentiment as sent
 
@@ -328,6 +329,20 @@ class SentenceClusterer():
             for l in self.logs:
                 f.write("%s\n" % l)
         f.close()
+
+
+# takes array of words, returns B.O.W. that only has particular wordtype
+def filter_words_by_syntax(words, wordtype="NN"):
+    tagged = nltk.pos_tag(words)
+    ws = [w[0] for w in tagged if wordtype in w[1]]
+    return ws
+
+# takes words, returns B.O.W. that excludes particular wordtpe
+def filter_words_out_by_syntax(words, wordtype="NN"):
+    tagged = nltk.pos_tag(words)
+    ws = [w[0] for w in tagged if wordtype not in w[1]]
+    return ws
+
 
     ## TODO make use of these?
     #############################################################
