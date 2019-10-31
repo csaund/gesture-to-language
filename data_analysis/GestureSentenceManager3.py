@@ -411,8 +411,6 @@ def get_gesture_ids_fewer_than_n_words(gsm, n):
     ids = [g['id'] for g in gsm.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < n and len(g['phase']['transcript'].split(' ')) > 1]
     return ids
 
-
-
 def get_words_by_sentence_cluster(gsm, s_cluster_id):
     c = gsm.sentenceClusters[s_cluster_id]
     all_words = " ".join(c['sentences'])
@@ -423,14 +421,15 @@ def get_words_by_gesture_cluster(gsm, g_cluster_id):
     c = gsm.gestureClusters[g_cluster_id]
     for gesture in c['gestures']:
         g = gsm.get_gesture_by_id(gesture['id'])
-        words.append(g['phase']['transcript'])
-    return words.split(" ")
+        if(g['phase']['transcript']):
+            words.append(g['phase']['transcript'])
+    return " ".join(words).split(" ")
 
 
-def create_word_cloud_by_gesture_cluster(gsm, g_cluster_id, filter_synax=""):
+def create_word_cloud_by_gesture_cluster(gsm, g_cluster_id, filter_syntax=""):
     stopwords = set(STOPWORDS)
     stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-    all_words = get_words_by_gesture_cluster(gsm, g_cluster_ids)
+    all_words = get_words_by_gesture_cluster(gsm, g_cluster_id)
     if filter_syntax:
         all_words = filter_words_by_syntax(all_words, filter_syntax)
     all_words = " ".join(all_words)
