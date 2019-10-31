@@ -115,7 +115,7 @@ class SentenceClusterer():
         c2 = self.embed_fn(sents2)
         return np.inner(c1, c2).max()
 
-    def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000):
+    def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[]):
         # if not self.has_assigned_feature_vecs:
         #     self._assign_feature_vectors()
         gd = gesture_data if gesture_data else self.agd
@@ -126,6 +126,8 @@ class SentenceClusterer():
         phrases = gd['phrases']
         print "Clustering sentences"
         for g in tqdm(phrases):
+            if g['id'] in exclude_gesture_ids:
+                continue
             # print "GID: %s" % g['id']
             s = time.time()
             i = i + 1

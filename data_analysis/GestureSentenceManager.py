@@ -55,6 +55,11 @@ class GestureSentenceManager():
         self.SentenceClusterer.cluster_sentences()
         self.sentenceClusters = self.SentenceClusterer.clusters
 
+    def cluster_sentences_gesture_independent_under_n_words(self, n):
+        exclude_ids = self.get_gesture_ids_fewer_than_n_words(n)
+        self.SentenceClusterer.cluster_sentences(gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=exclude_ids))
+        self.sentenceClusters = self.SentenceClusterer.clusters
+
     def report_clusters(self):
         self.GestureClusterer.report_clusters()
 
@@ -73,10 +78,21 @@ class GestureSentenceManager():
             upload_blob(agd_bucket, "tmp.json", "%s_agd.json" % self.speaker)
             os.remove("tmp.json")
 
-    def cluster_gestures(self):
-        self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
+    def cluster_gestures_under_n_words(self, n):
+        exclude_ids = self.get_gesture_ids_fewer_than_n_words(n)
+        self.cluster_gestures(exclude_ids)
+
+    def cluster_gestures(self, exclude_ids=[]):
+        if len(exclude_ids):
+            self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
+        else:
+            self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
         self.GestureClusterer.cluster_gestures()
         self.gestureClusters = self.GestureClusterer.clusters
+
+    def filter_agd(self, exclude_ids):
+        agd = [d for d in self.SpeakerGestures.all_gesture_data if d['id'] not in exclude_ids]
+        return agd
 
     def print_sentences_by_cluster(self, cluster_id):
         sents = self.get_sentences_by_cluster(cluster_id)
@@ -375,7 +391,83 @@ class GestureSentenceManager():
             plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
         plt.show()
 
+    def get_wordcount_data(self):
+        wordcounts = [float(len(g['phase']['transcript'].split(' '))) for g in self.gesture_transcript['phrases']]
+        wc = [w for w in wordcounts if w > 1]
+        return wc
 
+    def histogram_of_word_count(self):
+        wc = np.array(get_wordcount_data(self))
+        n, bins, patches = plt.hist(wc, bins=30, range=[0,100], normed=True, facecolor='green', alpha=0.75)
+        plt.xlabel('wordcount')
+        plt.ylabel('num occurances')
+        # plt.axes([0, 200, 0, .03])
+        plt.grid(True)
+        plt.show()
+
+
+    def get_gesture_ids_fewer_than_n_words(self, n):
+        ids = [g['id'] for g in self.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < n and len(g['phase']['transcript'].split(' ')) > 1]
+        return ids
+
+    def get_words_by_sentence_cluster(self, s_cluster_id):
+        c = self.sentenceClusters[s_cluster_id]
+        all_words = " ".join(c['sentences'])
+        return all_words.split(" ")
+
+    def get_words_by_gesture_cluster(self, g_cluster_id):
+        words = []
+        c = self.gestureClusters[g_cluster_id]
+        for gesture in c['gestures']:
+            g = self.get_gesture_by_id(gesture['id'])
+            if(g['phase']['transcript']):
+                words.append(g['phase']['transcript'])
+        return " ".join(words).split(" ")
+
+
+    def create_word_cloud_by_gesture_cluster(self, g_cluster_id, filter_syntax=""):
+        # stopwords = set(STOPWORDS)
+        # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+        all_words = gself.et_words_by_gesture_cluster(self, g_cluster_id)
+        if filter_syntax:
+            all_words = self.filter_words_by_syntax(all_words, filter_syntax)
+        all_words = " ".join(all_words)
+        wordcloud = WordCloud(background_color="white").generate(all_words)
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis("off")
+
+
+    def create_word_cloud_by_sentence_cluster(self, s_cluster_id, filter_syntax=""):
+        # stopwords = set(STOPWORDS)
+        # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+        all_words = self.get_words_by_sentence_cluster(self, s_cluster_id)
+        if filter_syntax:
+            all_words = self.filter_words_by_syntax(all_words, filter_syntax)
+        all_words = " ".join(all_words)
+        wordcloud = WordCloud(background_color="white").generate(all_words)
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis("off")
+        # plt.show()
+
+
+    ## I'm more disappointed in myself than you will ever be in me.
+    def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, filter_syntax=""):
+        s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
+        for i in range(0, len(s_cluster_ids)):
+            plt.subplot(3, 3, i+1)
+            self.create_word_cloud_by_sentence_cluster(self, s_cluster_ids[i], filter_syntax)
+            plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
+        plt.show()
+
+
+    ## look, no one's happy about this.
+    def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, filter_syntax=""):
+        g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
+        for i in range(0, len(g_cluster_ids)):
+            plt.subplot(3, 3, i+1)
+            self.create_word_cloud_by_gesture_cluster(gsm, g_cluster_ids[i], filter_syntax)
+            plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
+        plt.show()
 
     # TODO chord diagram
 
@@ -391,84 +483,6 @@ def init_new_gsm(oldGSM):
     newGSM.SentenceClusterer = oldGSM.SentenceClusterer
     return newGSM
 
-
-def get_wordcount_data(gsm):
-    wordcounts = [float(len(g['phase']['transcript'].split(' '))) for g in gsm.gesture_transcript['phrases']]
-    wc = [w for w in wordcounts if w > 1]
-    return wc
-
-def histogram_of_word_count(gsm):
-    wc = np.array(get_wordcount_data(gsm))
-    n, bins, patches = plt.hist(wc, bins=30, range=[0,100], normed=True, facecolor='green', alpha=0.75)
-    plt.xlabel('wordcount')
-    plt.ylabel('num occurances')
-    # plt.axes([0, 200, 0, .03])
-    plt.grid(True)
-    plt.show()
-
-
-def get_gesture_ids_fewer_than_n_words(gsm, n):
-    ids = [g['id'] for g in gsm.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < n and len(g['phase']['transcript'].split(' ')) > 1]
-    return ids
-
-def get_words_by_sentence_cluster(gsm, s_cluster_id):
-    c = gsm.sentenceClusters[s_cluster_id]
-    all_words = " ".join(c['sentences'])
-    return all_words.split(" ")
-
-def get_words_by_gesture_cluster(gsm, g_cluster_id):
-    words = []
-    c = gsm.gestureClusters[g_cluster_id]
-    for gesture in c['gestures']:
-        g = gsm.get_gesture_by_id(gesture['id'])
-        if(g['phase']['transcript']):
-            words.append(g['phase']['transcript'])
-    return " ".join(words).split(" ")
-
-
-def create_word_cloud_by_gesture_cluster(gsm, g_cluster_id, filter_syntax=""):
-    # stopwords = set(STOPWORDS)
-    # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-    all_words = get_words_by_gesture_cluster(gsm, g_cluster_id)
-    if filter_syntax:
-        all_words = filter_words_by_syntax(all_words, filter_syntax)
-    all_words = " ".join(all_words)
-    wordcloud = WordCloud(background_color="white").generate(all_words)
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis("off")
-
-
-def create_word_cloud_by_sentence_cluster(gsm, s_cluster_id, filter_syntax=""):
-    # stopwords = set(STOPWORDS)
-    # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-    all_words = get_words_by_sentence_cluster(gsm, s_cluster_id)
-    if filter_syntax:
-        all_words = filter_words_by_syntax(all_words, filter_syntax)
-    all_words = " ".join(all_words)
-    wordcloud = WordCloud(background_color="white").generate(all_words)
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis("off")
-    # plt.show()
-
-
-## I'm more disappointed in mygsm than you will ever be in me.
-def show_wordclouds_by_sentence_clusters(gsm, s_cluster_ids=None, filter_syntax=""):
-    s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(gsm.sentenceClusters[c]['sentences'])) for c in gsm.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
-    for i in range(0, len(s_cluster_ids)):
-        plt.subplot(3, 3, i+1)
-        create_word_cloud_by_sentence_cluster(gsm, s_cluster_ids[i], filter_syntax)
-        plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
-    plt.show()
-
-
-## look, no one's happy about this.
-def show_wordclouds_by_gesture_clusters(gsm, g_cluster_ids=None, filter_syntax=""):
-    g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(gsm.gestureClusters[c]['gestures'])) for c in gsm.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
-    for i in range(0, len(g_cluster_ids)):
-        plt.subplot(3, 3, i+1)
-        create_word_cloud_by_gesture_cluster(gsm, g_cluster_ids[i], filter_syntax)
-        plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
-    plt.show()
 
 # def print_sentences_by_cluster(GSM, cluster_id):
 #     sents = GSM.get_sentences_by_cluster(cluster_id)
