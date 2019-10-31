@@ -427,25 +427,25 @@ def get_words_by_gesture_cluster(gsm, g_cluster_id):
 
 
 def create_word_cloud_by_gesture_cluster(gsm, g_cluster_id, filter_syntax=""):
-    stopwords = set(STOPWORDS)
-    stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+    # stopwords = set(STOPWORDS)
+    # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
     all_words = get_words_by_gesture_cluster(gsm, g_cluster_id)
     if filter_syntax:
         all_words = filter_words_by_syntax(all_words, filter_syntax)
     all_words = " ".join(all_words)
-    wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
+    wordcloud = WordCloud(background_color="white").generate(all_words)
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
 
 
 def create_word_cloud_by_sentence_cluster(gsm, s_cluster_id, filter_syntax=""):
-    stopwords = set(STOPWORDS)
-    stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
+    # stopwords = set(STOPWORDS)
+    # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
     all_words = get_words_by_sentence_cluster(gsm, s_cluster_id)
     if filter_syntax:
         all_words = filter_words_by_syntax(all_words, filter_syntax)
     all_words = " ".join(all_words)
-    wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
+    wordcloud = WordCloud(background_color="white").generate(all_words)
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
     # plt.show()
