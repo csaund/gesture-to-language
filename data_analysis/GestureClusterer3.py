@@ -73,7 +73,7 @@ from common_helpers import *
 ###############################################################
 ####################### DIY Clustering ########################
 ###############################################################
-class GestureClusterer():
+class GestureClusterer3():
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
     def __init__(self, all_gesture_data, seeds=[]):
@@ -126,10 +126,20 @@ class GestureClusterer():
             end = time.time()
             self._log(str(end-start))
 
+        self._recluster_singletons()
+
         # now recluster based on where the new centroids are
         self._recluster_by_centroids()
-
         self._write_logs()
+
+    def _recluster_singletons(self):
+        print "reclustering singletons"
+        for k in self.clusters.keys():
+            if len(self.clusters[k]['gestures']) == 1:
+                g = self.clusters[k]['gestures'][0]
+                (new_k, dist) = self._get_shortest_cluster_dist(g)
+                self._add_gesture_to_cluster(g, new_k)
+                del self.clusters[k]
 
     def _add_gesture_to_cluster(self, g, cluster_id):
         self._log("adding gesture %s to cluster %s" % (g['id'], cluster_id))

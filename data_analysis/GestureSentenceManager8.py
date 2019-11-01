@@ -20,6 +20,10 @@ import matplotlib.pyplot as plt
 
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 
+VERBS = ["V", "VB", "VBD", "VBD", "VBZ", "VBP", "VBN"]
+NOUNS = ["NN", "NNP", "NNS"]
+ADJ = ["JJ"]
+
 
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
@@ -422,45 +426,49 @@ class GestureSentenceManager():
         return " ".join(words).split(" ")
 
 
-    def create_word_cloud_by_gesture_cluster(self, g_cluster_id, filter_syntax=""):
+    def create_word_cloud_by_gesture_cluster(self, g_cluster_id, filter_in_syntax="", filter_out_syntax=""):
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_gesture_cluster(g_cluster_id)
-        if filter_syntax:
-            all_words = filter_words_by_syntax(all_words, filter_syntax)
+        if filter_in_syntax:
+            all_words = filter_words_by_syntax(all_words, filter_in_syntax)
+        if filter_out_syntax:
+            all_words = filter_words_out_by_syntax(all_words, filter_out_syntax)
         all_words = " ".join(all_words)
         wordcloud = WordCloud(background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
 
 
-    def create_word_cloud_by_sentence_cluster(self, s_cluster_id, filter_syntax=""):
+    def create_word_cloud_by_sentence_cluster(self, s_cluster_id, filter_in_syntax="", filter_out_syntax=""):
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_sentence_cluster(s_cluster_id)
-        if filter_syntax:
-            all_words = filter_words_by_syntax(all_words, filter_syntax)
+        if filter_in_syntax:
+            all_words = filter_words_by_syntax(all_words, filter_in_syntax)
+        if filter_out_syntax:
+            all_words = filter_words_out_by_syntax(all_words, filter_out_syntax)
         all_words = " ".join(all_words)
         wordcloud = WordCloud(background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
 
     ## I'm more disappointed in myself than you will ever be in me.
-    def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, filter_syntax=""):
+    def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, filter_in_syntax="", filter_out_syntax=""):
         s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(s_cluster_ids)):
             plt.subplot(3, 3, i+1)
-            self.create_word_cloud_by_sentence_cluster(s_cluster_ids[i], filter_syntax)
+            self.create_word_cloud_by_sentence_cluster(s_cluster_ids[i], filter_in_syntax, filter_out_syntax)
             plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
         plt.show()
 
 
     ## look, no one's happy about this.
-    def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, filter_syntax=""):
+    def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, filter_in_syntax="", filter_out_syntax=""):
         g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(g_cluster_ids)):
             plt.subplot(3, 3, i+1)
-            self.create_word_cloud_by_gesture_cluster(g_cluster_ids[i], filter_syntax)
+            self.create_word_cloud_by_gesture_cluster(g_cluster_ids[i], filter_in_syntax, filter_out_syntax)
             plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
         plt.show()
 
