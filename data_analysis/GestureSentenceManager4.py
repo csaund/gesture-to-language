@@ -49,7 +49,6 @@ class GestureSentenceManager():
         self.agd = None
         self._initialize_sentence_clusterer()
 
-
     def _initialize_sentence_clusterer(self):
         self.SentenceClusterer = SentenceClusterer(self.base_path, self.speaker)
         # now we have clusters, now need to get the corresponding sentences for those clusters.
@@ -58,7 +57,8 @@ class GestureSentenceManager():
         self.sentenceClusters = self.SentenceClusterer.clusters
 
     def cluster_sentences_gesture_independent_under_n_words(self, n):
-        exclude_ids = self.get_gesture_ids_fewer_than_n_words(n)
+        ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
+        exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
         self.SentenceClusterer.cluster_sentences(gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=exclude_ids)
         self.sentenceClusters = self.SentenceClusterer.clusters
 
@@ -85,7 +85,8 @@ class GestureSentenceManager():
             os.remove("tmp.json")
 
     def cluster_gestures_under_n_words(self, n):
-        exclude_ids = self.get_gesture_ids_fewer_than_n_words(n)
+        ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
+        exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
         self.cluster_gestures(exclude_ids)
 
     def cluster_gestures(self, exclude_ids=[]):
@@ -351,8 +352,31 @@ class GestureSentenceManager():
         wc = [w for w in wordcounts if w > 1]
         return wc
 
-    def histogram_of_word_count(self):
-        wc = np.array(get_wordcount_data(self))
+    # MAJOR TODO::: JOIN DFS ON GESTURE ID.
+    def get_gesture_cluster_wordcount_data(self):
+        wc = []
+        for k in self.gestureClusters:
+            c = self.gestureClusters[k]
+            for g in c['gestures']:
+                s = self.get_gesture_by_id(g['id'])['phase']['transcript']
+                wc.append(len(nltk.word_tokenize(s)))
+        return wc
+
+    # MAJOR TODO::: JOIN DFS ON GESTURE ID.
+    def get_sentence_cluster_wordcount_data(self):
+        wc = []
+        for k in self.sentenceClusters:
+            c = self.sentenceClusters[k]
+            for s in c['sentences']:
+                wc.append(len(nltk.word_tokenize(s)))
+        return wc
+
+    def histogram_of_word_count(self, wc_data=None):
+        wc = np.array(self.get_wordcount_data())
+        if wc_data == "sentence":
+            wc = self.get_sentence_cluster_wordcount_data()
+        elif wc_data == "gesture":
+            wc = self.get_gesture_cluster_wordcount_data()
         n, bins, patches = plt.hist(wc, bins=30, range=[0,100], normed=True, facecolor='green', alpha=0.75)
         plt.xlabel('wordcount')
         plt.ylabel('num occurances')
@@ -402,8 +426,6 @@ class GestureSentenceManager():
         wordcloud = WordCloud(background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
-        # plt.show()
-
 
     ## I'm more disappointed in myself than you will ever be in me.
     def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, filter_syntax=""):
