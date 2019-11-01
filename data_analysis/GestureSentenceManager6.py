@@ -84,6 +84,24 @@ class GestureSentenceManager():
             upload_blob(agd_bucket, "tmp.json", "%s_agd.json" % self.speaker)
             os.remove("tmp.json")
 
+    def compare_ids_in_sentence_gesture_clusters(self):
+        s_ids = []
+        for k in self.sentenceClusters.keys():
+            c = self.sentenceClusters[k]
+            ids = [g['id'] for g in c['gestures']]
+            s_ids.append(ids)
+        s_ids = flatten(s_ids)
+
+        g_ids = []
+        for k in self.gestureClusters.keys():
+            c = self.gestureClusters[k]
+            ids = [g['id'] for g in c['gestures']]
+            g_ids.append(ids)
+        g_ids = flatten(g_ids)
+
+        diff = list(set(s_ids).symmetric_difference(set(g_ids)))
+
+
     def cluster_gestures_under_n_words(self, n):
         ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
@@ -409,6 +427,7 @@ class GestureSentenceManager():
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_gesture_cluster(g_cluster_id)
         if filter_syntax:
+            print "filtering by syntax: %s" % filter_syntax
             all_words = filter_words_by_syntax(all_words, filter_syntax)
         all_words = " ".join(all_words)
         wordcloud = WordCloud(background_color="white").generate(all_words)
@@ -421,14 +440,16 @@ class GestureSentenceManager():
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_sentence_cluster(s_cluster_id)
         if filter_syntax:
+            print "filtering by syntax: %s" % filter_syntax
             all_words = filter_words_by_syntax(all_words, filter_syntax)
         all_words = " ".join(all_words)
+        print all_words
         wordcloud = WordCloud(background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
 
     ## I'm more disappointed in myself than you will ever be in me.
-    def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, filter_syntax=""):
+    def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, stopwords=0, filter_syntax=""):
         s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(s_cluster_ids)):
             plt.subplot(3, 3, i+1)
@@ -438,7 +459,7 @@ class GestureSentenceManager():
 
 
     ## look, no one's happy about this.
-    def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, filter_syntax=""):
+    def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, stopwords=0, filter_syntax=""):
         g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(g_cluster_ids)):
             plt.subplot(3, 3, i+1)
@@ -461,29 +482,29 @@ def init_new_gsm(oldGSM):
     return newGSM
 
 
-# def print_sentences_by_cluster(GSM, cluster_id):
-#     sents = GSM.get_sentences_by_cluster(cluster_id)
-#     empties = 0
-#     c = 0
-#     colors = ['red', 'blue']
-#     for i, s in enumerate(sents):
-#         if s:
-#             print colored("%s. %s" % (i, s), colors[c])
-#             if c:
-#                 c = 0
-#             else:
-#                 c = 1
-#         else:
-#             empties += 1
-#     print "Along with %s empty strings." % empties
-#     print
-#
-#
-#
-# def get_sentence_clusters_by_gesture_clusters(GSM):
-#     if(GSM.gesture_sentence_clusters):
-#         return GSM.gesture_sentence_clusters
-#     for k in GSM.GestureClusterer.clusters:
-#         g_ids = [g['id'] for g in GSM.GestureClusterer.clusters[k]['gestures']]
-#         gests = GSM.get_gestures_by_ids(g_ids)
-#         GSM.gesture_sentence_clusters[k] = GSM.SentenceClusterer._create_new_cluster_by_gestures(gests)
+
+
+def count_sentence_clusters_of_gesture(gsm, g_id):
+    count = 0
+    for k in gsm.sentenceClusters.keys():
+        c = gsm.sentenceClusters[k]
+        for g in c['gestures']:
+            if g['id'] == g_id:
+                count += 1
+    return count
+
+
+def check_sentence_cluster_counts(gsm, ids):
+    counts = []
+    for i in ids:
+        counts.append(count_sentence_clusters_of_gesture(gsm, i))
+    return counts
+
+
+
+
+
+
+
+
+## STOP

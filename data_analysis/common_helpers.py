@@ -114,3 +114,7 @@ def filter_words_out_by_syntax(words, wordtype="NN"):
     tagged = nltk.pos_tag(words)
     ws = [w[0] for w in tagged if w[1] not in wordtype]
     return ws
+
+def flatten(l):
+    flat_list = [item for sublist in l for item in sublist]
+    return flat_list

@@ -115,21 +115,27 @@ class SentenceClusterer():
         c2 = self.embed_fn(sents2)
         return np.inner(c1, c2).max()
 
+    def filter_agd(self, exclude_ids):
+        agd = {'phrases': [d for d in self.agd['phrases'] if d['id'] not in exclude_ids]}
+        return agd
+
     def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[]):
         # if not self.has_assigned_feature_vecs:
         #     self._assign_feature_vectors()
         gd = gesture_data if gesture_data else self.agd
-        # if ('sentence_embedding' not in gd['phrases'][-1].keys()):
-        #     self._assign_feature_vectors()
+
+        # filter here
+        if(exclude_gesture_ids):
+            gd = self.filter_agd(exclude_gesture_ids)
+
         i = 0
         l = len(gd)
         print "Clustering sentences, excluding %s gestures" % str(len(exclude_gesture_ids))
+
+        #double filter?
         phrases = [g for g in gd['phrases'] if g['id'] not in exclude_gesture_ids]
 
         for g in tqdm(phrases):
-            if g['id'] in exclude_gesture_ids:
-                continue
-
             if 'sentence_embedding' not in g.keys():
                 g['sentence_embedding'] = self.get_sentence_embedding(g['phase']['transcript'])
 
@@ -160,7 +166,15 @@ class SentenceClusterer():
         # self._recluster_by_centroids()
         # TODO do need some sort of reclustering I think...
         self._recluster_singletons()
-        self._write_logs()
+
+    def count_sentence_clusters_of_gesture(self, g_id):
+        count = 0
+        for k in self.clusters.keys():
+            c = self.clusters[k]
+            for g in c['gestures']:
+                if g['id'] == g_id:
+                    count += 1
+        return count
 
     def _add_gesture_to_cluster(self, g, cluster_id, max_number_clusters=MAX_NUMBER_CLUSTERS):
         self.clusters[cluster_id]['gestures'].append(g)
