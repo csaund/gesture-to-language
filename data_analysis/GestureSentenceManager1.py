@@ -26,10 +26,12 @@ from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("/Users/carolynsaund/github/gest-data/data", "rock")
 # GSM.load_gestures()
-# GSM.cluster_gestures()
+# GSM.cluster_gestures()    or    GSM.cluster_gestures_under_n_words(10)
 # report = GSM.report_clusters()
 # GSM.print_sentences_by_cluster(0)
-# GSM.cluster_sentences_gesture_independent()
+# GSM.cluster_sentences_gesture_independent()    or     GSM.cluster_sentences_gesture_independent_under_n_words(10)
+
+#
 
 ## manages gesture and sentence stuff.
 class GestureSentenceManager():
@@ -60,13 +62,17 @@ class GestureSentenceManager():
         self.SentenceClusterer.cluster_sentences(gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=exclude_ids)
         self.sentenceClusters = self.SentenceClusterer.clusters
 
-    def report_clusters(self):
+    def report_gesture_clusters(self):
         self.GestureClusterer.report_clusters()
+
+    def report_sentence_clusters(self):
+        self.SentenceClusterer.report_clusters()
 
     def load_gestures(self):
         self.agd = {}
         agd_bucket = "all_gesture_data"
         try:
+            print "trying to get data from cloud from %s, %s" % (agd_bucket, "%s_agd.json" % self.speaker)
             d = get_data_from_blob(agd_bucket, "%s_agd.json" % self.speaker)
             self.SpeakerGestures.all_gesture_data = d
         except:
@@ -340,57 +346,6 @@ class GestureSentenceManager():
         df.plot.scatter(x='num_sentences', y="num_g_clusters")
         plt.show()
 
-    def get_words_by_sentence_cluster(self, s_cluster_id):
-        c = self.sentenceClusters[s_cluster_id]
-        all_words = " ".join(c['sentences'])
-        return all_words
-
-    def get_words_by_gesture_cluster(self, g_cluster_id):
-        words = []
-        c = self.gestureClusters[g_cluster_id]
-        for gesture in c['gestures']:
-            g = self.get_gesture_by_id(gesture['id'])
-            words.append(g['phase']['transcript'])
-        return words
-
-    def create_word_cloud_by_gesture_cluster(self, g_cluster_id):
-        stopwords = set(STOPWORDS)
-        stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-        all_words = self.get_words_by_gesture_cluster(g_cluster_ids)
-        wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis("off")
-
-
-    def create_word_cloud_by_sentence_cluster(self, s_cluster_id):
-        stopwords = set(STOPWORDS)
-        stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-        all_words = self.get_words_by_sentence_cluster(s_cluster_id)
-        wordcloud = WordCloud(stopwords=stopwords ,background_color="white").generate(all_words)
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis("off")
-        # plt.show()
-
-
-    ## I'm more disappointed in myself than you will ever be in me.
-    def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None):
-        s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
-        for i in range(0, len(s_cluster_ids)):
-            plt.subplot(3, 3, i+1)
-            self.create_word_cloud_by_sentence_cluster(s_cluster_ids[i])
-            plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
-        plt.show()
-
-
-    ## look, no one's happy about this.
-    def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None):
-        g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
-        for i in range(0, len(g_cluster_ids)):
-            plt.subplot(3, 3, i+1)
-            self.create_word_cloud_by_gesture_cluster(g_cluster_ids[i])
-            plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
-        plt.show()
-
     def get_wordcount_data(self):
         wordcounts = [float(len(g['phase']['transcript'].split(' '))) for g in self.gesture_transcript['phrases']]
         wc = [w for w in wordcounts if w > 1]
@@ -428,7 +383,7 @@ class GestureSentenceManager():
     def create_word_cloud_by_gesture_cluster(self, g_cluster_id, filter_syntax=""):
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-        all_words = gself.et_words_by_gesture_cluster(self, g_cluster_id)
+        all_words = self.get_words_by_gesture_cluster(g_cluster_id)
         if filter_syntax:
             all_words = filter_words_by_syntax(all_words, filter_syntax)
         all_words = " ".join(all_words)
@@ -440,7 +395,7 @@ class GestureSentenceManager():
     def create_word_cloud_by_sentence_cluster(self, s_cluster_id, filter_syntax=""):
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
-        all_words = self.get_words_by_sentence_cluster(self, s_cluster_id)
+        all_words = self.get_words_by_sentence_cluster(s_cluster_id)
         if filter_syntax:
             all_words = filter_words_by_syntax(all_words, filter_syntax)
         all_words = " ".join(all_words)
@@ -455,7 +410,7 @@ class GestureSentenceManager():
         s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(s_cluster_ids)):
             plt.subplot(3, 3, i+1)
-            self.create_word_cloud_by_sentence_cluster(self, s_cluster_ids[i], filter_syntax)
+            self.create_word_cloud_by_sentence_cluster(s_cluster_ids[i], filter_syntax)
             plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
         plt.show()
 
@@ -465,7 +420,7 @@ class GestureSentenceManager():
         g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(g_cluster_ids)):
             plt.subplot(3, 3, i+1)
-            self.create_word_cloud_by_gesture_cluster(gsm, g_cluster_ids[i], filter_syntax)
+            self.create_word_cloud_by_gesture_cluster(g_cluster_ids[i], filter_syntax)
             plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
         plt.show()
 

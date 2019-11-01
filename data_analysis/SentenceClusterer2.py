@@ -119,15 +119,20 @@ class SentenceClusterer():
         # if not self.has_assigned_feature_vecs:
         #     self._assign_feature_vectors()
         gd = gesture_data if gesture_data else self.agd
-        if ('sentence_embedding' not in gd['phrases'][0].keys()):
-            self._assign_feature_vectors()
+        # if ('sentence_embedding' not in gd['phrases'][-1].keys()):
+        #     self._assign_feature_vectors()
         i = 0
         l = len(gd)
-        phrases = gd['phrases']
-        print "Clustering sentences"
+        print "Clustering sentences, excluding %s gestures" % str(len(exclude_gesture_ids))
+        phrases = [g for g in gd['phrases'] if g['id'] not in exclude_gesture_ids]
+
         for g in tqdm(phrases):
             if g['id'] in exclude_gesture_ids:
                 continue
+
+            if 'sentence_embedding' not in g.keys():
+                g['sentence_embedding'] = self.get_sentence_embedding(g['phase']['transcript'])
+
             # print "GID: %s" % g['id']
             s = time.time()
             i = i + 1
@@ -197,7 +202,6 @@ class SentenceClusterer():
         # I don't think we need to do this because using google's universal thing
         self.has_assigned_feature_vecs = True
         return
-
 
     def _recluster_singletons(self):
         single_cluster_ids = [self.clusters[c]['cluster_id'] for c in self.clusters.keys() if len(self.clusters[c]['sentences']) == 1]
