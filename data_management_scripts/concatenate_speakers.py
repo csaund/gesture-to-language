@@ -10,6 +10,31 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds
 from google.cloud import storage
 
 
+## the simplest way to do this is to create a new "conglomerate" speaker who is composed of all the other speakers.
+transcript_bucket = "audio_transcript_buckets_1"
+full_timings_transcript_bucket = "full_timings_with_transcript_bucket"     ## Used in SentenceClusterer
+agd_bucket = "all_gesture_data"     ## Used to load gestures
+timings_bucket = "speaker_timings"
+
+def get_timings(speaker):
+
+
+
+
+def concat_timings(speakers):
+    agd = {}
+    agd_phrases = []
+    for s in speakers:
+        agd_phrases.append(get_data_from_blob(full_transcript_bucket, "%s_timings_with_transcript.json" % s)['phrases'])
+
+    agd = {'phrases': agd_phrases}
+    upload_object(full_transcript_bucket, agd)
+
+
+
+def conglomerate_speakers(base_path, speakers):
+    concat_timings(base_path, speakers)
+    concat_full_transcripts(base_path, speakers, "conglomerate_timings_with_transcript.json")
 
 
 if __name__ == '__main__':
@@ -22,5 +47,5 @@ if __name__ == '__main__':
 
     #vid_base_path = args.base_path + '/' + args.speaker + '/videos'
     #transcript_path = args.base_path + '/' + args.speaker + '/transcripts'
-
+    conglomerate_speakers(args.base_path, args.speakers)
     print args.speakers

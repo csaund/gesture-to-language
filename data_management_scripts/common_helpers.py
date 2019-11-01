@@ -10,6 +10,9 @@ from google.cloud import storage
 ########################################################
 ############### Getting Actual Keyframes ###############
 ########################################################
+
+
+
 # takes time in form of "X_X_IND_m_s.txt"
 def timestring_to_int(time):
     times = time.split("_")
@@ -70,6 +73,18 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
     blob = bucket.blob(destination_blob_name)
     blob.upload_from_filename(source_file_name)
 
+
+def upload_object(bucket_name, data, destination_blob_name):
+    """Uploads a file to the bucket."""
+    write_data('tmp', data)
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename('tmp')
+    os.remove('tmp')
+
+
+
 def upload_to_gcloud_from_path(fn, path):
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
@@ -89,3 +104,30 @@ def write_data(fp, data):
     with open(fp, 'w') as f:
         json.dump(data, f, indent=4)
     f.close()
+
+
+def get_shape(d):
+    if isinstance(d, dict):
+        return {k:getshape(d[k]) for k in d}
+    else:
+        return None
+
+def shape_equal(d1, d2):
+    return getshape(d1) == getshape(d2)
+
+
+def get_data_from_blob(bucket_name, source_blob_name):
+    download_blob(bucket_name, source_blob_name, "tmp")
+    d = get_data_from_path("tmp")
+    os.remove("tmp")
+    return d
+
+def download_blob(bucket_name, source_blob_name, destination_file_name):
+    """Downloads a blob from the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(source_blob_name)
+    blob.download_to_filename(destination_file_name)
+    print('Blob {} downloaded to {}.'.format(
+        source_blob_name,
+        destination_file_name))
