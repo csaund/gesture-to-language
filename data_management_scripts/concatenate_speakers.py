@@ -20,16 +20,13 @@ def get_timings(speaker):
 
 
 
-
 def concat_timings(speakers):
     agd = {}
     agd_phrases = []
     for s in speakers:
         agd_phrases.append(get_data_from_blob(full_transcript_bucket, "%s_timings_with_transcript.json" % s)['phrases'])
-
     agd = {'phrases': agd_phrases}
     upload_object(full_transcript_bucket, agd)
-
 
 
 def conglomerate_speakers(base_path, speakers):
