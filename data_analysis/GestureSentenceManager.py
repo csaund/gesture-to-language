@@ -72,6 +72,7 @@ class GestureSentenceManager():
     def report_sentence_clusters(self):
         self.SentenceClusterer.report_clusters()
 
+
     def load_gestures(self):
         self.agd = {}
         agd_bucket = "all_gesture_data"
