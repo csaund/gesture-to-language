@@ -12,26 +12,25 @@ from google.cloud import storage
 
 ## the simplest way to do this is to create a new "conglomerate" speaker who is composed of all the other speakers.
 transcript_bucket = "audio_transcript_buckets_1"
-full_timings_transcript_bucket = "full_timings_with_transcript_bucket"     ## Used in SentenceClusterer
-agd_bucket = "all_gesture_data"     ## Used to load gestures
+FULL_TRANSCRIPT_BUCKET = "full_timings_with_transcript_bucket"     ## Used in SentenceClusterer
+AGD_BUCKET = "all_gesture_data"     ## Used to load gestures
 timings_bucket = "speaker_timings"
 
-def get_timings(speaker):
-
-
-
-def concat_timings(speakers):
+def concat_timings_transcript_id_keyframes(speakers):
     agd = {}
     agd_phrases = []
+    id_keyframes = []
     for s in speakers:
-        agd_phrases.append(get_data_from_blob(full_transcript_bucket, "%s_timings_with_transcript.json" % s)['phrases'])
+        agd_phrases.append(get_data_from_blob(FULL_TRANSCRIPT_BUCKET, "%s_timings_with_transcript.json" % s)['phrases'])
+        id_keyframes.append(get_data_from_blob(AGD_BUCKET), "%s_agd.json" % s)
     agd = {'phrases': agd_phrases}
-    upload_object(full_transcript_bucket, agd)
+
+    upload_object(FULL_TRANSCRIPT_BUCKET, agd, "conglomerate_timings_with_transcript.json")
+    upload_object(AGD_BUCKET, id_keyframes, "conglomerate_agd.json")
 
 
 def conglomerate_speakers(base_path, speakers):
-    concat_timings(base_path, speakers)
-    concat_full_transcripts(base_path, speakers, "conglomerate_timings_with_transcript.json")
+    concat_timings_transcript_id_keyframes(speakers)
 
 
 if __name__ == '__main__':
