@@ -14,7 +14,6 @@ import numpy as np
 import uuid
 import operator
 import random
-# from analyze_frames import *
 import time
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid

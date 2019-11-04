@@ -38,10 +38,10 @@ if __name__ == "__main__":
     output_path = args.base_path + '/' + args.speaker + '/timings.json'
     output_name = args.speaker + '_timings.json'
 
-    if(os.path.exists(output_path)):
-        print "found timings path for %s, skipping parsing." % args.speaker
-        upload_blob(bucket_name, output_name, output_path)
-        exit()
+    # if(os.path.exists(output_path)):
+    #     print "found timings path for %s, skipping parsing." % args.speaker
+    #     upload_blob(bucket_name, output_name, output_path)
+    #     exit()
 
     phrases = []
     print "loading intervals"
@@ -79,4 +79,4 @@ if __name__ == "__main__":
             print("couldn't save interval: %s"%interval)
 
     write_data(output_path, {"phrases": phrases})
-    upload_blob(bucket_name, output_name, output_path)
+    upload_blob(bucket_name, output_path, output_name)

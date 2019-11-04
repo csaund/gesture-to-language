@@ -40,9 +40,9 @@ def get_video_transcript(video_name):
     print "getting transcript for %s" % video_name
     outfile_path = "tmp.json"
     touch(outfile_path)
-    download_blob(transcript_bucket, video_name.replace(".mp4", ".json"), outfile_path)
+    download_blob(transcript_bucket, video_name.replace(".mp4", ".json").replace(".mkv", ".json").replace(".webm", ".json"), outfile_path)
     transcript = read_data(outfile_path)
-    os.remove(outfile_path)
+    #os.remove(outfile_path)
     return transcript
 
 def match_transcript_to_timing(timings):
@@ -59,6 +59,10 @@ def match_transcript_to_timing(timings):
             trans = get_video_transcript(v)
         except:
             print "Skipping %s." % v
+            continue
+
+        if len(trans) == 0:
+            print "Something is going wrong. Aborting video transcript"
             continue
 
         all_words = sorted(flatten([t['words'] for t in trans]), key=word_sort)
@@ -124,6 +128,7 @@ def add_transcript_data(speaker, base_path):
     filename = "%s_timings_with_transcript.json" % speaker
     output_path = "%s/%s/%s" % (base_path, speaker, filename)
     write_transcript(timings_with_transcript, output_path)
+    print "uploading transcript timings"
     upload_blob(full_bucket, output_path, filename)
 
 ## take gesture timings for a speaker

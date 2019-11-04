@@ -55,9 +55,9 @@ def get_data_from_path(data_path):
     return data
 
 def get_data_from_blob(bucket_name, source_blob_name):
-    download_blob(bucket_name, source_blob_name, "tmp")
-    d = get_data_from_path("tmp")
-    os.remove("tmp")
+    download_blob(bucket_name, source_blob_name, "tmp.json")
+    d = get_data_from_path("tmp.json")
+    os.remove("tmp.json")
     return d
 
 def download_blob(bucket_name, source_blob_name, destination_file_name):

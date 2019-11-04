@@ -28,7 +28,8 @@ class SpeakerGestureGetter():
         self.base_path = base_path
         # self.all_gesture_data = self.analyze_gestures(self.video_path, self.timings_path)
 
-    def perform_gesture_analysis(self):
+    def perform_gesture_analysis(self, force_upload=False):
+        self.force_upload = force_upload
         self.all_gesture_data = self.analyze_gestures(self.video_path, self.timings_path)
         return self.all_gesture_data
 
@@ -118,32 +119,36 @@ class SpeakerGestureGetter():
 
 
     def analyze_gestures(self, video_base_path, timings_path):
+        if(self.force_upload):
+            return self.analyze_and_upload(video_base_path, timings_path)
         try:
             all_gesture_data = download_blob(AGD_BUCKET, "%s_agd.json" % self.speaker)
             return all_gesture_data
         except:
-            all_gesture_data = []
-            timings = self.get_timings(timings_path)
-            phrases = timings['phrases']
-            ## TODO try this out...?
-            # all_gesture_data = [self.get_data_per_gesture(g, video_base_path + str(g['phase']['video_fn'].split('.')[0]) + '/') for g in phrases]
-            l = len(timings['phrases'])
-            print "analyzing %s gestures" % l
-            i = 0
-            for phase in tqdm(timings['phrases']):
-                # print i
-                # i += 1
-                p = phase['phase']
-                vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
-                start = p['start_seconds']
-                end = p['end_seconds']
-                specific_gesture_dat = {'id': phase['id']}
-                specific_gesture_dat['keyframes'] = self.get_keyframes_per_gesture(vid_path, start, end)
-                all_gesture_data.append(specific_gesture_dat)
+            self.analyze_and_upload(video_base_path, timings_path)
 
-            upload_object(AGD_BUCKET, all_gesture_data, "%s_agd.json" % self.speaker)
-            return all_gesture_data
+    def analyze_and_upload(self, video_base_path, timings_path):
+        all_gesture_data = []
+        timings = self.get_timings(timings_path)
+        phrases = timings['phrases']
+        ## TODO try this out...?
+        # all_gesture_data = [self.get_data_per_gesture(g, video_base_path + str(g['phase']['video_fn'].split('.')[0]) + '/') for g in phrases]
+        l = len(timings['phrases'])
+        print "analyzing %s gestures" % l
+        i = 0
+        for phase in tqdm(timings['phrases']):
+            # print i
+            # i += 1
+            p = phase['phase']
+            vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
+            start = p['start_seconds']
+            end = p['end_seconds']
+            specific_gesture_dat = {'id': phase['id']}
+            specific_gesture_dat['keyframes'] = self.get_keyframes_per_gesture(vid_path, start, end)
+            all_gesture_data.append(specific_gesture_dat)
 
+        upload_object(AGD_BUCKET, all_gesture_data, "%s_agd.json" % self.speaker)
+        return all_gesture_data
 
     ## TODO
     ## my attempt at speeding things up a bit.

@@ -67,3 +67,14 @@ Now you can look at things going on.
 - Visualizations -- chord diagram? network diagram? 
 - new sentence clusterings using nltk: Wu-Palmer, Jiang-Conrath distance.
 - metric to compare quality of clustering 
+
+
+
+
+the pipeline for data cleaning goes
+- download data
+- download_youtube
+- get_video_transcripts
+- transform_speech2gest_data
+- match_transcript_gesture_timings
+- get_keyframes_for_gestures

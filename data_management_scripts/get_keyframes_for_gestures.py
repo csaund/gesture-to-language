@@ -23,7 +23,8 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-base_path', '--base_path', help='base folder path of dataset', required=True)
     parser.add_argument('-speaker', '--speaker', default='optionally, run only on specific speaker', required=False)
+    parser.add_argument('-force', '--force_upload', default=False)
 
     args = parser.parse_args()
     SGG = SpeakerGestureGetter(args.base_path, args.speaker)
-    gs = SGG.perform_gesture_analysis()
+    gs = SGG.perform_gesture_analysis(args.force_upload)

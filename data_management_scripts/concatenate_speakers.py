@@ -18,9 +18,9 @@ AGD_BUCKET = "all_gesture_data"     ## Used to load gestures
 timings_bucket = "speaker_timings"
 
 def concat_timings_transcript_id_keyframes(speakers):
-    agd = {}
-    agd_phrases = []
-    id_keyframes = []
+    agd_phrases = []  #transcripts seem to be fine...
+    id_keyframes = [] # why are keyframes in wrong format??
+    # I know, it's because I am a dummy
     for s in tqdm(speakers):
         print "Getting data and transcript for %s" % s
         agd_phrases.append(get_data_from_blob(FULL_TRANSCRIPT_BUCKET, "%s_timings_with_transcript.json" % s)['phrases'])
