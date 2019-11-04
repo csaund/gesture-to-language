@@ -28,9 +28,8 @@ MAX_NUMBER_CLUSTERS = 10000
 # if you previously saved a run of agd from this, so you don't need to get sentence embeddings again.
 
 class SentenceClusterer():
-    def __init__(self, base_path, speaker, seeds=[]):
+    def __init__(self, speaker, seeds=[]):
         self.speaker = speaker
-        self.base_path = base_path
         print "oh boy we're in for it now."
         self.embed_fn = self.initialize_encoder("/tmp/sentence-encoder")
         self.has_assigned_feature_vecs = False

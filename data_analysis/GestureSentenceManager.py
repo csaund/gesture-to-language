@@ -38,10 +38,9 @@ ADJ = ["JJ"]
 
 ## manages gesture and sentence stuff.
 class GestureSentenceManager():
-    def __init__(self, base_path, speaker, seeds=[]):
+    def __init__(self, speaker, seeds=[]):
         ## this is where the magic is gonna happen.
         ## get all the gestures
-        self.base_path = base_path
         self.speaker = speaker
         self.cluster_bucket_name = "%s_clusters" % speaker
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
@@ -52,7 +51,7 @@ class GestureSentenceManager():
         self._initialize_sentence_clusterer()
 
     def _initialize_sentence_clusterer(self):
-        self.SentenceClusterer = SentenceClusterer(self.base_path, self.speaker)
+        self.SentenceClusterer = SentenceClusterer(self.speaker)
         # now we have clusters, now need to get the corresponding sentences for those clusters.
     def cluster_sentences_gesture_independent(self):
         self.SentenceClusterer.cluster_sentences()
@@ -470,8 +469,7 @@ class GestureSentenceManager():
 
 
 def init_new_gsm(oldGSM):
-    newGSM = GestureSentenceManager(oldGSM.base_path, oldGSM.speaker)
-    newGSM.base_path = oldGSM.base_path
+    newGSM = GestureSentenceManager(oldGSM.speaker)
     newGSM.speaker = oldGSM.speaker
     newGSM.agd = oldGSM.agd
     newGSM.gestureClusters = oldGSM.gestureClusters
