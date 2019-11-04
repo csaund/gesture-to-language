@@ -471,6 +471,11 @@ class GestureClusterer():
 
     def _get_keypoints_body_range(self, gesture, start, end):
         keys = []
+        if not gesture['keyframes']:
+            print "OH NO"
+            print gesture
+            return
+
         for t in gesture['keyframes']:
             y = t['y'][start:end]
             x = t['x'][start:end]

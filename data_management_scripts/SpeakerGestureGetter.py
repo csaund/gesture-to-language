@@ -21,8 +21,6 @@ class SpeakerGestureGetter():
         self.video_path = "%s/%s/keypoints_simple/" % (base_path, speaker)
         self.timings_path = "%s/%s/timings.json" % (base_path, speaker)
         self.speaker = speaker
-        self.base_path = base_path
-        # self.all_gesture_data = self.analyze_gestures(self.video_path, self.timings_path)
 
     def perform_gesture_analysis(self, force_upload=False):
         self.force_upload = force_upload
@@ -62,7 +60,7 @@ class SpeakerGestureGetter():
             print("panic!! wrong number of matching files: %s" % str(len(m)))
             print(start_filekey)
             print(m)
-            return
+            print "using first file"
         all_gesture_keys = []
         i = files.index(m[0])
         #  print("starting at %s" % files[i])   # start at index of first frame
