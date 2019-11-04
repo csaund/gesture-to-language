@@ -14,6 +14,8 @@ from common_helpers import *
 
 AGD_BUCKET = "all_gesture_data"
 
+## TODO: remove everything that isn't specifically about getting the data into the right format.
+
 ## given a speaker name and path to their keypoints and gesture timings,
 ## loads all the gesture data to be analyzed.
 class SpeakerGestureGetter():
@@ -153,6 +155,7 @@ class SpeakerGestureGetter():
             'id': p['id'],
             'keyframes': self.get_keyframes_per_gesture(vid_path, p['start_seconds'], p['end_seconds'])
         }
+
 
     # # takes [id1, id2, id3] and saves
     # # the plot images of those ids
