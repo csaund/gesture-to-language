@@ -147,6 +147,7 @@ class SpeakerGestureGetter():
             specific_gesture_dat['keyframes'] = self.get_keyframes_per_gesture(vid_path, start, end)
             all_gesture_data.append(specific_gesture_dat)
 
+        print "uploading AGD to %s_agd.json" % self.speaker
         upload_object(AGD_BUCKET, all_gesture_data, "%s_agd.json" % self.speaker)
         return all_gesture_data
 

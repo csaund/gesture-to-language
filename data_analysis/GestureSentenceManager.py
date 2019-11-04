@@ -217,30 +217,10 @@ class GestureSentenceManager():
         return list(set(c_ids))
         # now get the cluster id for each gesture
 
-    # TODO I can make this more clever -- gesture cluster gestures
-    # have gesture_cluster_id in them, match those?
-    def get_cluster_id_for_gesture(self, g_id):
-        for k in self.GestureClusterer.clusters:
-            g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gestures']]
-            if g_id in g_ids:
-                return k
-
-
-    # takes sentence cluster ID
-    # returns list of all gesture clusters in which corresponding
-    # sentences appear
-    def get_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
-        c = self.SentenceClusterer.clusters[s_cluster_id]
-        g_cluster_ids = [g['id'] for g in c['gestures']]
-        c_ids = []
-        for g in g_cluster_ids:
-            c_ids.append(get_cluster_id_for_gesture(self, g))
-        return list(set(c_ids))
-        # now get the cluster id for each gesture
 
     # TODO I can make this more clever -- gesture cluster gestures
     # have gesture_cluster_id in them, match those?
-    def get_cluster_id_for_gesture(self, g_id):
+    def get_gesture_cluster_id_for_gesture(self, g_id):
         for k in self.GestureClusterer.clusters:
             g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gestures']]
             if g_id in g_ids:
@@ -249,7 +229,7 @@ class GestureSentenceManager():
 
     def assign_gesture_cluster_ids_for_sentence_clusters(self):
         for k in self.SentenceClusterer.clusters:
-            g_cluster_ids = get_gesture_clusters_for_sentence_cluster(self, k)
+            g_cluster_ids = get_gesture_clusters_for_sentence_cluster(k)
             self.SentenceClusterer.clusters[k]['gesture_cluster_ids'] = g_cluster_ids
 
 
@@ -265,7 +245,7 @@ class GestureSentenceManager():
         lens = []
         unique_matches = []
         for g_cluster_id in self.GestureClusterer.clusters:
-            s_cluster_ids = self.get_sentence_cluster_ids_for_gesture_cluster(self, g_cluster_id)
+            s_cluster_ids = self.get_sentence_cluster_ids_for_gesture_cluster(g_cluster_id)
             print "Sentence clusters represented in g_cluster %s: %s" % (g_cluster_id, s_cluster_ids)
             lens.append(len(s_cluster_ids))
             if len(s_cluster_ids) == 1:
@@ -307,8 +287,8 @@ class GestureSentenceManager():
         plt.show()
 
     def get_sentence_gesture_data_network(self):
-        key = self.SentenceClusterer.clusters.keys()[0]
-        if not self.SentenceClusterer.clusters[key]['gesture_cluster_ids']:
+        key = self.sentenceClusters.keys()[0]
+        if 'gesture_cluster_ids' not in self.sentenceClusters[key].keys():
             self.assign_gesture_cluster_ids_for_sentence_clusters()
         from_ = []
         to_ = []
@@ -338,8 +318,8 @@ class GestureSentenceManager():
         sentence_clusters = []
         sentence_nums = []
         num_g_clusters = []
-        for k in self.SentenceClusterer.clusters:
-            c = self.SentenceClusterer.clusters[k]
+        for k in self.sentenceClusters:
+            c = self.sentenceClusters[k]
             sentence_clusters.append(k)
             sentence_nums.append(len(c['sentences']))
             num_g_clusters.append(len(c['gesture_cluster_ids']))
@@ -420,7 +400,7 @@ class GestureSentenceManager():
         return " ".join(words).split(" ")
 
 
-    def create_word_cloud_by_gesture_cluster(self, g_cluster_id, filter_in_syntax="", filter_out_syntax=""):
+    def create_word_cloud_by_gesture_cluster(self, g_cluster_id, filter_in_syntax="", filter_out_syntax="", stopwords=[]):
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_gesture_cluster(g_cluster_id)
@@ -434,7 +414,7 @@ class GestureSentenceManager():
         plt.axis("off")
 
 
-    def create_word_cloud_by_sentence_cluster(self, s_cluster_id, filter_in_syntax="", filter_out_syntax=""):
+    def create_word_cloud_by_sentence_cluster(self, s_cluster_id, filter_in_syntax="", filter_out_syntax="", stopwords=[]):
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_sentence_cluster(s_cluster_id)
