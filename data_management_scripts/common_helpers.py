@@ -132,3 +132,8 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
     print('Blob {} downloaded to {}.'.format(
         source_blob_name,
         destination_file_name))
+
+
+def flatten(l):
+    flat_list = [item for sublist in l for item in sublist]
+    return flat_list
