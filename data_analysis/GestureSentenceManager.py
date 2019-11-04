@@ -1,5 +1,4 @@
 #!/usr/bin/env pythons
-from SpeakerGestureGetter import *
 from GestureClusterer import *
 from SentenceClusterer import *
 import json
@@ -44,7 +43,6 @@ class GestureSentenceManager():
         ## get all the gestures
         self.base_path = base_path
         self.speaker = speaker
-        self.SpeakerGestures = SpeakerGestureGetter(base_path, speaker)
         self.cluster_bucket_name = "%s_clusters" % speaker
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
         self.gesture_transcript = None
@@ -79,15 +77,10 @@ class GestureSentenceManager():
         try:
             print "trying to get data from cloud from %s, %s" % (agd_bucket, "%s_agd.json" % self.speaker)
             d = get_data_from_blob(agd_bucket, "%s_agd.json" % self.speaker)
-            self.SpeakerGestures.all_gesture_data = d
+            self.agd = d
         except:
-            print "loading data"
-            self.agd = self.SpeakerGestures.perform_gesture_analysis()
-            print "writing data"
-            write_data("tmp.json", str(self.agd))
-            print "uploading data"
-            upload_blob(agd_bucket, "tmp.json", "%s_agd.json" % self.speaker)
-            os.remove("tmp.json")
+            print "No speaker gesture data found in %s for speaker %s" % (agd_bucket, self.speaker)
+            print "Try running data_management_scripts/get_keyframes_for_gestures"
 
     def compare_ids_in_sentence_gesture_clusters(self):
         s_ids = []
@@ -116,12 +109,12 @@ class GestureSentenceManager():
         if len(exclude_ids):
             self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
         else:
-            self.GestureClusterer = GestureClusterer(self.SpeakerGestures.all_gesture_data)
+            self.GestureClusterer = GestureClusterer(self.agd)
         self.GestureClusterer.cluster_gestures()
         self.gestureClusters = self.GestureClusterer.clusters
 
     def filter_agd(self, exclude_ids):
-        agd = [d for d in self.SpeakerGestures.all_gesture_data if d['id'] not in exclude_ids]
+        agd = [d for d in self.agd if d['id'] not in exclude_ids]
         return agd
 
     def print_sentences_by_cluster(self, cluster_id):
