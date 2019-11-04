@@ -536,6 +536,67 @@ class GestureClusterer3():
         return self._calculate_distance_between_vectors(self.agd[i]['feature_vec'], self.agd[j]['feature_vec'])
 
 
+    def get_avg_within_cluster_distances(self, cluster_id):
+        c = self.clusters[cluster_id]
+        gs = c['gestures']
+        all_dists = []
+        for i in range(len(gs)):
+            for j in range(len(gs)):
+                if i == j:
+                    continue
+                all_dists = all_dists + self._calculate_distance_between_vectors(gs[i]['feature_vec'], gs[j]['feature_vec'])
+
+        dists = {}
+        dists['average'] = self._avg(all_dists)
+        dists['max'] = max(all_dists)
+        dists['min'] = min(all_dists)
+
+
+    # takes a cluster ID, returns nearest neighbor cluster ID
+    def get_nearest_cluster_id(self, cluster_id):
+        dist = 1000
+        for c in self.clusters:
+            if c == cluster_id:
+                continue
+            mind = self._calculate_distance_between_vectors(self.clusters[c]['centroid'], self.clusters[cluster_id]['centroid'])
+            if mind < dist:
+                dist = mind
+                min_c = c
+        return c
+
+    # takes cluster ID, returns nearest neighbor cluster distance
+    def get_nearest_cluster_distance(self, cluster_id):
+        dist = 1000
+        for c in self.clusters:
+            if c == cluster_id:
+                continue
+            mind = self._calculate_distance_between_vectors(self.clusters[c]['centroid'], self.clusters[cluster_id]['centroid'])
+            if mind < dist:
+                dist = mind
+                min_c = c
+        return dist
+
+
+    # given a point and cluster id, returns avg distance between the point and
+    # all points in the cluster.
+    def get_avg_dist_between_point_and_cluster(self, vec, cluster_id):
+        dists = []
+        c = self.clusters[cluster_id]
+        for g in c['gestures']:
+            dists.append(self._calculate_distance_between_vectors(vec), g['feature_vec'])
+        return self._avg(dists)
+
+    # gets silhouette score for cluster using centroid
+    def get_silhouette_score(self, cluster_id):
+        p = self.clusters[cluster_id]['centroid']
+        nearest_c = get_nearest_cluster_id(cluster_id)
+        a = self.get_avg_dist_between_point_and_cluster(p, cluster_id)
+        b = self.get_avg_dist_between_point_and_cluster(p, self.get_nearest_cluster_id(cluster_id))
+        score = (b - a)/max(b,a)
+        return score
+
+
+
 #
 #
 # def get_closest_gesture_to_centroid(GSM, cluster_id):

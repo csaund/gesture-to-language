@@ -23,8 +23,13 @@ def concat_timings_transcript_id_keyframes(speakers):
     id_keyframes = []
     for s in tqdm(speakers):
         print "Getting data and transcript for %s" % s
-        agd_phrases.append(get_data_from_blob(FULL_TRANSCRIPT_BUCKET, "%s_timings_with_transcript.json" % s)['phrases'])
-        id_keyframes.append(get_data_from_blob(AGD_BUCKET, "%s_agd.json" % s))
+        trans_data = get_data_from_blob(FULL_TRANSCRIPT_BUCKET, "%s_timings_with_transcript.json" % s)['phrases']
+        agd_data = get_data_from_blob(AGD_BUCKET, "%s_agd.json" % s)
+
+
+        agd_phrases = agd_phrases + trans_data
+        id_keyframes = id_keyframes + agd_data
+
     agd = {'phrases': agd_phrases}
 
     print "Uploading full transcript"
