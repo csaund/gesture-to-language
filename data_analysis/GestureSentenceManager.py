@@ -467,6 +467,67 @@ class GestureSentenceManager():
     # TODO chord diagram
 
 
+
+
+    ############################################################
+    ################ Gesture the plotting stuff ################
+    ############################################################
+
+
+    ## flip so instead of format like
+    # [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
+    # it's in the format of
+    # [t1, t1`, t1``], [t2, t2`, t2``], [t3, t3`, t3``]
+    def arrange_data_by_time(self, dat_vector):
+        flipped_dat = []
+        for i in range(len(dat_vector[0])):
+            a = []
+            for d in dat_vector:
+                a.append(d[i])
+            flipped_dat.append(a)
+        return flipped_dat
+
+
+    def plot_coords(self, x_y, gesture):
+        coords = [d[x_y] for d in gesture['keyframes']]
+        fc = self.arrange_data_by_time(coords)
+        for v in fc:
+            plt.plot(range(0, len(fc[0])), v)
+        plt.xlabel("frame")
+        plt.ylabel("%s pixel position" % x_y)
+        plt.title = '%s coordinates for gesture %s' % (x_y, gesture['id'])
+
+
+    def plot_both_gesture_coords(self, g_id):
+        g = self.get_gesture_motion_by_id(g_id)
+        plt.subplot(1,2,1)
+        self.plot_coords('x', g)
+        plt.subplot(1,2,2)
+        self.plot_coords('y', g)
+        plt.title = 'xy coordinates for gesture %s' % g['id']
+        plt.savefig('%s.png' % g['id'])
+        plt.show()
+        return
+
+
+    def plot_two_gestures(self, g_id1, g_id2):
+        g1 = self.get_gesture_motion_by_id(g_id1)
+        g2 = self.get_gesture_motion_by_id(g_id2)
+        plt.subplot(2,2,1)
+        self.plot_coords('x', g1)
+        plt.subplot(2, 2, 2)
+        self.plot_coords('y', g1)
+        plt.subplot(2, 2, 3)
+        self.plot_coords('x', g2)
+        plt.subplot(2, 2, 4)
+        self.plot_coords('y', g2)
+        plt.title = 'xy coordinates for gesture %s and %s' % (g1['id'], g2['id'])
+        plt.savefig('%s_%s.png' % (g1['id'], g2['id']))
+        plt.show()
+        return
+
+
+
 def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
     newGSM.speaker = oldGSM.speaker
