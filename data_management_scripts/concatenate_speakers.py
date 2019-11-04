@@ -1,5 +1,4 @@
 #!/usr/bin/env pythons
-import json
 import os
 import argparse
 from common_helpers import *
@@ -7,9 +6,6 @@ from tqdm import tqdm
 
 devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
-
-from google.cloud import storage
-
 
 ## the simplest way to do this is to create a new "conglomerate" speaker who is composed of all the other speakers.
 transcript_bucket = "audio_transcript_buckets_1"
@@ -40,7 +36,6 @@ def concat_timings_transcript_id_keyframes(speakers):
 def conglomerate_speakers(speakers):
     concat_timings_transcript_id_keyframes(speakers)
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -48,6 +43,4 @@ if __name__ == '__main__':
     parser.add_argument('-speakers', '--speakers', default='optionally, run only on specific speaker', nargs='+')
     args = parser.parse_args()
 
-    #vid_base_path = args.base_path + '/' + args.speaker + '/videos'
-    #transcript_path = args.base_path + '/' + args.speaker + '/transcripts'
     conglomerate_speakers(args.speakers)

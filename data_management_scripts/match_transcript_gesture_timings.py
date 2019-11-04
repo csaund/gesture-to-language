@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 print "importing libs"
 import os
-import io
-import argparse
-import subprocess
 import json
 import argparse
-from google.cloud import storage
 from google.cloud import bigquery
 from common_helpers import *
 from tqdm import tqdm

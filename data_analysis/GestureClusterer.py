@@ -1,17 +1,11 @@
 from __future__ import division
 #!/usr/bin/env pythons
 print "importing libs for GestureClusterer"
-import argparse
-import pandas as pd
-import itertools
-import csv
-import math
 import json
-import glob, os
+import os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import uuid
 import operator
 import random
 import time

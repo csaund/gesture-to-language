@@ -1,20 +1,16 @@
 #!/usr/bin/env pythons
 print "importing for libs SpeakerGestureGetter"
 import argparse
-import pandas as pd
-import itertools
-import csv
+# import pandas as pd
 import math
 import json
-import glob, os
+import os
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
 from tqdm import tqdm
 devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 from common_helpers import *
-
 
 AGD_BUCKET = "all_gesture_data"
 
@@ -109,7 +105,7 @@ class SpeakerGestureGetter():
 
 
     def plot_coords(self, x_y, gesture):
-        coords = coords = [d[x_y] for d in gesture['keyframes']]
+        coords = [d[x_y] for d in gesture['keyframes']]
         fc = arrange_data_by_time(coords)
         for v in fc:
             plt.plot(range(0, len(fc[0])), v)

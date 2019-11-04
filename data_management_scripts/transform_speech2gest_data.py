@@ -1,27 +1,16 @@
 print "loading modules"
 import argparse
 from tqdm import tqdm
-import subprocess
 import os
 import pandas as pd
-import json
 from common_helpers import *
 
-## store it in the CLOUD
 devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 bucket_name = "speaker_timings"
 
-## don't think this is necessary...?
-# from apiclient.discovery import build
-# service = build('language', 'v1', developerKey=devKey)
-# collection = service.documents()
-
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
-## read data from gesture data area
-## transform into json I suppose
 def convert_time_to_seconds(time):
-    # might not work with longer ones?
     intervals = time.split(':')
     # [hours, minutes, seconds.ms]
     seconds = (float(intervals[0]) * 3600) + (float(intervals[1]) * 60) + float(intervals[2])
@@ -37,11 +26,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     output_path = args.base_path + '/' + args.speaker + '/timings.json'
     output_name = args.speaker + '_timings.json'
-
-    # if(os.path.exists(output_path)):
-    #     print "found timings path for %s, skipping parsing." % args.speaker
-    #     upload_blob(bucket_name, output_name, output_path)
-    #     exit()
 
     phrases = []
     print "loading intervals"

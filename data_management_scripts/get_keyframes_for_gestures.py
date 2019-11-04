@@ -5,15 +5,8 @@ import sys
 sys.path.append('../')
 from SpeakerGestureGetter import *
 
-## store it in the CLOUD
-
 devKeyPath = "%s/devKey" % os.getenv("HOME")
 devKey = str(open(devKeyPath, "r").read()).strip()
-
-## don't think this is necessary...?
-# from apiclient.discovery import build
-# service = build('language', 'v1', developerKey=devKey)
-# collection = service.documents()
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 

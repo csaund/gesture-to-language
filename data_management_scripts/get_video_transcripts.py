@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 print "importing libs"
 import os
-import io
 import argparse
 import subprocess
 import json
@@ -13,9 +12,7 @@ from google.cloud import storage
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
-## ffmpeg stuff
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-from oauth2client.client import GoogleCredentials
+# from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from tqdm import tqdm
 
 devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
