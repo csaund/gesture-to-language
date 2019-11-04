@@ -6,8 +6,8 @@ import json
 import os
 from termcolor import colored
 import numpy as np
-devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
+devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 from google.cloud import storage
 from common_helpers import *
@@ -28,7 +28,7 @@ ADJ = ["JJ"]
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
 # from GestureSentenceManager import *
-# GSM = GestureSentenceManager("/Users/carolynsaund/github/gest-data/data", "rock")
+# GSM = GestureSentenceManager("%s/github/gest-data/data", "rock") % os.getenv("HOME")
 # GSM.load_gestures()
 # GSM.cluster_gestures()    or    GSM.cluster_gestures_under_n_words(10)
 # report = GSM.report_clusters()

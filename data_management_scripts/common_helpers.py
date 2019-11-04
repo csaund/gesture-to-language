@@ -3,8 +3,8 @@ from __future__ import division
 import json
 import os
 
-devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
+devKey = str(open("%s/devKey % os.getenv("HOME")", "r").read()).strip()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 from google.cloud import storage
 ########################################################

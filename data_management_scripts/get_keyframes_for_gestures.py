@@ -8,14 +8,14 @@ import json
 from common_helpers import *
 
 ## store it in the CLOUD
-devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
+devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 
 ## don't think this is necessary...?
 # from apiclient.discovery import build
 # service = build('language', 'v1', developerKey=devKey)
 # collection = service.documents()
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 ## read data from gesture data area
 ## transform into json I suppose

@@ -12,13 +12,13 @@ from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from oauth2client.client import GoogleCredentials
 
-devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
+devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 
 from apiclient.discovery import build
 service = build('language', 'v1', developerKey=devKey)
 collection = service.documents()
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 
 #   "phrases":

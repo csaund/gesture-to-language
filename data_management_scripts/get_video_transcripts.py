@@ -18,7 +18,7 @@ from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from oauth2client.client import GoogleCredentials
 from tqdm import tqdm
 
-devKey = str(open("/Users/carolynsaund/devKey", "r").read()).strip()
+devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 bucketname = "audio_bucket_rock_1"
 transcript_bucketname = "audio_transcript_buckets_1"
 
@@ -26,7 +26,7 @@ from apiclient.discovery import build
 service = build('language', 'v1', developerKey=devKey)
 collection = service.documents()
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/carolynsaund/google-creds.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 # very very helpful google tutorial
 # https://towardsdatascience.com/how-to-use-google-speech-to-text-api-to-transcribe-long-audio-files-1c886f4eb3e9

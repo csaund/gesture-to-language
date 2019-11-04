@@ -86,8 +86,8 @@ class GestureClusterer3():
         self.clf = NearestCentroid()
         self.logs = []
         # todo make this variable
-        self.logfile = "/Users/carolynsaund/github/gesture-to-language/cluster_logs.txt"
-        self.cluster_file = "/Users/carolynsaund/github/gesture-to-language/cluster_tmp.json"
+        self.logfile = "%s/github/gesture-to-language/cluster_logs.txt" % os.getenv("HOME")
+        self.cluster_file = "%s/github/gesture-to-language/cluster_tmp.json" % os.getenv("HOME")
         if(len(seeds)):
             for seed_g in seeds:
                 g = self._get_gesture_by_id(seed_g, all_gesture_data)
