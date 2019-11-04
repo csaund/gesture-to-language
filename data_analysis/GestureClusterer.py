@@ -143,9 +143,20 @@ class GestureClusterer():
 
     def _assign_feature_vectors(self, gesture_data=None):
         gd = gesture_data if gesture_data else self.agd
+
+        empty_vec = self._create_empty_feature_vector()
+
         print "Getting initial feature vectors."
         for g in tqdm(gd):
-            g['feature_vec'] = self._get_gesture_features(g)
+            if type(g['keyframes']) == type(None):
+                print "found empty vector"
+                g['feature_vec'] = empty_vec
+            else:
+                g['feature_vec'] = self._get_gesture_features(g)
+
+        empties = [g for g in self.agd if g['feature_vec'] == empty_vec]
+        print "dropping %s empty vectors from gesture clusters" % str(len(empties))
+        self.agd = [g for g in self.agd if g['feature_vec'] != empty_vec]
         self._normalize_feature_values()
         self.has_assigned_feature_vecs = True
         return
@@ -177,12 +188,14 @@ class GestureClusterer():
         gd = self.agd
         print "Reclustering by centroid"
         # clear old gestures
+        randc = 0
         for c in self.clusters:
             self.clusters[c]['gestures'] = []
+            randc = c
 
         for g in tqdm(gd):
             min_dist = 1000
-            min_clust = self.clusters[0]
+            min_clust = self.clusters[randc]
             for c in self.clusters:
                 d = self._calculate_distance_between_vectors(g['feature_vec'], self.clusters[c]['centroid'])
                 if d < min_dist:
@@ -434,6 +447,10 @@ class GestureClusterer():
         ]
         return gesture_features
 
+    def _create_empty_feature_vector(self):
+        gesture_features = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        return gesture_features
+
     # TODO manually make some features more/less important
     # report importance of each individual feature in clustering
     # try seeding with some gestures? -- bias, but since we're doing it based on prior gesture research it's ok
@@ -553,6 +570,7 @@ class GestureClusterer():
     # takes a cluster ID, returns nearest neighbor cluster ID
     def get_nearest_cluster_id(self, cluster_id):
         dist = 1000
+        min_c = 0
         for c in self.clusters:
             if c == cluster_id:
                 continue
@@ -560,7 +578,7 @@ class GestureClusterer():
             if mind < dist:
                 dist = mind
                 min_c = c
-        return c
+        return min_c
 
     # takes cluster ID, returns nearest neighbor cluster distance
     def get_nearest_cluster_distance(self, cluster_id):
@@ -587,13 +605,86 @@ class GestureClusterer():
     # gets silhouette score for cluster using centroid
     def get_silhouette_score(self, cluster_id):
         p = self.clusters[cluster_id]['centroid']
-        nearest_c = get_nearest_cluster_id(cluster_id)
         a = self.get_avg_dist_between_point_and_cluster(p, cluster_id)
         b = self.get_avg_dist_between_point_and_cluster(p, self.get_nearest_cluster_id(cluster_id))
         score = (b - a)/max(b,a)
         return score
 
 
+    ########################################################
+    ################ All the plotting stuff ################
+    ########################################################
+
+    ## flip so instead of format like
+    # [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
+    # it's in the format of
+    # [t1, t1`, t1``], [t2, t2`, t2``], [t3, t3`, t3``]
+    def arrange_data_by_time(self, dat_vector):
+        flipped_dat = []
+        for i in range(len(dat_vector[0])):
+            a = []
+            for d in dat_vector:
+                a.append(d[i])
+            flipped_dat.append(a)
+        return flipped_dat
+
+
+    def plot_coords(self, x_y, gesture):
+        coords = [d[x_y] for d in gesture['keyframes']]
+        fc = arrange_data_by_time(coords)
+        for v in fc:
+            plt.plot(range(0, len(fc[0])), v)
+        plt.xlabel("frame")
+        plt.ylabel("%s pixel position" % x_y)
+        plt.title = '%s coordinates for gesture %s' % (x_y, gesture['id'])
+
+
+    def plot_both_gesture_coords(self, gesture):
+        plt.subplot(1,2,1)
+        self.plot_coords('x', gesture)
+        plt.subplot(1,2,2)
+        self.plot_coords('y', gesture)
+        plt.title = 'xy coordinates for gesture %s' % gesture['id']
+        plt.savefig('%s.png' % gesture['id'])
+        plt.show()
+        return
+
+
+## flip so instead of format like
+# [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
+# it's in the format of
+# [t1, t1`, t1``], [t2, t2`, t2``], [t3, t3`, t3``]
+def arrange_data_by_time(dat_vector):
+    flipped_dat = []
+    for i in range(len(dat_vector[0])):
+        a = []
+        for d in dat_vector:
+            a.append(d[i])
+        flipped_dat.append(a)
+    return flipped_dat
+
+
+def plot_both_gesture_coords(gsm, g_id):
+    g = gsm.get_gesture_by_id(g_id)
+    plt.subplot(1,2,1)
+    plot_coords(gsm, 'x', g)
+    plt.subplot(1,2,2)
+    plot_coords(gsm, 'y', g)
+    plt.title = 'xy coordinates for gesture %s' % g['id']
+    plt.savefig('%s.png' % g['id'])
+    plt.show()
+    return
+
+
+def plot_coords(gsm, x_y, gesture_id):
+    gsm.get_gesture_by_id(gesture_id)
+    coords = [d[x_y] for d in gesture['keyframes']]
+    fc = arrange_data_by_time(coords)
+    for v in fc:
+        plt.plot(range(0, len(fc[0])), v)
+    plt.xlabel("frame")
+    plt.ylabel("%s pixel position" % x_y)
+    plt.title = '%s coordinates for gesture %s' % (x_y, gesture['id'])
 
 #
 #

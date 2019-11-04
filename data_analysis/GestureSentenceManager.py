@@ -168,6 +168,18 @@ class GestureSentenceManager():
         os.remove(fp)
 
     def get_gesture_by_id(self, g_id):
+        # because this returns list of matching items, and only one item will match,
+        # we just take the first element and use that.
+        g_trans = self.get_gesture_transcript_by_id(g_id)
+        g_motion = self.get_gesture_motion_by_id(g_id)
+        g_trans['keyframes'] = g_motion['keyframes']
+        return g_trans
+
+    def get_gesture_motion_by_id(self, g_id):
+        dat = [d for d in self.agd if d['id'] == g_id]
+        return dat[0]
+
+    def get_gesture_transcript_by_id(self, g_id):
         self.get_transcript()
         p = self.gesture_transcript['phrases']
         dat = [d for d in p if d['id'] == g_id]

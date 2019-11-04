@@ -77,39 +77,39 @@ class SpeakerGestureGetter():
     ################ All the plotting stuff ################
     ########################################################
 
-    ## flip so instead of format like
-    # [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
-    # it's in the format of
-    # [t1, t1`, t1``], [t2, t2`, t2``], [t3, t3`, t3``]
-    def arrange_data_by_time(self, dat_vector):
-        flipped_dat = []
-        for i in range(len(dat_vector[0])):
-            a = []
-            for d in dat_vector:
-                a.append(d[i])
-            flipped_dat.append(a)
-        return flipped_dat
-
-
-    def plot_both_gesture_coords(self, gesture):
-        plt.subplot(1,2,1)
-        plot_coords('x', gesture)
-        plt.subplot(1,2,2)
-        plot_coords('y', gesture)
-        plt.title = 'xy coordinates for gesture %s' % gesture['id']
-        plt.savefig('%s.png' % gesture['id'])
-        plt.show()
-        return
-
-
-    def plot_coords(self, x_y, gesture):
-        coords = [d[x_y] for d in gesture['keyframes']]
-        fc = arrange_data_by_time(coords)
-        for v in fc:
-            plt.plot(range(0, len(fc[0])), v)
-        plt.xlabel("frame")
-        plt.ylabel("%s pixel position" % x_y)
-        plt.title = '%s coordinates for gesture %s' % (x_y, gesture['id'])
+    # ## flip so instead of format like
+    # # [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
+    # # it's in the format of
+    # # [t1, t1`, t1``], [t2, t2`, t2``], [t3, t3`, t3``]
+    # def arrange_data_by_time(self, dat_vector):
+    #     flipped_dat = []
+    #     for i in range(len(dat_vector[0])):
+    #         a = []
+    #         for d in dat_vector:
+    #             a.append(d[i])
+    #         flipped_dat.append(a)
+    #     return flipped_dat
+    #
+    #
+    # def plot_both_gesture_coords(self, gesture):
+    #     plt.subplot(1,2,1)
+    #     plot_coords('x', gesture)
+    #     plt.subplot(1,2,2)
+    #     plot_coords('y', gesture)
+    #     plt.title = 'xy coordinates for gesture %s' % gesture['id']
+    #     plt.savefig('%s.png' % gesture['id'])
+    #     plt.show()
+    #     return
+    #
+    #
+    # def plot_coords(self, x_y, gesture):
+    #     coords = [d[x_y] for d in gesture['keyframes']]
+    #     fc = arrange_data_by_time(coords)
+    #     for v in fc:
+    #         plt.plot(range(0, len(fc[0])), v)
+    #     plt.xlabel("frame")
+    #     plt.ylabel("%s pixel position" % x_y)
+    #     plt.title = '%s coordinates for gesture %s' % (x_y, gesture['id'])
 
 
     def analyze_gestures(self, video_base_path, timings_path):
@@ -154,22 +154,22 @@ class SpeakerGestureGetter():
             'keyframes': self.get_keyframes_per_gesture(vid_path, p['start_seconds'], p['end_seconds'])
         }
 
-    # takes [id1, id2, id3] and saves
-    # the plot images of those ids
-    def save_gesture_plots(self, gesture_ids, all_gestures):
-        for i in gesture_ids:
-            g = self.get_gesture_by_id(i, all_gestures)
-            self.plot_both_gesture_coords(i)
-        return
-
-    def plot_dist_of_num_frames_by_gesture(self, all_gestures):
-        num_frames = []
-        for g in all_gestures:
-            num_frames.append(len(g['keyframes']))
-        num_bins = 5
-        n, bins, patches = plt.hist(num_frames, bins=[0,20,100,200,400,2500], facecolor='blue', alpha=0.5)
-        plt.title = "number of frames per gesture"
-        plt.show()
+    # # takes [id1, id2, id3] and saves
+    # # the plot images of those ids
+    # def save_gesture_plots(self, gesture_ids, all_gestures):
+    #     for i in gesture_ids:
+    #         g = self.get_gesture_by_id(i, all_gestures)
+    #         self.plot_both_gesture_coords(i)
+    #     return
+    #
+    # def plot_dist_of_num_frames_by_gesture(self, all_gestures):
+    #     num_frames = []
+    #     for g in all_gestures:
+    #         num_frames.append(len(g['keyframes']))
+    #     num_bins = 5
+    #     n, bins, patches = plt.hist(num_frames, bins=[0,20,100,200,400,2500], facecolor='blue', alpha=0.5)
+    #     plt.title = "number of frames per gesture"
+    #     plt.show()
 
 
     def get_gesture_by_id(self, d_id, all_speaker_gesture_data=None):
