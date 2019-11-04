@@ -37,6 +37,12 @@ ADJ = ["JJ"]
 
 #
 
+# from GestureSentenceManager import *
+# GSM = GestureSentenceManager("conglomerate")
+# GSM.load_gestures()
+# GSM.cluster_gestures_under_n_words(10)
+# GSM.cluster_sentences_gesture_independent_under_n_words(10)
+
 ## manages gesture and sentence stuff.
 class GestureSentenceManager():
     def __init__(self, speaker, seeds=[]):
@@ -213,7 +219,7 @@ class GestureSentenceManager():
         g_cluster_ids = [g['id'] for g in c['gestures']]
         c_ids = []
         for g in g_cluster_ids:
-            c_ids.append(self.get_cluster_id_for_gesture(g))
+            c_ids.append(self.get_gesture_cluster_id_for_gesture(g))
         return list(set(c_ids))
         # now get the cluster id for each gesture
 
@@ -229,7 +235,7 @@ class GestureSentenceManager():
 
     def assign_gesture_cluster_ids_for_sentence_clusters(self):
         for k in self.SentenceClusterer.clusters:
-            g_cluster_ids = get_gesture_clusters_for_sentence_cluster(k)
+            g_cluster_ids = self.get_gesture_clusters_for_sentence_cluster(k)
             self.SentenceClusterer.clusters[k]['gesture_cluster_ids'] = g_cluster_ids
 
 
@@ -249,7 +255,7 @@ class GestureSentenceManager():
             print "Sentence clusters represented in g_cluster %s: %s" % (g_cluster_id, s_cluster_ids)
             lens.append(len(s_cluster_ids))
             if len(s_cluster_ids) == 1:
-                unique_matches.append((g_cluster_id, s_cluster_ids))
+                unique_matches.append((g_cluster_id, s_cluster_ids[0]))
         print "avg number sentence clusters: %s" % str(float(sum(lens)) / float(len(lens)))
         print "sd of lengths of gesture clusters: %s" % str(np.std(lens))
         print
@@ -264,8 +270,8 @@ class GestureSentenceManager():
             g_cluster_ids = self.SentenceClusterer.clusters[k]['gesture_cluster_ids']
             lens.append(len(g_cluster_ids))
             if len(g_cluster_ids) == 1:
-                unique_matches.append((k, g_cluster_ids))
-        print "number of gestures per sentence cluster: %s" % str(lens)
+                unique_matches.append((k, g_cluster_ids[0]))
+        print "number of gesture clusters per sentence cluster: %s" % str(lens)
         print "avg number of gesture clusters for sentence cluster: %s" % str(float(sum(lens)) / float(len(lens)))
         print "sd of lengths of gesture clusters: %s" % str(np.std(lens))
         print
@@ -302,7 +308,7 @@ class GestureSentenceManager():
 
     def get_sentence_gesture_data_parallel(self):
         key = self.SentenceClusterer.clusters.keys()[0]
-        if not self.SentenceClusterer.clusters[key]['gesture_cluster_ids']:
+        if 'gesture_cluster_ids' not in self.sentenceClusters[key].keys():
             self.assign_gesture_cluster_ids_for_sentence_clusters()
         columns = ["SCID", "GCID"]
         rows = []
@@ -323,7 +329,7 @@ class GestureSentenceManager():
             sentence_clusters.append(k)
             sentence_nums.append(len(c['sentences']))
             num_g_clusters.append(len(c['gesture_cluster_ids']))
-        columns = ["cluster", 'num_sentences', 'num_g_clusters']
+        columns = ["sentence cluster id", 'num_sentences', 'num_g_clusters']
         df = pd.DataFrame({'cluster': sentence_clusters, 'num_sentences': sentence_nums, 'num_g_clusters': num_g_clusters})
         df.plot(x='cluster', y=["num_sentences", "num_g_clusters"], kind="bar")
         plt.show()

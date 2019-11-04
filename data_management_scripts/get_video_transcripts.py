@@ -184,7 +184,7 @@ def process_video_files(vid_base_path, transcript_base_path):
     all_video_files = os.listdir(vid_base_path)
     for video_file in tqdm(all_video_files):
         ## TODO simplify this
-        vid_name = video_file.split(".mp4")[0].split(".mkv")[0]
+        vid_name = video_file.split(".mp4")[0].split(".mkv")[0].split(".webm")[0]
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
         transcript_path = transcript_base_path + '/' + vid_name + '.json'
         transcript_name = vid_name + '.json'
@@ -206,12 +206,14 @@ def get_wavs_from_video(vid_base_path, transcript_base_path, should_upload_audio
     print "Generating wavs from video"
     all_video_files = os.listdir(vid_base_path)
     for video_file in tqdm(all_video_files):
-        mp4_or_mkv = '.mp4' if ".mp4" in video_file else ".mkv"
-        vid_name = video_file.split(".mp4")[0].split(".mkv")[0]
+        suffix = ".mp4"
+        if ".webm" in video_file:
+            suffix = ".webm"
+        elif ".mkv" in video_file:
+            suffix = ".mkv"
+        vid_name = video_file.split(".mp4")[0].split(".mkv")[0].split(".webm")[0]
         output_audio_path = transcript_base_path + '/' + vid_name + '.wav'
-        # if ".mkv." in output_audio_path:
-        #     continue
-        get_audio_from_video(vid_name, vid_base_path, transcript_base_path, mp4_or_mkv)
+        get_audio_from_video(vid_name, vid_base_path, transcript_base_path, suffix)
         ## TODO make this whole thing respond well to multiple video types
         if should_upload_audio:
             upload_audio(output_audio_path)
