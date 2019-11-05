@@ -9,7 +9,6 @@ import numpy as np
 import os
 import pandas as pd
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-ffmpeg_extract_subclip("video1.mp4", start_time, end_time, targetname="test.mp4")
 
 
 class VideoManager():
@@ -20,10 +19,12 @@ class VideoManager():
         self.df = pd.read_csv(os.path.join(self.base_path, "intervals_df.csv"))
 
     def get_video_clip(self, video_fn, start_seconds, end_seconds):
-        output_path = os.path.join(self.base_path, row["speaker"], "videos", row["video_fn"])
+        output_path = os.path.join(self.base_path, "videos_clips", video_fn.replace(".mkv", ".mp4").replace(".webm", ".mp4"))
         self.download_video(video_fn, output_path)
-        clip_output = video_fn.split('.')[0] + "_" + str(start_seconds) + "_" + str(end_seconds)
+        video_fn = video_fn.replace(".mkv", ".mp4").replace(".webm", ".mp4")
+        clip_output = video_fn.rsplit('.', 1)[0] + "_" + str(start_seconds) + "_" + str(end_seconds)
         target = clip_output + '.' + video_fn.split('.')[-1]
+        print "extracting clip to target: %s" % target
         ffmpeg_extract_subclip(output_path, start_seconds, end_seconds, targetname=target)
         return
 
@@ -35,25 +36,24 @@ class VideoManager():
             os.makedirs(os.path.dirname(output_path))
         err = 0
         print "downloading %s" % video_fn
-        row = df.loc[df['video_fn'] == video_fn]
+        row = self.df.loc[self.df['video_fn'] == video_fn].iloc[0]
         link = row['video_link']
         if 'youtube' not in link:
-            print "no youtube video found for video_fn: %s" % video_fn
+            print "no youtube video found for video_fn: %s" % link
             return
         try:
             command = 'youtube-dl -o {temp_path} -f mp4 {link}'.format(link=link, temp_path=self.temp_output_path)
             res1 = call(command, shell=True)
-            commands.append(command)
-            cam = cv2.VideoCapture(temp_output_path)
+            cam = cv2.VideoCapture(self.temp_output_path)
             if np.isclose(cam.get(cv2.CAP_PROP_FPS), 29.97, atol=0.03):
-                os.rename(temp_output_path, output_path)
+                os.rename(self.temp_output_path, output_path)
             else:
                 res2 = call('ffmpeg -i "%s" -r 30000/1001 -strict -2 "%s" -y' % (self.temp_output_path, output_path),
                                 shell=True)
+            print("Successfully downloaded: %s" % video_fn)
         except Exception as e:
             print e
             err += 1
         finally:
-            if os.path.exists(temp_output_path):
-                os.remove(temp_output_path)
-        print("Successfully downloaded: %s/%s" % (len(df) - err, len(df)))
+            if os.path.exists(self.temp_output_path):
+                os.remove(self.temp_output_path)

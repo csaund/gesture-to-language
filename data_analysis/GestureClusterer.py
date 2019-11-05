@@ -500,7 +500,7 @@ class GestureClusterer():
         return keys
 
     def _calculate_distance_between_gestures(self, g1, g2):
-        if 'feature_vec' in g1.keys() and 'feature_vec' in g2.keys()
+        if 'feature_vec' in g1.keys() and 'feature_vec' in g2.keys():
             return np.linalg.norm(np.array(g1['feature_vec']) - np.array(g2['feature_vec']))
 
         feat1 = np.array(self._get_gesture_features(g1))
