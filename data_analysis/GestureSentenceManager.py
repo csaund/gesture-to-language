@@ -1,6 +1,7 @@
 #!/usr/bin/env pythons
 from GestureClusterer import *
 from SentenceClusterer import *
+from VideoManager import *
 import json
 import os
 from termcolor import colored
@@ -22,7 +23,6 @@ from textable import TexTable
 from pandas.plotting import parallel_coordinates
 import networkx as nx
 import matplotlib.pyplot as plt
-
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 
 VERBS = ["V", "VB", "VBD", "VBD", "VBZ", "VBP", "VBN"]
@@ -61,6 +61,7 @@ class GestureSentenceManager():
         self.get_transcript()
         self.agd = None
         self._initialize_sentence_clusterer()
+        self.VideoManager = VideoManager()
 
     def _initialize_sentence_clusterer(self):
         self.SentenceClusterer = SentenceClusterer(self.speaker)
@@ -520,6 +521,14 @@ class GestureSentenceManager():
         })
 
         df
+
+    ############################################################
+    ##################### Video Stuff ##########################
+    ############################################################
+    def get_gesture_video_clip_by_gesture_id(self, g_id):
+        g = self.get_gesture_by_id(g_id)
+        p = g['phase']
+        self.VideoManager.get_video_clip(p['video_fn'], p['start_seconds'], p['end_seconds'])
 
 
     ############################################################
