@@ -203,6 +203,11 @@ def get_wavs_from_video(vid_base_path, transcript_base_path, should_upload_audio
     print "Generating wavs from video"
     all_video_files = os.listdir(vid_base_path)
     for video_file in tqdm(all_video_files):
+        if " " in video_file:
+            print "renaming video file to no spaces"
+            print video_file
+            os.rename(os.path.join(vid_base_path, video_file), os.path.join(vid_base_path, video_file.replace(' ', '_')))
+            video_file = video_file.replace(' ', '_')
         suffix = ".mp4"
         if ".webm" in video_file:
             suffix = ".webm"

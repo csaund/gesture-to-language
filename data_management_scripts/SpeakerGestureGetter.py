@@ -58,11 +58,14 @@ class SpeakerGestureGetter():
         e_key = "X_X_0_" + end_filekey + ".txt"
         files = sorted(os.listdir(gesture_video_path), key=timestring_to_int)
         m = [s for s in files if start_filekey in s]
-        if len(m) != 1:
+        if len(m) > 1:
             print("panic!! wrong number of matching files: %s" % str(len(m)))
             print(start_filekey)
             print(m)
             print "using first file"
+        elif len(m) < 1:
+            print("panic! no files found for %s" % str(start_filekey))
+            return {'x': [], 'y': []}
         all_gesture_keys = []
         i = files.index(m[0])
         #  print("starting at %s" % files[i])   # start at index of first frame

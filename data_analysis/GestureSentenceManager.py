@@ -5,12 +5,17 @@ import json
 import os
 from termcolor import colored
 import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from prettytable import PrettyTable
 
 devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 from google.cloud import storage
 from common_helpers import *
+
+from textable import TexTable
 
 # from matplotlib_venn import venn3, venn3_circles
 # from matplotlib import pyplot as plt
@@ -174,6 +179,12 @@ class GestureSentenceManager():
         g_motion = self.get_gesture_motion_by_id(g_id)
         g_trans['keyframes'] = g_motion['keyframes']
         return g_trans
+
+    def get_gesture_vid_time_by_id(self, g_id):
+        g = self.get_gesture_by_id(g_id)
+        vid = g['phase']['video_fn']
+        start = g['phase']['start_seconds']
+        end = g['phase']['end_seconds']
 
     def get_gesture_motion_by_id(self, g_id):
         dat = [d for d in self.agd if d['id'] == g_id]
@@ -403,6 +414,34 @@ class GestureSentenceManager():
         ids = [g['id'] for g in self.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < n and len(g['phase']['transcript'].split(' ')) > 1]
         return ids
 
+
+    def get_closest_gestures_in_gesture_cluster(self, cluster_id):
+        c = self.gestureClusters[cluster_id]
+        (g1, g2) = (0, 0)
+        min_d = 1000
+        print "exploring distances for %s gestures" % str(len(c['gestures']))
+        for i in tqdm(range(0, len(c['gestures']))):
+            g = c['gestures'][i]
+            for j in range(0, len(c['gestures'])):
+                comp = c['gestures'][j]
+                dist = np.linalg.norm(np.array(g['feature_vec']) - np.array(comp['feature_vec']))
+                # don't want to be comparing same ones.
+                if dist < min_d and i != j:
+                    min_d = dist
+                    (g1, g2) = (g['id'], comp['id'])
+        return (g1, g2)
+
+    ####################################################################
+    ####################### WORD CLOUD STUFF ###########################
+    ####################################################################
+    def filter_syntax(self, words, filter_in="", filter_out=""):
+        w = words
+        if filter_in:
+            w = filter_words_by_syntax(w, filter_in)
+        if filter_out:
+            w = filter_words_out_by_syntax(w, filter_out)
+        return w
+
     def get_words_by_sentence_cluster(self, s_cluster_id):
         c = self.sentenceClusters[s_cluster_id]
         all_words = " ".join(c['sentences'])
@@ -422,10 +461,7 @@ class GestureSentenceManager():
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_gesture_cluster(g_cluster_id)
-        if filter_in_syntax:
-            all_words = filter_words_by_syntax(all_words, filter_in_syntax)
-        if filter_out_syntax:
-            all_words = filter_words_out_by_syntax(all_words, filter_out_syntax)
+        self.filter_syntax(all_words, filter_in_syntax, filter_out_syntax)
         all_words = " ".join(all_words)
         wordcloud = WordCloud(background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
@@ -436,10 +472,7 @@ class GestureSentenceManager():
         # stopwords = set(STOPWORDS)
         # stopwords.update(["music", "kind", "really", "thing", "know", 'people', 'one'])
         all_words = self.get_words_by_sentence_cluster(s_cluster_id)
-        if filter_in_syntax:
-            all_words = filter_words_by_syntax(all_words, filter_in_syntax)
-        if filter_out_syntax:
-            all_words = filter_words_out_by_syntax(all_words, filter_out_syntax)
+        self.filter_syntax(all_words, filter_in_syntax, filter_out_syntax)
         all_words = " ".join(all_words)
         wordcloud = WordCloud(background_color="white").generate(all_words)
         plt.imshow(wordcloud, interpolation='bilinear')
@@ -467,13 +500,31 @@ class GestureSentenceManager():
     # TODO chord diagram
 
 
+    def rank_words_by_sentence_cluster(self, cluster_id, filter_in_syntax="", filter_out_syntax=""):
+        all_words = self.get_words_by_sentence_cluster(cluster_id)
+        self.filter_syntax(all_words, filter_in_syntax, filter_out_syntax)
+        # create a table that's nice to read.
+        wds = sorted(list(set([(w, all_words.count(w)) for w in all_words])), key=lambda x: x[1], reverse=True)
+
+        words = [w[0] for w in wds]
+        counts = [w[1] for w in wds]
+
+        t = PrettyTable()
+        t.add_column("Word", words)
+        t.add_column("Count", counts)
+        print(t)
+
+        df = pd.DataFrame({
+            'Word': words,
+            'Count': counts
+        })
+
+        df
 
 
     ############################################################
     ################ Gesture the plotting stuff ################
     ############################################################
-
-
     ## flip so instead of format like
     # [t1, t2, t3], [t1`, t2`, t3`], [t1``, t2``, t3``]
     # it's in the format of
@@ -527,6 +578,20 @@ class GestureSentenceManager():
         return
 
 
+    def plot_random_gestures_from_gesture_cluster(self, cluster_id):
+        g1 =0
+        g2 = 0
+        while g1 == g2:
+            g1 = self.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
+            g2 = self.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
+        print "plotting gestures for %s, %s" % (g1, g2)
+        self.plot_two_gestures(g1, g2)
+
+    def plot_closest_gestures_from_gesture_cluster(self, cluster_id):
+        (g1, g2) = self.get_closest_gestures_in_gesture_cluster(cluster_id)
+        print "plotting gestures for %s, %s" % (g1, g2)
+        self.plot_two_gestures(g1, g2)
+
 
 def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
@@ -561,7 +626,36 @@ def check_sentence_cluster_counts(gsm, ids):
 
 
 
+def plot_random_gestures_from_gesture_cluster(gsm, cluster_id):
+    g1 = 0
+    g2 = 0
+    while g1 == g2:
+        g1 = gsm.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
+        g2 = gsm.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
+    print "plotting gestures for %s, %s" % (g1, g2)
+    gsm.plot_two_gestures(g1, g2)
 
+
+def get_closest_gestures_in_gesture_cluster(gsm, cluster_id):
+    c = gsm.gestureClusters[cluster_id]
+    (g1, g2) = (0,0)
+    min_d = 1000
+    print "exploring distances for %s gestures" % str(len(c['gestures']))
+    for i in tqdm(range(0, len(c['gestures']))):
+        g = c['gestures'][i]
+        for j in range(0, len(c['gestures'])):
+            comp = c['gestures'][j]
+            dist = np.linalg.norm(np.array(g['feature_vec']) - np.array(comp['feature_vec']))
+            # don't want to be comparing same ones.
+            if dist < min_d and i != j:
+                min_d = dist
+                (g1, g2) = (g['id'], comp['id'])
+    return (g1, g2)
+
+def plot_closest_gestures_from_gesture_cluster(gsm, cluster_id):
+    (g1, g2) = get_closest_gestures_in_gesture_cluster(gsm, cluster_id)
+    print "plotting gestures for %s, %s" % (g1, g2)
+    gsm.plot_two_gestures(g1, g2)
 
 
 ## STOP
