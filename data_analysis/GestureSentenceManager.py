@@ -483,6 +483,7 @@ class GestureSentenceManager():
     def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, filter_in_syntax="", filter_out_syntax=""):
         s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(s_cluster_ids)):
+            print s_cluster_ids[i]
             plt.subplot(3, 3, i+1)
             self.create_word_cloud_by_sentence_cluster(s_cluster_ids[i], filter_in_syntax, filter_out_syntax)
             plt.text(0.5, 0.5, str(s_cluster_ids[i]), fontsize=12)
@@ -493,6 +494,7 @@ class GestureSentenceManager():
     def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, filter_in_syntax="", filter_out_syntax=""):
         g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(g_cluster_ids)):
+            print g_cluster_ids[i]
             plt.subplot(3, 3, i+1)
             self.create_word_cloud_by_gesture_cluster(g_cluster_ids[i], filter_in_syntax, filter_out_syntax)
             plt.text(0.5, 0.5, str(g_cluster_ids[i]), fontsize=12)
