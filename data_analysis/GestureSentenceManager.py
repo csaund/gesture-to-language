@@ -357,7 +357,18 @@ class GestureSentenceManager():
             sents.append(s_keys)
         t = PrettyTable()
         t.add_column("gesture cluster", gs)
-        t.add_column("sentence ids", sents)
+        t.add_column("sentence cluster ids", sents)
+        print(t)
+
+    def report_gesture_cluster_by_sentence_cluster(self):
+        self.assign_gesture_cluster_ids_for_sentence_clusters()
+        ss = self.SentenceClusterer.clusters.keys()
+        gs = []
+        for s in self.SentenceClusterer.clusters:
+            gs.append(self.SentenceClusterer.clusters[c]['gesture_cluster_ids'])
+        t = PrettyTable()
+        t.add_column("sentence cluster", ss)
+        t.add_column("gesture cluster ids", gs)
         print(t)
 
     def bar_chart(self):
