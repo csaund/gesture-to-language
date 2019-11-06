@@ -95,9 +95,9 @@ class GestureClusterer():
         self.has_assigned_feature_vecs = False
 
     def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0):
-        if not self.has_assigned_feature_vecs:
-            self._assign_feature_vectors()
         gd = gesture_data if gesture_data else self.agd
+        if not self.has_assigned_feature_vecs and 'feature_vec' not in gd[0].keys():
+            self._assign_feature_vectors()
         i = 0
         l = len(gd)
         print "Clustering gestures"
@@ -146,7 +146,6 @@ class GestureClusterer():
 
     def _assign_feature_vectors(self, gesture_data=None):
         gd = gesture_data if gesture_data else self.agd
-
         empty_vec = self._create_empty_feature_vector()
 
         print "Getting initial feature vectors."
@@ -605,7 +604,7 @@ class GestureClusterer():
         dists = []
         c = self.clusters[cluster_id]
         for g in c['gestures']:
-            dists.append(self._calculate_distance_between_vectors(vec), g['feature_vec'])
+            dists.append(self._calculate_distance_between_vectors(vec, g['feature_vec']))
         return self._avg(dists)
 
     # gets silhouette score for cluster using centroid

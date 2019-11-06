@@ -1,5 +1,5 @@
 #!/usr/bin/env pythons
-from GestureClusterer import *
+from GestureClusterer1 import *
 from SentenceClusterer import *
 from VideoManager import *
 import json
@@ -43,7 +43,7 @@ ADJ = ["JJ"]
 #
 
 # from GestureSentenceManager import *
-# GSM = GestureSentenceManager("conglomerate")
+# GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.load_gestures()
 # GSM.cluster_gestures_under_n_words(10)
 # GSM.cluster_sentences_gesture_independent_under_n_words(10)
@@ -122,7 +122,7 @@ class GestureSentenceManager():
             self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
         else:
             self.GestureClusterer = GestureClusterer(self.agd)
-        self.GestureClusterer.cluster_gestures(None, None, max_number_clusters)
+        self.GestureClusterer.cluster_gestures(None, 0.03, max_number_clusters)
         self.gestureClusters = self.GestureClusterer.clusters
 
     def filter_agd(self, exclude_ids):
@@ -619,14 +619,16 @@ class GestureSentenceManager():
         print "sd: %s" % np.std(s)
 
 
-    def test_k_means_gesture_clusters(self, n_words=10, ks=[0,10,40,60,100,150]):
+    def test_k_means_gesture_clusters(self, n_words=10, ks=[0,10,40,60,100,150, 200]):
         save_current_clusters = self.GestureClusterer.clusters
         for k in ks:
-            self.cluster_gestures_under_n_words(n_words, k)
+            print "testing clustering for k=%s" % k
+            self.GestureClusterer.cluster_gestures(None, 0.03, k)
             self.get_silhouette_scores_for_all_gesture_clusters()
         # restore to before this
         self.GestureClusterer.clusters = save_current_clusters
         self.gestureClusters = save_current_clusters
+
 
 def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
@@ -637,6 +639,23 @@ def init_new_gsm(oldGSM):
     newGSM.GestureClusterer = oldGSM.GestureClusterer
     newGSM.SentenceClusterer = oldGSM.SentenceClusterer
     return newGSM
+
+
+def upload_data_under_n_words(gsm, under_words=10):
+    full_timings_bucket = "full_timings_with_transcript_bucket"
+    agd_bucket = "all_gesture_data"
+    ids = gsm.get_gesture_ids_fewer_than_n_words(under_words)
+    new_transcript = [g for g in gsm.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < under_words and len(g['phase']['transcript'].split(' ')) > 1]
+    n_t = {'phrases': new_transcript}
+    # upload to conglomerate_under_%s_timings_with_transcript.json to full_timings_with_transcript_bucket
+    new_transcript_name = "conglomerate_under_%s_timings_with_transcript.json" % under_words
+    print "uploading %s new transcript to %s / %s" % (str(len(n_t['phrases'])), full_timings_bucket, new_transcript_name)
+    upload_object(full_timings_bucket, n_t, new_transcript_name)
+    # upload to conglomerate_under_%s_agd.json to all_gesture_data
+    new_agd = [g for g in gsm.agd if g['id'] in ids]
+    new_agd_name = "conglomerate_under_%s_agd.json" % under_words
+    print "uploading %s new agd to %s / %s" % (str(len(new_agd)), agd_bucket, new_agd_name)
+    upload_object(agd_bucket, new_agd, new_agd_name)
 
 
 
@@ -658,48 +677,15 @@ def check_sentence_cluster_counts(gsm, ids):
     return counts
 
 
-
-
-
-def plot_random_gestures_from_gesture_cluster(gsm, cluster_id):
-    g1 = 0
-    g2 = 0
-    while g1 == g2:
-        g1 = gsm.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
-        g2 = gsm.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
-    print "plotting gestures for %s, %s" % (g1, g2)
-    gsm.plot_two_gestures(g1, g2)
-
-
-def get_closest_gestures_in_gesture_cluster(gsm, cluster_id):
-    c = gsm.gestureClusters[cluster_id]
-    (g1, g2) = (0,0)
-    min_d = 1000
-    print "exploring distances for %s gestures" % str(len(c['gestures']))
-    for i in tqdm(range(0, len(c['gestures']))):
-        g = c['gestures'][i]
-        for j in range(0, len(c['gestures'])):
-            comp = c['gestures'][j]
-            dist = np.linalg.norm(np.array(g['feature_vec']) - np.array(comp['feature_vec']))
-            # don't want to be comparing same ones.
-            if dist < min_d and i != j:
-                min_d = dist
-                (g1, g2) = (g['id'], comp['id'])
-    return (g1, g2)
-
-def plot_closest_gestures_from_gesture_cluster(gsm, cluster_id):
-    (g1, g2) = get_closest_gestures_in_gesture_cluster(gsm, cluster_id)
-    print "plotting gestures for %s, %s" % (g1, g2)
-    gsm.plot_two_gestures(g1, g2)
-
-
 ## STOP
 
 
-def upload_data_under_n_words(gsm, under_words=10):
-    agd_bucket = "all_gesture_data"
-    ids = gsm.get_gesture_ids_fewer_than_n_words(under_words)
-    new_transcript = [g for g in gsm.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < under_words and len(g['phase']['transcript'].split(' ')) > 1]
-    n_t = {'phrases': new_transcript}
-    ## upload to conglomerate_under_%s_timings_with_transcript.json
-    new_agd = [g for g in gsm.agd if g['id'] not in ids]
+def test_k_means_gesture_clusters(gsm, ks=[0,10,40,60,100,150, 200]):
+    save_current_clusters = gsm.GestureClusterer.clusters
+    for k in ks:
+        print "testing clustering for k=%s" % k
+        gsm.GestureClusterer.cluster_gestures(None, 0.03, k)
+        gsm.get_silhouette_scores_for_all_gesture_clusters()
+    # restore to before this
+    gsm.GestureClusterer.clusters = save_current_clusters
+    gsm.gestureClusters = save_current_clusters
