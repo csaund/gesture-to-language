@@ -153,6 +153,13 @@ class GestureSentenceManager():
         sentences = [d['phase']['transcript'] for d in p if d['id'] in gesture_ids]
         return sentences
 
+
+    ## have to do parallel thing before this
+    def get_sentence_cluster_ids_by_gesture_cluster_id(self, g_cluster_id):
+        matches = [self.SentenceClusterer.clusters[k]['cluster_id'] for k in self.SentenceClusterer.clusters.keys() if g_cluster_id in self.SentenceClusterer.clusters[k]['gesture_cluster_ids']]
+        return matches
+
+
     def get_sentence_clusters_by_gesture_clusters(self):
         if(self.gesture_sentence_clusters):
             return self.gesture_sentence_clusters
@@ -331,9 +338,7 @@ class GestureSentenceManager():
         return df
 
     def get_sentence_gesture_data_parallel(self):
-        key = self.SentenceClusterer.clusters.keys()[0]
-        if 'gesture_cluster_ids' not in self.SentenceClusterer.clusters[key].keys():
-            self.assign_gesture_cluster_ids_for_sentence_clusters()
+        self.assign_gesture_cluster_ids_for_sentence_clusters()
         columns = ["SCID", "GCID"]
         rows = []
         for k in self.SentenceClusterer.clusters:
@@ -343,6 +348,17 @@ class GestureSentenceManager():
         df = pd.DataFrame(rows)
         return df
 
+
+    def report_sentence_cluster_by_gesture_cluster(self):
+        gs = self.GestureClusterer.clusters.keys()
+        sents = []
+        for g in self.GestureClusterer.clusters:
+            s_keys = self.get_sentence_cluster_ids_by_gesture_cluster_id(g)
+            sents.append(s_keys)
+        t = PrettyTable()
+        t.add_column("gesture cluster", gs)
+        t.add_column("sentence ids", sents)
+        print(t)
 
     def bar_chart(self):
         sentence_clusters = []
