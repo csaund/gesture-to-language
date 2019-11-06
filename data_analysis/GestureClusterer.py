@@ -93,6 +93,12 @@ class GestureClusterer():
                         'gestures': [g['id']]}
                 self.clusters[cluster_id] = c
         self.has_assigned_feature_vecs = False
+        self.total_clusters_created = 0
+
+    def clear_clusters(self):
+        self.clusters = {}
+        self.total_clusters_created = 0
+        self.c_id = 0
 
     def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0):
         gd = gesture_data if gesture_data else self.agd
@@ -129,6 +135,7 @@ class GestureClusterer():
         # now recluster based on where the new centroids are
         self._recluster_by_centroids()
         self._write_logs()
+        print "created %s clusters" % self.total_clusters_created
 
     def _recluster_singletons(self):
         print "reclustering singletons"
@@ -186,6 +193,7 @@ class GestureClusterer():
              'seed_id': seed_gest['id'],
              'gestures': [seed_gest]}
         self.clusters[new_cluster_id] = c
+        self.total_clusters_created += 1
 
     # now that we've done the clustering, recluster and only allow clusters to form around current centroids.
     def _recluster_by_centroids(self):
@@ -605,6 +613,10 @@ class GestureClusterer():
     def get_avg_dist_between_point_and_cluster(self, vec, cluster_id):
         dists = []
         c = self.clusters[cluster_id]
+        if len(c['gestures']) == 0:
+            print "WARNING: NO GESTURES FOUND IN CLUSTER ID %s" % cluster_id
+            print "num clusters: %s" % len(self.clusters)
+            return 0
         for g in c['gestures']:
             dists.append(self._calculate_distance_between_vectors(vec, g['feature_vec']))
         return self._avg(dists)

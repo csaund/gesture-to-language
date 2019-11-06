@@ -36,6 +36,7 @@ ADJ = ["JJ"]
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.load_gestures()  TODO maybe put this in the initialization?
 # GSM.cluster_gestures()    or    GSM.cluster_gestures_under_n_words(10)
+# GSM.test_k_means_gesture_clusters()
 # report = GSM.report_clusters()
 # GSM.print_sentences_by_cluster(0)
 # GSM.cluster_sentences_gesture_independent()    or     GSM.cluster_sentences_gesture_independent_under_n_words(10)
@@ -434,6 +435,31 @@ class GestureSentenceManager():
                     (g1, g2) = (g['id'], comp['id'])
         return (g1, g2)
 
+
+    def get_furthest_gestures_in_gesture_cluster(self, cluster_id):
+        c = self.gestureClusters[cluster_id]
+        (g1, g2) = (0, 0)
+        max_d = 0
+        print "exploring distances for %s gestures" % str(len(c['gestures']))
+        for i in tqdm(range(0, len(c['gestures']))):
+            g = c['gestures'][i]
+            for j in range(0, len(c['gestures'])):
+                comp = c['gestures'][j]
+                dist = np.linalg.norm(np.array(g['feature_vec']) - np.array(comp['feature_vec']))
+                # don't want to be comparing same ones.
+                if dist > max_d:
+                    max_d = dist
+                    (g1, g2) = (g['id'], comp['id'])
+        return (g1, g2)
+
+    def get_speakers_by_gesture_cluster(self, g_cluster_id):
+        c = self.GestureClusterer.clusters[g_cluster_id]
+        speakers = [self.get_gesture_by_id(g['id'])['speaker'] for g in c['gestures']]
+        counts = [speakers.count(s) for s in speakers]
+        both = sorted(list(set(zip(speakers,counts))), key=lambda x: x[1], reverse=True)
+        return both
+
+
     ####################################################################
     ####################### WORD CLOUD STUFF ###########################
     ####################################################################
@@ -600,11 +626,16 @@ class GestureSentenceManager():
         print "plotting gestures for %s, %s" % (g1, g2)
         self.plot_two_gestures(g1, g2)
 
+
     def plot_closest_gestures_from_gesture_cluster(self, cluster_id):
         (g1, g2) = self.get_closest_gestures_in_gesture_cluster(cluster_id)
         print "plotting gestures for %s, %s" % (g1, g2)
         self.plot_two_gestures(g1, g2)
 
+    def plot_furthest_gestures_from_gesture_cluster(self, cluster_id):
+        (g1, g2) = self.get_furthest_gestures_in_gesture_cluster(cluster_id)
+        print "plotting gestures for %s, %s" % (g1, g2)
+        self.plot_two_gestures(g1, g2)
 
     #####################################################
     ############### Machine Learning Stats ##############
@@ -625,6 +656,7 @@ class GestureSentenceManager():
     def test_k_means_gesture_clusters(self, n_words=10, min_distances=[0.01, 0.03, 0.05, 0.07], ks=[10,40,60,100,150, 200, 0]):
         save_current_clusters = self.GestureClusterer.clusters
         n_clusters = []
+        max_k = []
         avgs = []
         mins = []
         maxs = []
@@ -632,8 +664,9 @@ class GestureSentenceManager():
         dists = []
         for k in ks:
             print "testing clustering for k=%s" % k
-            self.GestureClusterer.clusters = {}
             for dist in min_distances:
+                max_k.append(k)
+                self.GestureClusterer.clear_clusters()
                 self.GestureClusterer.cluster_gestures(None, dist, k)
                 scores = self.get_silhouette_scores_for_all_gesture_clusters()
                 dists.append(dist)
@@ -647,6 +680,7 @@ class GestureSentenceManager():
         self.gestureClusters = save_current_clusters
 
         t = PrettyTable()
+        t.add_column("max k", max_k)
         t.add_column("k", n_clusters)
         t.add_column("min_dist", dists)
         t.add_column("avg silhouette", avgs)
