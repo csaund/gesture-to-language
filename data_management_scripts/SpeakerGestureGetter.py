@@ -14,6 +14,7 @@ from common_helpers import *
 
 AGD_BUCKET = "all_gesture_data"
 
+
 ## TODO: remove everything that isn't specifically about getting the data into the right format.
 
 ## given a speaker name and path to their keypoints and gesture timings,
@@ -23,6 +24,7 @@ class SpeakerGestureGetter():
         self.video_path = "%s/%s/keypoints_simple/" % (base_path, speaker)
         self.timings_path = "%s/%s/timings.json" % (base_path, speaker)
         self.speaker = speaker
+        self.wrong_file_count = 0
 
     def perform_gesture_analysis(self, force_upload=False):
         self.force_upload = force_upload
@@ -37,11 +39,11 @@ class SpeakerGestureGetter():
     # that is searchable in the folder.
     def _get_filekey(self, t):
         keyframe_min = int(math.floor(t / 60))
-        keyframe_sec = round(t - (keyframe_min * 60), 6)
+        keyframe_sec = "%.6f" % float((t - (keyframe_min * 60)))
         ## add leading 0s to avoid clashes.
         if keyframe_min < 10:
             keyframe_min = '0' + str(keyframe_min)
-        if keyframe_sec < 10:
+        if float(keyframe_sec) < 10:
             keyframe_sec = '0' + str(keyframe_sec)
         filekey = str(keyframe_min) + '_' + str(keyframe_sec)
         return filekey
@@ -59,12 +61,15 @@ class SpeakerGestureGetter():
         files = sorted(os.listdir(gesture_video_path), key=timestring_to_int)
         m = [s for s in files if start_filekey in s]
         if len(m) > 1:
-            print("panic!! wrong number of matching files: %s" % str(len(m)))
-            print(start_filekey)
-            print(m)
-            print "using first file"
+            self.wrong_file_count += 1
+            #print("panic!! wrong number of matching files: %s" % str(len(m)))
+            #print gesture_video_path
+            #print(start_filekey)
+            #print(m)
+            #print "using first file"
         elif len(m) < 1:
             print("panic! no files found for %s" % str(start_filekey))
+            print gesture_video_path
             return {'x': [], 'y': []}
         all_gesture_keys = []
         i = files.index(m[0])
@@ -132,20 +137,22 @@ class SpeakerGestureGetter():
         phrases = timings['phrases']
         ## TODO try this out...?
         # all_gesture_data = [self.get_data_per_gesture(g, video_base_path + str(g['phase']['video_fn'].split('.')[0]) + '/') for g in phrases]
-        l = len(timings['phrases'])
+        l = len(phrases)
         print "analyzing %s gestures" % l
         i = 0
-        for phase in tqdm(timings['phrases']):
+        for phase in tqdm(phrases):
             # print i
             # i += 1
             p = phase['phase']
-            vid_path = video_base_path + str(p['video_fn'].split('.')[0]) + '/'
+            vid_name = str(p['video_fn'].split('.')[0]) + '/'
+            vid_path = video_base_path + vid_name.replace(' ', '_')
             start = p['start_seconds']
             end = p['end_seconds']
             specific_gesture_dat = {'id': phase['id']}
             specific_gesture_dat['keyframes'] = self.get_keyframes_per_gesture(vid_path, start, end)
             all_gesture_data.append(specific_gesture_dat)
 
+        print "analyzed gestures, found mismatching files for %s" % self.wrong_file_count
         print "uploading AGD to %s_agd.json" % self.speaker
         upload_object(AGD_BUCKET, all_gesture_data, "%s_agd.json" % self.speaker)
         return all_gesture_data

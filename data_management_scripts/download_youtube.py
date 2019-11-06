@@ -25,6 +25,7 @@ if args.speaker:
     df = df[df['speaker'] == args.speaker]
 
 err = 0
+non_yt = 0
 temp_output_path = '/tmp/temp_video.mp4'
 commands = []
 
@@ -54,6 +55,9 @@ for _, row in tqdm(df.iterrows(), total=df.shape[0]):
         finally:
             if os.path.exists(temp_output_path):
                 os.remove(temp_output_path)
+    else:
+        non_yt += 1
 print("Successfully downloaded: %s/%s" % (len(df) - err, len(df)))
+print("could not retrieve non-youtube files: %s" % non_yt)
 
 ## from https://github.com/amirbar/speech2gesture/blob/master/data/download/download_youtube.py

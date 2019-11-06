@@ -112,17 +112,17 @@ class GestureSentenceManager():
         diff = list(set(s_ids).symmetric_difference(set(g_ids)))
 
 
-    def cluster_gestures_under_n_words(self, n):
+    def cluster_gestures_under_n_words(self, n, max_number_clusters=0):
         ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
-        self.cluster_gestures(exclude_ids)
+        self.cluster_gestures(exclude_ids, max_number_clusters)
 
-    def cluster_gestures(self, exclude_ids=[]):
+    def cluster_gestures(self, exclude_ids=[], max_number_clusters=0):
         if len(exclude_ids):
             self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
         else:
             self.GestureClusterer = GestureClusterer(self.agd)
-        self.GestureClusterer.cluster_gestures()
+        self.GestureClusterer.cluster_gestures(None, None, max_number_clusters)
         self.gestureClusters = self.GestureClusterer.clusters
 
     def filter_agd(self, exclude_ids):
@@ -604,6 +604,30 @@ class GestureSentenceManager():
         self.plot_two_gestures(g1, g2)
 
 
+    #####################################################
+    ############### Machine Learning Stats ##############
+    #####################################################
+    def get_silhouette_scores_for_all_gesture_clusters(self, g_s="gesture"):
+        scores = []
+        for k in self.GestureClusterer.clusters:
+            scores.append(self.GestureClusterer.get_silhouette_score(k))
+        s = np.array(scores)
+        print "number of clusters: %s" % len(self.GestureClusterer.clusters)
+        print "avg silhouette: %s" % np.average(s)
+        print "min silhouette: %s" % np.min(s)
+        print "max silhouette: %s" % np.max(s)
+        print "sd: %s" % np.std(s)
+
+
+    def test_k_means_gesture_clusters(self, n_words=10, ks=[0,10,40,60,100,150]):
+        save_current_clusters = self.GestureClusterer.clusters
+        for k in ks:
+            self.cluster_gestures_under_n_words(n_words, k)
+            self.get_silhouette_scores_for_all_gesture_clusters()
+        # restore to before this
+        self.GestureClusterer.clusters = save_current_clusters
+        self.gestureClusters = save_current_clusters
+
 def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
     newGSM.speaker = oldGSM.speaker
@@ -670,3 +694,12 @@ def plot_closest_gestures_from_gesture_cluster(gsm, cluster_id):
 
 
 ## STOP
+
+
+def upload_data_under_n_words(gsm, under_words=10):
+    agd_bucket = "all_gesture_data"
+    ids = gsm.get_gesture_ids_fewer_than_n_words(under_words)
+    new_transcript = [g for g in gsm.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < under_words and len(g['phase']['transcript'].split(' ')) > 1]
+    n_t = {'phrases': new_transcript}
+    ## upload to conglomerate_under_%s_timings_with_transcript.json
+    new_agd = [g for g in gsm.agd if g['id'] not in ids]

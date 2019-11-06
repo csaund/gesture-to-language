@@ -94,7 +94,7 @@ class GestureClusterer():
                 self.clusters[cluster_id] = c
         self.has_assigned_feature_vecs = False
 
-    def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03):
+    def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0):
         if not self.has_assigned_feature_vecs:
             self._assign_feature_vectors()
         gd = gesture_data if gesture_data else self.agd
@@ -108,7 +108,10 @@ class GestureClusterer():
             self._log("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
             # we're further away than we're allowed to be, OR this is the first cluster.
-            if (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
+            if max_number_clusters and len(self.clusters) > max_number_clusters:
+                self._log("nearest cluster distance was %s" % nearest_cluster_dist)
+                self._add_gesture_to_cluster(g, nearest_cluster_id)
+            elif (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
                 self._log("nearest cluster distance was %s" % nearest_cluster_dist)
                 self._log("creating new cluster for gesture %s -- %s" % (g['id'], i))
                 self._create_new_cluster(g)
@@ -612,6 +615,17 @@ class GestureClusterer():
         b = self.get_avg_dist_between_point_and_cluster(p, self.get_nearest_cluster_id(cluster_id))
         score = (b - a)/max(b,a)
         return score
+
+
+    def get_silhouette_scores_for_all_gesture_clusters(self):
+        scores = []
+        for k in self.gestureClusters:
+            scores.append(self.get_silhouette_score(k))
+        s = np.array(scores)
+        print "avg silhouette: %s" % np.average(s)
+        print "min silhouette: %s" % np.min(s)
+        print "max silhouette: %s" % np.max(s)
+        print "sd: %s" % np.std(s)
 
 
 #

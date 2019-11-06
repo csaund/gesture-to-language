@@ -87,6 +87,8 @@ def match_transcript_to_timing(timings):
             ## python shallow copies OH YEAHHHH
             # if we don't have any words, just take the one before and the next 3.
             g['words'] = gesture_words if gesture_words else get_word_range(word_i, all_words)
+            if 'word' not in g.keys():
+                print "no words found for gesture %s" % g
             words = [g['word'] for g in g['words']]
             p['transcript'] = ' '.join(words)
 
