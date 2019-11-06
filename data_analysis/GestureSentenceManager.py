@@ -1,5 +1,5 @@
 #!/usr/bin/env pythons
-from GestureClusterer1 import *
+from GestureClusterer import *
 from SentenceClusterer import *
 from VideoManager import *
 import json
@@ -33,7 +33,7 @@ ADJ = ["JJ"]
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
 # from GestureSentenceManager import *
-# GSM = GestureSentenceManager("conglomerate")
+# GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.load_gestures()  TODO maybe put this in the initialization?
 # GSM.cluster_gestures()    or    GSM.cluster_gestures_under_n_words(10)
 # report = GSM.report_clusters()
@@ -41,7 +41,7 @@ ADJ = ["JJ"]
 # GSM.cluster_sentences_gesture_independent()    or     GSM.cluster_sentences_gesture_independent_under_n_words(10)
 
 #
-
+#
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.load_gestures()
@@ -62,6 +62,8 @@ class GestureSentenceManager():
         self.agd = None
         self._initialize_sentence_clusterer()
         self.VideoManager = VideoManager()
+        print "loading gestures"
+        self.load_gestures()
 
     def _initialize_sentence_clusterer(self):
         self.SentenceClusterer = SentenceClusterer(self.speaker)
@@ -617,17 +619,41 @@ class GestureSentenceManager():
         print "min silhouette: %s" % np.min(s)
         print "max silhouette: %s" % np.max(s)
         print "sd: %s" % np.std(s)
+        return s
 
 
-    def test_k_means_gesture_clusters(self, n_words=10, ks=[0,10,40,60,100,150, 200]):
+    def test_k_means_gesture_clusters(self, n_words=10, min_distances=[0.01, 0.03, 0.05, 0.07], ks=[10,40,60,100,150, 200, 0]):
         save_current_clusters = self.GestureClusterer.clusters
+        n_clusters = []
+        avgs = []
+        mins = []
+        maxs = []
+        sd = []
+        dists = []
         for k in ks:
             print "testing clustering for k=%s" % k
-            self.GestureClusterer.cluster_gestures(None, 0.03, k)
-            self.get_silhouette_scores_for_all_gesture_clusters()
+            self.GestureClusterer.clusters = {}
+            for dist in min_distances:
+                self.GestureClusterer.cluster_gestures(None, dist, k)
+                scores = self.get_silhouette_scores_for_all_gesture_clusters()
+                dists.append(dist)
+                n_clusters.append(len(scores))
+                avgs.append(np.average(scores))
+                mins.append(np.min(scores))
+                maxs.append(np.max(scores))
+                sd.append(np.std(scores))
         # restore to before this
         self.GestureClusterer.clusters = save_current_clusters
         self.gestureClusters = save_current_clusters
+
+        t = PrettyTable()
+        t.add_column("k", n_clusters)
+        t.add_column("min_dist", dists)
+        t.add_column("avg silhouette", avgs)
+        t.add_column("min silhouette", mins)
+        t.add_column("max silhouette", maxs)
+        t.add_column("sd silhouette", sd)
+        print(t)
 
 
 def init_new_gsm(oldGSM):

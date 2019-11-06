@@ -96,6 +96,8 @@ class GestureClusterer():
 
     def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0):
         gd = gesture_data if gesture_data else self.agd
+        if 'feature_vec' in gd[0].keys():
+            print "already have feature vectors in our gesture data"
         if not self.has_assigned_feature_vecs and 'feature_vec' not in gd[0].keys():
             self._assign_feature_vectors()
         i = 0
