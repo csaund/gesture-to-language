@@ -70,14 +70,12 @@ class GestureSentenceManager():
         self.SentenceClusterer = SentenceClusterer(self.speaker)
         # now we have clusters, now need to get the corresponding sentences for those clusters.
     def cluster_sentences_gesture_independent(self):
-        self.SentenceClusterer.cluster_sentences()
-        self.sentenceClusters = self.SentenceClusterer.clusters
+        self.SentenceClusterer.cluster_sentences()self.
 
     def cluster_sentences_gesture_independent_under_n_words(self, n):
         ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
         self.SentenceClusterer.cluster_sentences(gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=exclude_ids)
-        self.sentenceClusters = self.SentenceClusterer.clusters
 
     def report_gesture_clusters(self):
         self.GestureClusterer.report_clusters()
@@ -99,15 +97,15 @@ class GestureSentenceManager():
 
     def compare_ids_in_sentence_gesture_clusters(self):
         s_ids = []
-        for k in self.sentenceClusters.keys():
-            c = self.sentenceClusters[k]
+        for k in self.SentenceClusterer.clusters.keys():
+            c = self.SentenceClusterer.clusters[k]
             ids = [g['id'] for g in c['gestures']]
             s_ids.append(ids)
         s_ids = flatten(s_ids)
 
         g_ids = []
-        for k in self.gestureClusters.keys():
-            c = self.gestureClusters[k]
+        for k in self.GestureClusterer.clusters.keys():
+            c = self.GestureClusterer.clusters[k]
             ids = [g['id'] for g in c['gestures']]
             g_ids.append(ids)
         g_ids = flatten(g_ids)
@@ -126,7 +124,6 @@ class GestureSentenceManager():
         else:
             self.GestureClusterer = GestureClusterer(self.agd)
         self.GestureClusterer.cluster_gestures(None, 0.03, max_number_clusters)
-        self.gestureClusters = self.GestureClusterer.clusters
 
     def filter_agd(self, exclude_ids):
         agd = [d for d in self.agd if d['id'] not in exclude_ids]
@@ -231,7 +228,7 @@ class GestureSentenceManager():
 
     def create_word_cloud_by_gesture_cluster(self, g_cluster_id):
         words = []
-        c = self.gestureClusters[g_cluster_id]
+        c = self.GestureClusterer.clusters[g_cluster_id]
         for gesture in c['gestures']:
             g = self.get_gesture_by_id(gesture['id'])
             words.append(g['phase']['transcript'])
@@ -320,8 +317,8 @@ class GestureSentenceManager():
         plt.show()
 
     def get_sentence_gesture_data_network(self):
-        key = self.sentenceClusters.keys()[0]
-        if 'gesture_cluster_ids' not in self.sentenceClusters[key].keys():
+        key = self.SentenceClusterer.clusters.keys()[0]
+        if 'gesture_cluster_ids' not in self.SentenceClusterer.clusters[key].keys():
             self.assign_gesture_cluster_ids_for_sentence_clusters()
         from_ = []
         to_ = []
@@ -335,7 +332,7 @@ class GestureSentenceManager():
 
     def get_sentence_gesture_data_parallel(self):
         key = self.SentenceClusterer.clusters.keys()[0]
-        if 'gesture_cluster_ids' not in self.sentenceClusters[key].keys():
+        if 'gesture_cluster_ids' not in self.SentenceClusterer.clusters[key].keys():
             self.assign_gesture_cluster_ids_for_sentence_clusters()
         columns = ["SCID", "GCID"]
         rows = []
@@ -351,8 +348,8 @@ class GestureSentenceManager():
         sentence_clusters = []
         sentence_nums = []
         num_g_clusters = []
-        for k in self.sentenceClusters:
-            c = self.sentenceClusters[k]
+        for k in self.SentenceClusterer.clusters:
+            c = self.SentenceClusterer.clusters[k]
             sentence_clusters.append(k)
             sentence_nums.append(len(c['sentences']))
             num_g_clusters.append(len(c['gesture_cluster_ids']))
@@ -384,8 +381,8 @@ class GestureSentenceManager():
     # MAJOR TODO::: JOIN DFS ON GESTURE ID.
     def get_gesture_cluster_wordcount_data(self):
         wc = []
-        for k in self.gestureClusters:
-            c = self.gestureClusters[k]
+        for k in self.GestureClusterer.clusters:
+            c = self.GestureClusterer.clusters[k]
             for g in c['gestures']:
                 s = self.get_gesture_by_id(g['id'])['phase']['transcript']
                 wc.append(len(nltk.word_tokenize(s)))
@@ -394,8 +391,8 @@ class GestureSentenceManager():
     # MAJOR TODO::: JOIN DFS ON GESTURE ID.
     def get_sentence_cluster_wordcount_data(self):
         wc = []
-        for k in self.sentenceClusters:
-            c = self.sentenceClusters[k]
+        for k in self.SentenceClusterer.clusters:
+            c = self.SentenceClusterer.clusters[k]
             for s in c['sentences']:
                 wc.append(len(nltk.word_tokenize(s)))
         return wc
@@ -420,7 +417,7 @@ class GestureSentenceManager():
 
 
     def get_closest_gestures_in_gesture_cluster(self, cluster_id):
-        c = self.gestureClusters[cluster_id]
+        c = self.GestureClusterer.clusters[cluster_id]
         (g1, g2) = (0, 0)
         min_d = 1000
         print "exploring distances for %s gestures" % str(len(c['gestures']))
@@ -437,7 +434,7 @@ class GestureSentenceManager():
 
 
     def get_furthest_gestures_in_gesture_cluster(self, cluster_id):
-        c = self.gestureClusters[cluster_id]
+        c = self.GestureClusterer.clusters[cluster_id]
         (g1, g2) = (0, 0)
         max_d = 0
         print "exploring distances for %s gestures" % str(len(c['gestures']))
@@ -472,13 +469,13 @@ class GestureSentenceManager():
         return w
 
     def get_words_by_sentence_cluster(self, s_cluster_id):
-        c = self.sentenceClusters[s_cluster_id]
+        c = self.SentenceClusterer.clusters[s_cluster_id]
         all_words = " ".join(c['sentences'])
         return all_words.split(" ")
 
     def get_words_by_gesture_cluster(self, g_cluster_id):
         words = []
-        c = self.gestureClusters[g_cluster_id]
+        c = self.GestureClusterer.clusters[g_cluster_id]
         for gesture in c['gestures']:
             g = self.get_gesture_by_id(gesture['id'])
             if(g['phase']['transcript']):
@@ -509,7 +506,7 @@ class GestureSentenceManager():
 
     ## I'm more disappointed in myself than you will ever be in me.
     def show_wordclouds_by_sentence_clusters(self, s_cluster_ids=None, filter_in_syntax="", filter_out_syntax=""):
-        s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.sentenceClusters[c]['sentences'])) for c in self.sentenceClusters.keys()], key=lambda x: x[1])[-9:]]
+        s_cluster_ids = s_cluster_ids if s_cluster_ids else [y[0] for y in sorted([(c, len(self.SentenceClusterer.clusters[c]['sentences'])) for c in self.SentenceClusterer.clusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(s_cluster_ids)):
             print s_cluster_ids[i]
             plt.subplot(3, 3, i+1)
@@ -520,7 +517,7 @@ class GestureSentenceManager():
 
     ## look, no one's happy about this.
     def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, filter_in_syntax="", filter_out_syntax=""):
-        g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.gestureClusters[c]['gestures'])) for c in self.gestureClusters.keys()], key=lambda x: x[1])[-9:]]
+        g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.GestureClusterer.clusters[c]['gestures'])) for c in self.GestureClusterer.clusters.keys()], key=lambda x: x[1])[-9:]]
         for i in range(0, len(g_cluster_ids)):
             print g_cluster_ids[i]
             plt.subplot(3, 3, i+1)
@@ -654,7 +651,6 @@ class GestureSentenceManager():
 
 
     def test_k_means_gesture_clusters(self, n_words=10, min_distances=[0.01, 0.03, 0.05, 0.07], ks=[10,40,60,100,150, 200, 0]):
-        save_current_clusters = self.GestureClusterer.clusters
         n_clusters = []
         max_k = []
         avgs = []
@@ -675,9 +671,6 @@ class GestureSentenceManager():
                 mins.append(np.min(scores))
                 maxs.append(np.max(scores))
                 sd.append(np.std(scores))
-        # restore to before this
-        self.GestureClusterer.clusters = save_current_clusters
-        self.gestureClusters = save_current_clusters
 
         t = PrettyTable()
         t.add_column("max k", max_k)

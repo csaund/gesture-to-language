@@ -628,19 +628,7 @@ class GestureClusterer():
         b = self.get_avg_dist_between_point_and_cluster(p, self.get_nearest_cluster_id(cluster_id))
         score = (b - a)/max(b,a)
         return score
-
-
-    def get_silhouette_scores_for_all_gesture_clusters(self):
-        scores = []
-        for k in self.gestureClusters:
-            scores.append(self.get_silhouette_score(k))
-        s = np.array(scores)
-        print "avg silhouette: %s" % np.average(s)
-        print "min silhouette: %s" % np.min(s)
-        print "max silhouette: %s" % np.max(s)
-        print "sd: %s" % np.std(s)
-
-
+        
 #
 #
 # def get_closest_gesture_to_centroid(GSM, cluster_id):
