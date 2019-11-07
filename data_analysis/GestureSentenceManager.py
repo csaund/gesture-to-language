@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
 from GestureClusterer5 import *
-from SentenceClusterer import *
+from SentenceClusterer4 import *
 from VideoManager import *
 import json
 import os
@@ -71,7 +71,8 @@ class GestureSentenceManager():
         # now we have clusters, now need to get the corresponding sentences for those clusters.
     def cluster_sentences_gesture_independent(self):
         self.agd = [g for g in self.agd if g['id'] not in self.GestureClusterer.drop_ids]
-        self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureClusterer.drop_ids)
+        ids_for_sentences = [g['id'] for g in self.agd]
+        self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureClusterer.drop_ids, include_ids=ids_for_sentences)
 
     def cluster_sentences_gesture_independent_under_n_words(self, n):
         ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
@@ -595,6 +596,7 @@ class GestureSentenceManager():
         sizes = speakers.values()
         plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
         plt.axis('equal')
+        plt.savefig('speaker_distribution.png')
         plt.show()
 
 
@@ -767,13 +769,26 @@ class GestureSentenceManager():
         print "unique other sentence clusters: %s" % len(list(set(unique_sclusts)))
 
 
+    # for a gesture cluster, which sentences came from which sentence clusters?
     def show_pie_sentence_clusters_for_gesture_cluster(self, g_cluster_id):
+        c = self.GestureClusterer.clusters[g_cluster_id]
+        g_ids = [g['id'] for g in c['gestures']]
         s_ids = self.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
-        s_dict = {}
+        counts = []
         for s in s_ids:
-            s_dict[s] = 0
-        for g in self.GestureClusterer.clusters[g_cluster_id]['gestures']:
-            gest = self.get_gesture_by_id[g['id']]
+            s_clust = self.SentenceClusterer.clusters[s]
+            matches = [g['id'] for g in s_clust['gestures'] if g['id'] in g_ids]
+            counts.append(len(matches))
+
+        labels = s_ids
+        sizes = counts
+        plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
+        plt.axis('equal')
+        plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
+        plt.show()
+
+        print "SANITY CHECK::"
+        print (sum(counts) == len(g_ids))
 
 
     def show_pie_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
@@ -784,7 +799,7 @@ class GestureSentenceManager():
 def bl(gsm):
     for i in gsm.GestureClusterer.clusters:
         print i
-        print get_sentence_stats_for_gesture_cluster(gsm, i)
+        print gsm.get_sentence_stats_for_gesture_cluster(i)
 
 
 def init_new_gsm(oldGSM):
@@ -867,3 +882,31 @@ def downsample_speaker(gsm):
     agd = new_agd + angelica_sample
     gsm.agd = agd
 
+
+
+
+## INCORPORATE
+def show_pie_sentence_clusters_for_gesture_cluster(gsm, g_cluster_id):
+    c = gsm.GestureClusterer.clusters[g_cluster_id]
+    g_ids = [g['id'] for g in c['gestures']]
+    s_ids = []
+    counts = []
+    all_matches = []
+    for s in gsm.SentenceClusterer.clusters:
+        s_clust = gsm.SentenceClusterer.clusters[s]
+        matches = [g['id'] for g in s_clust['gestures'] if g['id'] in g_ids]
+        if len(matches):
+            s_ids.append(s)
+            counts.append(len(matches))
+            all_matches = all_matches + matches
+    unfound = [g for g in g_ids if g not in all_matches]
+    labels = s_ids
+    sizes = counts
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
+    plt.axis('equal')
+    plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
+    plt.show()
+    print "SANITY CHECK::"
+    print (sum(counts))
+    print len(g_ids)
+    print "unfound: %s" % unfound

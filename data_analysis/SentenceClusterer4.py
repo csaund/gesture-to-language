@@ -121,11 +121,14 @@ class SentenceClusterer():
         self.clusters = {}
         self.c_id = 0
 
-    def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[]):
+    def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[], include_ids=[]):
         # if not self.has_assigned_feature_vecs:
         #     self._assign_feature_vectors()
         self.max_number_clusters = max_number_clusters
         gd = gesture_data if gesture_data else self.agd
+
+        if len(include_ids):
+            self.agd['phrases'] = [g for g in self.agd['phrases'] if g['id'] in include_ids]
 
         # filter here
         if(exclude_gesture_ids):
@@ -171,7 +174,14 @@ class SentenceClusterer():
         # now recluster based on where the new centroids are
         # self._recluster_by_centroids()
         # TODO do need some sort of reclustering I think...
-        self._recluster_singletons()
+        # self._recluster_singletons()
+        self._add_sentence_cluster_ids
+
+    def _add_sentence_cluster_ids(self):
+        for k in self.clusters:
+            c = self.clusters[k]
+            for g in c['gestures']:
+                g['sentence_cluster_id'] = k
 
     def count_sentence_clusters_of_gesture(self, g_id):
         count = 0
