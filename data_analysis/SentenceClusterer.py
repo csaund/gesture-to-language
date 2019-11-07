@@ -124,6 +124,7 @@ class SentenceClusterer():
     def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[]):
         # if not self.has_assigned_feature_vecs:
         #     self._assign_feature_vectors()
+        self.max_number_clusters = max_number_clusters
         gd = gesture_data if gesture_data else self.agd
 
         # filter here
@@ -148,7 +149,10 @@ class SentenceClusterer():
             self._log("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster(g)
             # we're further away than we're allowed to be, OR this is the first cluster.
-            if ((min_cluster_sim and cluster_sim < min_cluster_sim) or (not len(self.clusters))) and not (len(self.clusters) > max_number_clusters):
+            if len(self.clusters) > max_number_clusters:
+                self._add_gesture_to_cluster(g, nearest_cluster_id)
+
+            elif ((min_cluster_sim and cluster_sim < min_cluster_sim) or (not len(self.clusters))) and not (len(self.clusters) > max_number_clusters):
                 # print ("nearest cluster distance was %s" % cluster_sim)
                 self._log("creating new cluster for gesture %s -- %s" % (g['id'], i))
                 self._create_new_cluster(g)
@@ -157,7 +161,7 @@ class SentenceClusterer():
                 st = time.time()
                 self._log("fitting in cluster %s" % nearest_cluster_id)
                 # print("max cluster sim was %s" % cluster_sim)
-                self._add_gesture_to_cluster(g, nearest_cluster_id, max_number_clusters)
+                self._add_gesture_to_cluster(g, nearest_cluster_id)
                 ed = time.time()
                 # print "time to fit the cluster: %s" % str(ed - st)
             if not i % 200:
@@ -178,15 +182,15 @@ class SentenceClusterer():
                     count += 1
         return count
 
-    def _add_gesture_to_cluster(self, g, cluster_id, max_number_clusters):
+    def _add_gesture_to_cluster(self, g, cluster_id):
         self.clusters[cluster_id]['gestures'].append(g)
         self.clusters[cluster_id]['sentences'].append(g['phase']['transcript'])
-        if (len(self.clusters[cluster_id]['sentences']) > MAX_CLUSTER_SIZE) and not (len(self.clusters) > max_number_clusters):
-            self._break_cluster(cluster_id)
-        else:
+        # if (len(self.clusters[cluster_id]['sentences']) > MAX_CLUSTER_SIZE) and not (len(self.clusters) > max_number_clusters):
+        #     self._break_cluster(cluster_id)
+        # else:
             # this is like updating the centroid.
-            self.clusters[cluster_id]['cluster_embedding'] = self.embed_fn(self.clusters[cluster_id]['sentences'])
-            g['sentence_cluster_id'] = cluster_id
+        self.clusters[cluster_id]['cluster_embedding'] = self.embed_fn(self.clusters[cluster_id]['sentences'])
+        g['sentence_cluster_id'] = cluster_id
 
 
     def _break_cluster(self, cluster_id):

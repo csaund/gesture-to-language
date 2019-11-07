@@ -448,9 +448,9 @@ class GestureClusterer():
           self._wrists_down(gesture, 'r'),
           self._wrists_down(gesture, 'l'),
           self._wrists_outward(gesture),
-          self._wrists_inward(gesture),
-          self._max_wrist_velocity(gesture, 'r'),
-          self._max_wrist_velocity(gesture, 'l')
+          self._wrists_inward(gesture)
+          # self._max_wrist_velocity(gesture, 'r'),
+          # self._max_wrist_velocity(gesture, 'l')
         #   wrists_sweep,
         #   wrist_arc,
         #   r_hand_rotate,
@@ -460,7 +460,7 @@ class GestureClusterer():
         return gesture_features
 
     def _create_empty_feature_vector(self):
-        gesture_features = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        gesture_features = [0,0,0,0,0,0,0,0,0,0,0,0]
         return gesture_features
 
     # TODO manually make some features more/less important
