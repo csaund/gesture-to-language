@@ -69,29 +69,17 @@ from common_helpers import *
 class GestureClusterer():
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
-    def __init__(self, all_gesture_data, seeds=[]):
+    def __init__(self, all_gesture_data):
         # I have no idea what best practices are but I'm almost certain this is
         # a gross, disgusting anti-pattern for iterating IDs.
         self.c_id = 0
         self.agd = all_gesture_data
         self.clusters = {}
-        self.seed_ids = seeds
         self.clf = NearestCentroid()
         self.logs = []
         # todo make this variable
         self.logfile = "%s/github/gesture-to-language/cluster_logs.txt" % os.getenv("HOME")
         self.cluster_file = "%s/github/gesture-to-language/cluster_tmp.json" % os.getenv("HOME")
-        if(len(seeds)):
-            for seed_g in seeds:
-                g = self._get_gesture_by_id(seed_g, all_gesture_data)
-                cluster_id = self.c_id
-                self.c_id = self.c_id + 1
-                c = {
-                        'cluster_id': cluster_id,
-                        'seed_id': g['id'],
-                        'centroid': self._get_gesture_features(g),
-                        'gestures': [g['id']]}
-                self.clusters[cluster_id] = c
         self.has_assigned_feature_vecs = False
         self.total_clusters_created = 0
 
@@ -100,18 +88,42 @@ class GestureClusterer():
         self.total_clusters_created = 0
         self.c_id = 0
 
-    def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0):
+
+    def cluster_gestures_disparate_seeds(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=250):
         gd = gesture_data if gesture_data else self.agd
         if 'feature_vec' in gd[0].keys():
             print "already have feature vectors in our gesture data"
         if not self.has_assigned_feature_vecs and 'feature_vec' not in gd[0].keys():
             self._assign_feature_vectors()
+
+        # randomly sample for now, even though we know that's not the best way to do it at all.
+        gestures = random.sample(gd, max_number_clusters)
+        random_ids = [g['id'] for g in gestures]
+        self.cluster_gestures(gd, max_cluster_distance, max_number_clusters, random_ids)
+
+
+    def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0, seed_ids=[]):
+        gd = gesture_data if gesture_data else self.agd
+        if 'feature_vec' in gd[0].keys():
+            print "already have feature vectors in our gesture data"
+        if not self.has_assigned_feature_vecs and 'feature_vec' not in gd[0].keys():
+            self._assign_feature_vectors()
+
+        # if we're seeding our clusters with specific gestures
+        if len(seed_ids):
+            gs = [gesture for gesture in gd if gesture['id'] in seed_ids]
+            for g in gs:
+                self._create_new_cluster(g)
+
         i = 0
         l = len(gd)
         print "Clustering gestures"
         for g in tqdm(gd):
             start = time.time()
             i = i + 1
+            # if we've already seeded a cluster with this gesture, don't recluster it.
+            if g['id'] in seed_ids:
+                continue
             # print("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             self._log("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
@@ -628,7 +640,7 @@ class GestureClusterer():
         b = self.get_avg_dist_between_point_and_cluster(p, self.get_nearest_cluster_id(cluster_id))
         score = (b - a)/max(b,a)
         return score
-        
+
 #
 #
 # def get_closest_gesture_to_centroid(GSM, cluster_id):
