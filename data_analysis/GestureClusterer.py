@@ -89,12 +89,18 @@ class GestureClusterer():
         self.c_id = 0
 
 
-    def cluster_gestures_disperate_seeds(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0):
+    def cluster_gestures_disparate_seeds(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=250):
         gd = gesture_data if gesture_data else self.agd
         if 'feature_vec' in gd[0].keys():
             print "already have feature vectors in our gesture data"
         if not self.has_assigned_feature_vecs and 'feature_vec' not in gd[0].keys():
             self._assign_feature_vectors()
+
+        # randomly sample for now, even though we know that's not the best way to do it at all.
+        gestures = random.sample(gd, max_number_clusters)
+        random_ids = [g['id'] for g in gestures]
+        self.cluster_gestures(gd, max_cluster_distance, max_number_clusters, random_ids)
+
 
     def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0, seed_ids=[]):
         gd = gesture_data if gesture_data else self.agd
