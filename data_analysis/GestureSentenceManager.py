@@ -39,13 +39,14 @@ ADJ = ["JJ"]
 # report = GSM.report_clusters()
 # GSM.print_sentences_by_cluster(0)
 # GSM.cluster_sentences_gesture_independent()    or     GSM.cluster_sentences_gesture_independent_under_n_words(10)
+# GSM.assign_gesture_cluster_ids_for_sentence_clusters()
 
 #
 #
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
-# GSM.cluster_gestures_under_n_words(10)
-# GSM.cluster_sentences_gesture_independent_under_n_words(10)
+# GSM.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
+# GSM.cluster_sentences_gesture_independent()
 
 ## manages gesture and sentence stuff.
 class GestureSentenceManager():
@@ -63,6 +64,7 @@ class GestureSentenceManager():
         self.VideoManager = VideoManager()
         print "loading gestures"
         self.load_gestures()
+        self.GestureClusterer = GestureClusterer(self.agd)
 
     def _initialize_sentence_clusterer(self):
         self.SentenceClusterer = SentenceClusterer(self.speaker)
@@ -708,40 +710,54 @@ class GestureSentenceManager():
         t.add_column("sd silhouette", sd)
         print(t)
 
-## TODO ADD THIS TO GSM
-def get_sentence_stats_for_gesture_cluster(gsm, g_cluster_id):
-    s_ids = gsm.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
-    num_mappings = []
-    other_gclusters = []
-    unique_gclusts = []
-    for s in s_ids:
-        s_clust = gsm.SentenceClusterer.clusters[s]
-        num_mappings.append(len(s_clust['gesture_cluster_ids'])-1)
-        other_gclusters.append(s_clust['gesture_cluster_ids'])
-        unique_gclusts = unique_gclusts + s_clust['gesture_cluster_ids']
-    print "number of sentence clusters: %s" % str(len(s_ids)-1)
-    print "min other gesture mappings: %s" % min(num_mappings)
-    print "max other gesture mappings: %s" % max(num_mappings)
-    print "med other gesture mappings: %s" % np.median(np.array(num_mappings))
-    print "unique other gesture clusters: %s" % len(list(set(unique_gclusts)))
+    ## TODO ADD THIS TO GSM
+    def get_sentence_stats_for_gesture_cluster(self, g_cluster_id):
+        s_ids = self.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
+        num_mappings = []
+        other_gclusters = []
+        unique_gclusts = []
+        for s in s_ids:
+            s_clust = self.SentenceClusterer.clusters[s]
+            num_mappings.append(len(s_clust['gesture_cluster_ids'])-1)
+            other_gclusters.append(s_clust['gesture_cluster_ids'])
+            unique_gclusts = unique_gclusts + s_clust['gesture_cluster_ids']
+        print "number of sentence clusters: %s" % str(len(s_ids)-1)
+        print "min other gesture mappings: %s" % min(num_mappings)
+        print "max other gesture mappings: %s" % max(num_mappings)
+        print "med other gesture mappings: %s" % np.median(np.array(num_mappings))
+        print "unique other gesture clusters: %s" % len(list(set(unique_gclusts)))
 
 
 
-def get_gesture_stats_for_sentence_cluster(gsm, s_cluster_id):
-    g_ids = gsm.SentenceClusterer.clusters[s_cluster_id]['gesture_cluster_ids']
-    num_mappings = []
-    other_gclusters = []
-    unique_sclusts = []
-    for g in g_ids:
-        other_g_clust = gsm.get_sentence_cluster_ids_by_gesture_cluster_id(g)
-        num_mappings.append(len(other_g_clust)-1)
-        other_gclusters.append(other_g_clust)
-        unique_sclusts = unique_sclusts + other_g_clust
-    print "number of sentence clusters: %s" % str(len(g_ids)-1)
-    print "min other gesture mappings: %s" % min(num_mappings)
-    print "max other gesture mappings: %s" % max(num_mappings)
-    print "med other gesture mappings: %s" % np.median(np.array(num_mappings))
-    print "unique other sentence clusters: %s" % len(list(set(unique_sclusts)))
+    def get_gesture_stats_for_sentence_cluster(self, s_cluster_id):
+        g_ids = self.SentenceClusterer.clusters[s_cluster_id]['gesture_cluster_ids']
+        num_mappings = []
+        other_gclusters = []
+        unique_sclusts = []
+        for g in g_ids:
+            other_g_clust = self.get_sentence_cluster_ids_by_gesture_cluster_id(g)
+            num_mappings.append(len(other_g_clust)-1)
+            other_gclusters.append(other_g_clust)
+            unique_sclusts = unique_sclusts + other_g_clust
+        print "number of sentence clusters: %s" % str(len(g_ids)-1)
+        print "min other gesture mappings: %s" % min(num_mappings)
+        print "max other gesture mappings: %s" % max(num_mappings)
+        print "med other gesture mappings: %s" % np.median(np.array(num_mappings))
+        print "unique other sentence clusters: %s" % len(list(set(unique_sclusts)))
+
+
+    def show_pie_sentence_clusters_for_gesture_cluster(self, g_cluster_id):
+        s_ids = self.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
+        s_dict = {}
+        for s in s_ids:
+            s_dict[s] = 0
+        for g in self.GestureClusterer.clusters[g_cluster_id]['gestures']
+            gest = self.get_gesture_by_id[g['id']]
+
+
+    def show_pie_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
+        g_ids = self.SentenceClusterer.clusters[s_cluster_id]['gesture_cluster_ids']
+
 
 
 def bl(gsm):

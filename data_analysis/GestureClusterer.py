@@ -641,6 +641,12 @@ class GestureClusterer():
         score = (b - a)/max(b,a)
         return score
 
+    def get_avg_silhouette_score(self):
+        scores = []
+        for g in self.clusters:
+            scores.append(self.get_silhouette_score(g))
+        return self._avg(scores)
+
 #
 #
 # def get_closest_gesture_to_centroid(GSM, cluster_id):
