@@ -1,5 +1,5 @@
 #!/usr/bin/env pythons
-from GestureClusterer import *
+from GestureClusterer5 import *
 from SentenceClusterer import *
 from VideoManager import *
 import json
@@ -45,7 +45,7 @@ ADJ = ["JJ"]
 #
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
-# GSM.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
+# GSM.GestureClusterer.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
 # GSM.cluster_sentences_gesture_independent()
 
 ## manages gesture and sentence stuff.
@@ -70,11 +70,13 @@ class GestureSentenceManager():
         self.SentenceClusterer = SentenceClusterer(self.speaker)
         # now we have clusters, now need to get the corresponding sentences for those clusters.
     def cluster_sentences_gesture_independent(self):
-        self.SentenceClusterer.cluster_sentences()
+        self.agd = [g for g in self.agd if g['id'] not in self.GestureClusterer.drop_ids]
+        self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureClusterer.drop_ids)
 
     def cluster_sentences_gesture_independent_under_n_words(self, n):
         ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
+        exclude_ids = exclude_ids + self.GestureClusterer.drop_ids
         self.SentenceClusterer.cluster_sentences(gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=exclude_ids)
 
     def report_gesture_clusters(self):
@@ -578,6 +580,25 @@ class GestureSentenceManager():
         df
 
     ############################################################
+    ##################### Data Set Stuff #######################
+    ############################################################
+    def show_pie_of_speakers(self):
+        speakers = {}
+        for g in tqdm(self.agd):
+            gest = self.get_gesture_by_id(g['id'])
+            sp = gest['speaker']
+            if sp in speakers.keys():
+                speakers[sp] = speakers[sp] + 1
+            else:
+                speakers[sp] = 1
+        labels = speakers.keys()
+        sizes = speakers.values()
+        plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
+        plt.axis('equal')
+        plt.show()
+
+
+    ############################################################
     ##################### Video Stuff ##########################
     ############################################################
     def get_gesture_video_clip_by_gesture_id(self, g_id):
@@ -751,7 +772,7 @@ class GestureSentenceManager():
         s_dict = {}
         for s in s_ids:
             s_dict[s] = 0
-        for g in self.GestureClusterer.clusters[g_cluster_id]['gestures']
+        for g in self.GestureClusterer.clusters[g_cluster_id]['gestures']:
             gest = self.get_gesture_by_id[g['id']]
 
 
@@ -815,13 +836,34 @@ def check_sentence_cluster_counts(gsm, ids):
 
 ## STOP
 
+def show_pie_of_speakers(gsm):
+    speakers = {}
+    for g in tqdm(gsm.agd):
+        gest = gsm.get_gesture_by_id(g['id'])
+        sp = gest['speaker']
+        if sp in speakers.keys():
+            speakers[sp] = speakers[sp] + 1
+        else:
+            speakers[sp] = 1
+    labels = speakers.keys()
+    sizes = speakers.values()
+    print speakers
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
+    plt.axis('equal')
+    plt.savefig('speaker_distribution.png')
+    plt.show()
 
-def test_k_means_gesture_clusters(gsm, ks=[0,10,40,60,100,150, 200]):
-    save_current_clusters = gsm.GestureClusterer.clusters
-    for k in ks:
-        print "testing clustering for k=%s" % k
-        gsm.GestureClusterer.cluster_gestures(None, 0.03, k)
-        gsm.get_silhouette_scores_for_all_gesture_clusters()
-    # restore to before this
-    gsm.GestureClusterer.clusters = save_current_clusters
-    gsm.gestureClusters = save_current_clusters
+
+
+## oh dang I'm being so lazy this is definitely going to bite me.
+# just gonna eyeball this...
+def downsample_speaker(gsm):
+    print "sampling out angelica speakers"
+    angelica_speaker = [g for g in gsm.agd if gsm.get_gesture_by_id(g['id'])['speaker'] == 'angelica']
+    print "getting all non-angelica speakers"
+    new_agd = [g for g in gsm.agd if g not in angelica_speaker]
+    print "sampling and recombining"
+    angelica_sample = random.sample(angelica_speaker, 1000)
+    agd = new_agd + angelica_sample
+    gsm.agd = agd
+

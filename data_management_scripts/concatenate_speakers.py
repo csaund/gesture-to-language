@@ -13,7 +13,10 @@ FULL_TRANSCRIPT_BUCKET = "full_timings_with_transcript_bucket"     ## Used in Se
 AGD_BUCKET = "all_gesture_data"     ## Used to load gestures
 timings_bucket = "speaker_timings"
 
-def concat_timings_transcript_id_keyframes(speakers):
+def concat_timings_transcript_id_keyframes(speakers, n):
+    name = "conglomerate"
+    if n:
+        name = name + "_under_%s" % n
     trans_phrases = []  #transcripts seem to be fine...
     id_keyframes = [] # why are keyframes in wrong format??
     # I know, it's because I am a dummy
@@ -28,19 +31,20 @@ def concat_timings_transcript_id_keyframes(speakers):
     all_trans = {'phrases': trans_phrases}
 
     print "Uploading full transcript"
-    upload_object(FULL_TRANSCRIPT_BUCKET, all_trans, "conglomerate_timings_with_transcript.json")
+    upload_object(FULL_TRANSCRIPT_BUCKET, all_trans, "%s_timings_with_transcript.json" % name)
     print "Uploading full gesture data"
-    upload_object(AGD_BUCKET, id_keyframes, "conglomerate_agd.json")
+    upload_object(AGD_BUCKET, id_keyframes, "%s_agd.json" % name)
 
 
-def conglomerate_speakers(speakers):
-    concat_timings_transcript_id_keyframes(speakers)
+def conglomerate_speakers(speakers, under_n):
+    concat_timings_transcript_id_keyframes(speakers, under_n)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-speakers', '--speakers', default='optionally, run only on specific speaker', nargs='+')
+    parser.add_argument('-under_n', '--under_n', help='keep the data under a certain number of words', default=10)
     args = parser.parse_args()
 
-    conglomerate_speakers(args.speakers)
+    conglomerate_speakers(args.speakers, args.under_n)

@@ -82,6 +82,8 @@ class GestureClusterer():
         self.cluster_file = "%s/github/gesture-to-language/cluster_tmp.json" % os.getenv("HOME")
         self.has_assigned_feature_vecs = False
         self.total_clusters_created = 0
+        ## hacky way to work around some malformatted data.
+        self.drop_ids = []
 
     def clear_clusters(self):
         self.clusters = {}
@@ -173,13 +175,17 @@ class GestureClusterer():
         for g in tqdm(gd):
             if type(g['keyframes']) == type(None):
                 print "found empty vector"
+                ## TODO fix this
                 g['feature_vec'] = empty_vec
             else:
                 g['feature_vec'] = self._get_gesture_features(g)
 
         empties = [g for g in self.agd if g['feature_vec'] == empty_vec]
         print "dropping %s empty vectors from gesture clusters" % str(len(empties))
+        # hacky ways to fix malformatted data
         self.agd = [g for g in self.agd if g['feature_vec'] != empty_vec]
+        self.agd = [g for g in self.agd if g['id'] not in self.drop_ids]
+        self.drop_ids = list(set(self.drop_ids))
         self._normalize_feature_values()
         self.has_assigned_feature_vecs = True
         return
@@ -254,6 +260,7 @@ class GestureClusterer():
         print("Avg cluster sparsity: %s" % np.average(cluster_sparsity))
         print("Median cluster sparsity: %s" % np.median(cluster_sparsity))
         print("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd)))
+        print "silhouette score: %s" % self.get_avg_silhouette_score()
         # TODO: average and median centroid distances from each other.
         # TODO: also get minimum and maximum centroid distances.
         return self.clusters
@@ -518,6 +525,15 @@ class GestureClusterer():
             return
 
         for t in gesture['keyframes']:
+            if (type(t) != dict):
+                print gesture['id']
+                print "T IS NOT A DICT???"
+                print t
+                print gesture
+                self.drop_ids.append(gesture['id'])
+                ## KNOWN TEMP FIX
+                return [{'y': [247, 242, 387, 446, 260, 425, 418, 151, 127, 131, 418, 427, 438, 459, 482, 430, 445, 468, 479, 427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491, 420, 416, 447, 415, 466, 443, 460, 473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
+                         'x':[326, 199, 160, 267, 449, 499, 378, 327, 305, 350, 371, 341, 317, 297, 269, 316, 280, 298, 299, 330, 317, 318, 323, 347, 335, 335, 336, 360, 353, 351, 352, 367, 343, 282, 347, 262, 357, 353, 347, 351, 342, 334, 332, 335, 330, 320, 319, 315, 319, 307, 306, 306]}]
             y = t['y'][start:end]
             x = t['x'][start:end]
             keys.append({'y': y, 'x': x})
