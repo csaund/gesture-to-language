@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
-from GestureClusterer5 import *
-from SentenceClusterer4 import *
+from GestureClusterer import *
+from SentenceClusterer5 import *
 from VideoManager import *
 import json
 import os
@@ -688,12 +688,24 @@ class GestureSentenceManager():
     #####################################################
     ############### Machine Learning Stats ##############
     #####################################################
-    def get_silhouette_scores_for_all_gesture_clusters(self, g_s="gesture"):
+    def get_silhouette_scores_for_all_gesture_clusters(self):
         scores = []
         for k in self.GestureClusterer.clusters:
             scores.append(self.GestureClusterer.get_silhouette_score(k))
         s = np.array(scores)
         print "number of clusters: %s" % len(self.GestureClusterer.clusters)
+        print "avg silhouette: %s" % np.average(s)
+        print "min silhouette: %s" % np.min(s)
+        print "max silhouette: %s" % np.max(s)
+        print "sd: %s" % np.std(s)
+        return s
+
+    def get_silhouette_scores_for_all_sentence_clusters(self):
+        scores = []
+        for k in self.SentenceClusterer.clusters:
+            scores.append(self.SentenceClusterer.get_silhouette_score(k))
+        s = np.array(scores)
+        print "number of clusters: %s" % len(self.SentenceClusterer.clusters)
         print "avg silhouette: %s" % np.average(s)
         print "min silhouette: %s" % np.min(s)
         print "max silhouette: %s" % np.max(s)
@@ -723,6 +735,43 @@ class GestureSentenceManager():
                 maxs.append(np.max(scores))
                 sd.append(np.std(scores))
 
+        t = PrettyTable()
+        t.add_column("max k", max_k)
+        t.add_column("k", n_clusters)
+        t.add_column("min_dist", dists)
+        t.add_column("avg silhouette", avgs)
+        t.add_column("min silhouette", mins)
+        t.add_column("max silhouette", maxs)
+        t.add_column("sd silhouette", sd)
+        print(t)
+
+
+
+    def test_k_means_sentence_clusters(self, n_words=10, min_sims=[0.1, 0.3, 0.5, 0.7], ks=[10,40,60,100,150, 200, 0]):
+        n_clusters = []
+        max_k = []
+        avgs = []
+        mins = []
+        maxs = []
+        sd = []
+        sims = []
+        ids_for_sentences = [g['id'] for g in self.agd]
+        for k in ks:
+            print "testing clustering for k=%s" % k
+            for sim in min_sims:
+                max_k.append(k)
+                self.SentenceClusterer.clear_clusters()
+                self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureClusterer.drop_ids,
+                                                         include_ids=ids_for_sentences,
+                                                         min_cluster_sim=sim,
+                                                         max_number_clusters=k)
+                scores = self.get_silhouette_scores_for_all_sentence_clusters()
+                sims.append(sim)
+                n_clusters.append(len(scores))
+                avgs.append(np.average(scores))
+                mins.append(np.min(scores))
+                maxs.append(np.max(scores))
+                sd.append(np.std(scores))
         t = PrettyTable()
         t.add_column("max k", max_k)
         t.add_column("k", n_clusters)
@@ -779,14 +828,12 @@ class GestureSentenceManager():
             s_clust = self.SentenceClusterer.clusters[s]
             matches = [g['id'] for g in s_clust['gestures'] if g['id'] in g_ids]
             counts.append(len(matches))
-
         labels = s_ids
         sizes = counts
         plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
         plt.axis('equal')
         plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
         plt.show()
-
         print "SANITY CHECK::"
         print (sum(counts) == len(g_ids))
 

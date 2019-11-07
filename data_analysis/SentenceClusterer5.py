@@ -367,7 +367,40 @@ class SentenceClusterer():
         f.close()
 
 
+    # takes cluster id, returns cluster id of nearest neighbor
+    def get_nearest_neighbor_cluster(self, cluster_id):
+        max_sim = 0
+        nearest_neighbor = ''
+        for k in self.clusters:
+            if k == cluster_id:
+                continue
+            sim = np.inner(self.clusters[cluster_id]['cluster_embedding'], self.clusters[k]['cluster_embedding']).max()
+            if sim > max_sim:
+                max_sim = sim
+                nearest_neighbor = k
+        return nearest_neighbor
 
+
+    def get_silhouette_score_for_cluster(self, cluster_id):
+        c = self.clusters[cluster_id]
+        nearest_neighbor_id = self.get_nearest_neighbor_cluster(cluster_id)
+        neighbor_clust = self.clusters[nearest_neighbor_id]
+        within_sims = []
+        neighbor_sims = []
+        for g in c['gestures']:
+            within_sims.append(np.inner(c['cluster_embedding'], g['sentence_embedding']).max())
+        for g in neighbor_clust['gestures']:
+            neighbor_sims.append(np.inner(c['cluster_embedding'], g['sentence_embedding']).max())
+        a = np.average(np.array(within_sims))
+        b = np.average(np.array(neighbor_sims))
+        score = (b - a) / max(b, a)
+        return score
+
+    def get_silhouette_scores(self):
+        scores = []
+        for c in self.clusters:
+            scores.append(self.get_silhouette_score_for_cluster(c))
+        return np.average(np.array(scores))
 
     ## TODO make use of these?
     #############################################################
