@@ -154,14 +154,14 @@ class SentenceClusterer():
             (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster(g)
             # we're further away than we're allowed to be, OR this is the first cluster.
             if len(self.clusters) > max_number_clusters:
-                print "%s over max number clusters %s" % (len(self.clusters), max_number_clusters)
+                # print "%s over max number clusters %s" % (len(self.clusters), max_number_clusters)
                 self._add_gesture_to_cluster(g, nearest_cluster_id)
             elif (min_cluster_sim and cluster_sim < min_cluster_sim) or (not len(self.clusters)):
                 self._log("creating new cluster for gesture %s -- %s" % (g['id'], i))
                 self._create_new_cluster(g)
                 g['sentence_cluster_id'] = self.c_id
             else:
-                print ("nearest cluster distance was %s" % cluster_sim)
+                # print ("nearest cluster distance was %s" % cluster_sim)
                 st = time.time()
                 self._log("fitting in cluster %s" % nearest_cluster_id)
                 # print("max cluster sim was %s" % cluster_sim)

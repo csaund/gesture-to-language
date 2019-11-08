@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
 from GestureClusterer import *
-from SentenceClusterer9 import *
+from SentenceClusterer10 import *
 from VideoManager import *
 import json
 import os
@@ -818,27 +818,39 @@ class GestureSentenceManager():
         print "unique other sentence clusters: %s" % len(list(set(unique_sclusts)))
 
 
-    # for a gesture cluster, which sentences came from which sentence clusters?
-    def show_pie_sentence_clusters_for_gesture_cluster(self, g_cluster_id, exclude_sentence_clusters=[]):
+    # for sentence cluster S and gesture cluster G, returns proportion of sentences of S which
+    # are clustered in gesture cluster G
+    def get_proportion_of_sentences_in_gesture_cluster(self, s_cluster_id, g_cluster_id):
         c = self.GestureClusterer.clusters[g_cluster_id]
         g_ids = [g['id'] for g in c['gestures']]
+        s_cluster = self.SentenceClusterer.clusters[s_cluster_id]
+        matches = [g['id'] for g in s_cluster['gestures'] if g['id'] in g_ids]
+        prop = float(len(matches)) / float(len(s_cluster['gestures']))
+        return prop
+
+    # for a gesture cluster, which sentences came from which sentence clusters?
+    def pie_format(self, pct, allvals):
+        absolute = round(float(pct / 100. * np.sum(allvals)), 3)
+        return "{:.1f}%\n({})".format(pct, absolute)
+
+    def show_pie_sentence_clusters_for_gesture_cluster(self, g_cluster_id, exclude_sentence_clusters=[]):
         s_ids = self.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
+        s_ids = [s for s in s_ids if s not in exclude_sentence_clusters]
         counts = []
         for s in s_ids:
-            if s in exclude_sentence_clusters:
-                continue
-            s_clust = self.SentenceClusterer.clusters[s]
-            matches = [g['id'] for g in s_clust['gestures'] if g['id'] in g_ids]
-            counts.append(len(matches))
+            counts.append(self.get_proportion_of_sentences_in_gesture_cluster(s, g_cluster_id))
         labels = s_ids
-        sizes = counts
-        plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
+        fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+        wedges, texts, autotexts = ax.pie(counts, labels=labels, autopct=lambda pct: self.pie_format(pct, counts))
         plt.axis('equal')
-        # plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
+        ax.legend(wedges, counts,
+                  title="Sentence Cluster Representation",
+                  loc="center left",
+                  bbox_to_anchor=(1, 0, 0.5, 1))
+        plt.setp(autotexts, size=8, weight="bold")
+        ax.set_title("Proportional Sentence Cluster Representation in Gesture Cluster %s" % g_cluster_id)
+        plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
         plt.show()
-        print "SANITY CHECK::"
-        print "%s == %s " % (sum(counts), len(g_ids))
-
 
     def show_pie_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
         g_ids = self.SentenceClusterer.clusters[s_cluster_id]['gesture_cluster_ids']
@@ -940,3 +952,27 @@ def show_pie_sentence_clusters_for_gesture_cluster(gsm, g_cluster_id):
     print (sum(counts))
     print len(g_ids)
     print "unfound: %s" % unfound
+
+
+def func(pct, allvals):
+    absolute = round(float(pct/100.*np.sum(allvals)), 3)
+    return "{:.1f}%\n({})".format(pct, absolute)
+
+def show_pie_sentence_clusters_for_gesture_cluster(gsm, g_cluster_id, exclude_sentence_clusters=[]):
+    s_ids = gsm.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
+    s_ids = [s for s in s_ids if s not in exclude_sentence_clusters]
+    counts = []
+    for s in s_ids:
+        counts.append(gsm.get_proportion_of_sentences_in_gesture_cluster(s, g_cluster_id))
+    labels = s_ids
+    fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+    wedges, texts, autotexts = ax.pie(counts, labels=labels, autopct=lambda pct: func(pct, counts))
+    plt.axis('equal')
+    ax.legend(wedges, counts,
+               title="Sentence Cluster Representation",
+               loc="center left",
+               bbox_to_anchor=(1, 0, 0.5, 1))
+    plt.setp(autotexts, size=8, weight="bold")
+    ax.set_title("Proportional Sentence Cluster Representation in Gesture Cluster %s" % g_cluster_id)
+    # plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
+    plt.show()
