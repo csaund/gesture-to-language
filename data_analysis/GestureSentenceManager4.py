@@ -856,7 +856,29 @@ class GestureSentenceManager():
         plt.show()
 
     def show_pie_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
-        g_ids = self.SentenceClusterer.clusters[s_cluster_id]['gesture_cluster_ids']
+        sentence_cluster_gesture_ids = [g['id'] for g in self.SentenceClusterer.clusters[s_cluster_id]['gestures']]
+        g_ids = []
+        counts = []
+        # todo shouldn't have to go through whole gesture clusters.
+        for k in self.GestureClusterer.clusters:
+            gesture_cluster = self.GestureClusterer.clusters[k]
+            g_cluster_ids = [g['id'] for g in gesture_cluster['gestures']]
+            matches = [i for i in sentence_cluster_gesture_ids if i in g_cluster_ids]
+            if len(matches):
+                counts.append(len(matches))
+                g_ids.append(k)
+        fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+        wedges, texts, autotexts = ax.pie(counts, labels=g_ids, autopct=lambda pct: self.pie_format(pct, counts))
+        plt.axis('equal')
+        ax.legend(wedges, counts,
+                  title="Sentence Cluster Representation",
+                  loc="center left",
+                  bbox_to_anchor=(1, 0, 0.5, 1))
+        plt.setp(autotexts, size=8, weight="bold")
+        ax.set_title("Proportional Sentence Cluster Representation in Gesture Cluster %s" % s_cluster_id)
+        plt.savefig('gclust%s_sclust_distribution.png' % s_cluster_id)
+        plt.show()
+
 
 
 
@@ -964,8 +986,8 @@ def show_pie_sentence_clusters_for_gesture_cluster(gsm, g_cluster_id):
 
 
 def func(pct, allvals):
-    absolute = round(float(pct*np.sum(allvals)), 2)
-    return "{:.2f}%\n({})".format(pct, absolute)
+    absolute = int(round(float(pct*np.sum(allvals)) / 100, 2))
+    return "{}".format(absolute)
 
 def show_pie_sentence_clusters_for_gesture_cluster(gsm, g_cluster_id, exclude_sentence_clusters=[]):
     s_ids = gsm.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
@@ -980,7 +1002,7 @@ def show_pie_sentence_clusters_for_gesture_cluster(gsm, g_cluster_id, exclude_se
     fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
     wedges, texts, autotexts = ax.pie(counts, labels=labels, autopct=lambda pct: func(pct, orig))
     plt.axis('equal')
-    ax.legend(wedges, counts,
+    ax.legend(wedges, orig,
                title="Sentence Cluster Representation",
                loc="center left",
                bbox_to_anchor=(1, 0, 0.5, 1))
@@ -988,3 +1010,32 @@ def show_pie_sentence_clusters_for_gesture_cluster(gsm, g_cluster_id, exclude_se
     ax.set_title("Proportional Sentence Cluster Representation in Gesture Cluster %s" % g_cluster_id)
     # plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
     plt.show()
+
+
+
+def show_pie_gesture_clusters_for_sentence_cluster(gsm, s_cluster_id):
+    sentence_cluster_gesture_ids = [g['id'] for g in gsm.SentenceClusterer.clusters[s_cluster_id]['gestures']]
+    g_ids = []
+    counts = []
+    # todo shouldn't have to go through whole gesture clusters.
+    for k in gsm.GestureClusterer.clusters:
+        gesture_cluster = gsm.GestureClusterer.clusters[k]
+        g_cluster_ids = [g['id'] for g in gesture_cluster['gestures']]
+        matches = [i for i in sentence_cluster_gesture_ids if i in g_cluster_ids]
+        if len(matches):
+            counts.append(len(matches))
+            g_ids.append(k)
+    print counts
+    fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+    wedges, texts, autotexts = ax.pie(counts, labels=g_ids, autopct=lambda pct: func(pct, counts))
+    plt.axis('equal')
+    ax.legend(wedges, counts,
+              title="Sentence Cluster Representation",
+              loc="center left",
+              bbox_to_anchor=(1, 0, 0.5, 1))
+    plt.setp(autotexts, size=8, weight="bold")
+    ax.set_title("Proportional Gesture Cluster Representation in Sentence Cluster %s" % s_cluster_id)
+    # plt.savefig('gclust%s_sclust_distribution.png' % s_cluster_id)
+    plt.show()
+
+## visualize gesture cluster distribution for sentence clusters
