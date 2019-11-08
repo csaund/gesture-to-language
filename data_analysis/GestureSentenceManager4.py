@@ -1068,9 +1068,9 @@ def LOOCV_gesture_mappings(gsm):
         gesture_dist = gsm.GestureClusterer._calculate_distance_between_vectors(g_features, highest_match_gesture_vec)
         similarities.append(gesture_dist)
         # print "gesture distance for most closely matching sentence was %s" % gesture_dist
-    print similarities
+    #print similarities
     print "average gesture distance for matching sentences: %s" % np.average(np.array(similarities))
-
+    # this is 430
 
 def get_avg_gesture_distance(gsm):
     vectors = [g['feature_vec'] for g in gsm.GestureClusterer.agd]
