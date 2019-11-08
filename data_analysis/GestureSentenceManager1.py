@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
 from GestureClusterer import *
-from SentenceClusterer5 import *
+from SentenceClusterer9 import *
 from VideoManager import *
 import json
 import os
@@ -703,7 +703,7 @@ class GestureSentenceManager():
     def get_silhouette_scores_for_all_sentence_clusters(self):
         scores = []
         for k in self.SentenceClusterer.clusters:
-            scores.append(self.SentenceClusterer.get_silhouette_score(k))
+            scores.append(self.SentenceClusterer.get_silhouette_score_for_cluster(k))
         s = np.array(scores)
         print "number of clusters: %s" % len(self.SentenceClusterer.clusters)
         print "avg silhouette: %s" % np.average(s)
@@ -726,7 +726,7 @@ class GestureSentenceManager():
             for dist in min_distances:
                 max_k.append(k)
                 self.GestureClusterer.clear_clusters()
-                self.GestureClusterer.cluster_gestures(None, dist, k)
+                self.GestureClusterer.cluster_gestures(max_cluster_distance=dist, max_number_clusters=k)
                 scores = self.get_silhouette_scores_for_all_gesture_clusters()
                 dists.append(dist)
                 n_clusters.append(len(scores))
@@ -819,12 +819,14 @@ class GestureSentenceManager():
 
 
     # for a gesture cluster, which sentences came from which sentence clusters?
-    def show_pie_sentence_clusters_for_gesture_cluster(self, g_cluster_id):
+    def show_pie_sentence_clusters_for_gesture_cluster(self, g_cluster_id, exclude_sentence_clusters=[]):
         c = self.GestureClusterer.clusters[g_cluster_id]
         g_ids = [g['id'] for g in c['gestures']]
         s_ids = self.get_sentence_cluster_ids_by_gesture_cluster_id(g_cluster_id)
         counts = []
         for s in s_ids:
+            if s in exclude_sentence_clusters:
+                continue
             s_clust = self.SentenceClusterer.clusters[s]
             matches = [g['id'] for g in s_clust['gestures'] if g['id'] in g_ids]
             counts.append(len(matches))
@@ -832,10 +834,10 @@ class GestureSentenceManager():
         sizes = counts
         plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
         plt.axis('equal')
-        plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
+        # plt.savefig('gclust%s_sclust_distribution.png' % g_cluster_id)
         plt.show()
         print "SANITY CHECK::"
-        print (sum(counts) == len(g_ids))
+        print "%s == %s " % (sum(counts), len(g_ids))
 
 
     def show_pie_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
@@ -853,8 +855,6 @@ def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
     newGSM.speaker = oldGSM.speaker
     newGSM.agd = oldGSM.agd
-    newGSM.gestureClusters = oldGSM.gestureClusters
-    newGSM.sentenceClusters = oldGSM.sentenceClusters
     newGSM.GestureClusterer = oldGSM.GestureClusterer
     newGSM.SentenceClusterer = oldGSM.SentenceClusterer
     return newGSM
@@ -897,23 +897,6 @@ def check_sentence_cluster_counts(gsm, ids):
 
 
 ## STOP
-
-def show_pie_of_speakers(gsm):
-    speakers = {}
-    for g in tqdm(gsm.agd):
-        gest = gsm.get_gesture_by_id(g['id'])
-        sp = gest['speaker']
-        if sp in speakers.keys():
-            speakers[sp] = speakers[sp] + 1
-        else:
-            speakers[sp] = 1
-    labels = speakers.keys()
-    sizes = speakers.values()
-    print speakers
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
-    plt.axis('equal')
-    plt.savefig('speaker_distribution.png')
-    plt.show()
 
 
 

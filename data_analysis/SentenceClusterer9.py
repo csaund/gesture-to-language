@@ -122,6 +122,7 @@ class SentenceClusterer():
         self.c_id = 0
 
     def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[], include_ids=[]):
+        max_number_clusters = max_number_clusters if max_number_clusters else 10000
         # if not self.has_assigned_feature_vecs:
         #     self._assign_feature_vectors()
         self.max_number_clusters = max_number_clusters
@@ -153,14 +154,14 @@ class SentenceClusterer():
             (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster(g)
             # we're further away than we're allowed to be, OR this is the first cluster.
             if len(self.clusters) > max_number_clusters:
+                print "%s over max number clusters %s" % (len(self.clusters), max_number_clusters)
                 self._add_gesture_to_cluster(g, nearest_cluster_id)
-
-            elif ((min_cluster_sim and cluster_sim < min_cluster_sim) or (not len(self.clusters))) and not (len(self.clusters) > max_number_clusters):
-                # print ("nearest cluster distance was %s" % cluster_sim)
+            elif (min_cluster_sim and cluster_sim < min_cluster_sim) or (not len(self.clusters)):
                 self._log("creating new cluster for gesture %s -- %s" % (g['id'], i))
                 self._create_new_cluster(g)
                 g['sentence_cluster_id'] = self.c_id
             else:
+                print ("nearest cluster distance was %s" % cluster_sim)
                 st = time.time()
                 self._log("fitting in cluster %s" % nearest_cluster_id)
                 # print("max cluster sim was %s" % cluster_sim)
@@ -172,16 +173,29 @@ class SentenceClusterer():
             e = time.time()
             # print "time to cluster sentence: %s" % str(e-s)
         # now recluster based on where the new centroids are
-        # self._recluster_by_centroids()
+        print "created %s clusters" % len(self.clusters)
+        self._recluster_by_centroids(phrases)
         # TODO do need some sort of reclustering I think...
         # self._recluster_singletons()
         self._add_sentence_cluster_ids
+
+    def _recluster_by_centroids(self, phrases):
+        print "reclustering by centroids"
+        for k in self.clusters:
+            c = self.clusters[k]
+            c['gestures'] = []
+            c['sentences'] = []
+        for g in tqdm(phrases):
+            (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster(g)
+            self._add_gesture_to_cluster(g, nearest_cluster_id)
+
 
     def _add_sentence_cluster_ids(self):
         for k in self.clusters:
             c = self.clusters[k]
             for g in c['gestures']:
                 g['sentence_cluster_id'] = k
+        return
 
     def count_sentence_clusters_of_gesture(self, g_id):
         count = 0
@@ -281,6 +295,7 @@ class SentenceClusterer():
         print("Median cluster size: %s" % np.median(cluster_lengths))
         print("Largest cluster size: %s" % max(cluster_lengths))
         print("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd['phrases'])))
+        print("avg silhouette score:" % self.get_silhouette_scores())
         # TODO: average and median centroid distances from each other.
         # TODO: also get minimum and maximum centroid distances.
         return self.clusters
@@ -370,7 +385,7 @@ class SentenceClusterer():
     # takes cluster id, returns cluster id of nearest neighbor
     def get_nearest_neighbor_cluster(self, cluster_id):
         max_sim = 0
-        nearest_neighbor = ''
+        nearest_neighbor = self.clusters.keys()[0]
         for k in self.clusters:
             if k == cluster_id:
                 continue
