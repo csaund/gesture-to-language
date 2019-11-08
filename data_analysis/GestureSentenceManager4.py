@@ -1019,15 +1019,19 @@ def show_pie_gesture_clusters_for_sentence_cluster(gsm, s_cluster_id):
     counts = []
     # todo shouldn't have to go through whole gesture clusters.
     for k in gsm.GestureClusterer.clusters:
+        if k == 2:
+            continue
         gesture_cluster = gsm.GestureClusterer.clusters[k]
         g_cluster_ids = [g['id'] for g in gesture_cluster['gestures']]
         matches = [i for i in sentence_cluster_gesture_ids if i in g_cluster_ids]
         if len(matches):
-            counts.append(len(matches))
+            counts.append(float(len(matches)) / float(len(g_cluster_ids)))
             g_ids.append(k)
     print counts
+    orig = np.array(counts)
+    counts = orig/orig.min()
     fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
-    wedges, texts, autotexts = ax.pie(counts, labels=g_ids, autopct=lambda pct: func(pct, counts))
+    wedges, texts, autotexts = ax.pie(counts, labels=g_ids, autopct=lambda pct: func(pct, orig))
     plt.axis('equal')
     ax.legend(wedges, counts,
               title="Sentence Cluster Representation",
@@ -1038,4 +1042,48 @@ def show_pie_gesture_clusters_for_sentence_cluster(gsm, s_cluster_id):
     # plt.savefig('gclust%s_sclust_distribution.png' % s_cluster_id)
     plt.show()
 
-## visualize gesture cluster distribution for sentence clusters
+# mathematically find maximum matches aka how much does S1 matter to G1 and G1 matter to S1
+
+
+def LOOCV_gesture_mappings(gsm):
+    sentence_phrases = gsm.SentenceClusterer.agd['phrases']
+    similarities = []
+    for i in tqdm(range(len(sentence_phrases))):
+        g_id = sentence_phrases[i]['id']
+        g = gsm.get_gesture_by_id(g_id)
+        s = sentence_phrases[i]['sentence_embedding']
+        g_features = GSM.GestureClusterer._get_gesture_features(g)
+        max_sim = 0
+        s_max_id = 0
+        for j in range(len(sentence_phrases)):
+            if i == j:
+                continue
+            s_prime = sentence_phrases[j]['sentence_embedding']
+            sim = np.inner(s, s_prime).max()
+            if sim > max_sim:
+                max_sim = sim
+                s_max_id = sentence_phrases[j]['id']
+        # now get similarity between gestures.
+        highest_match_gesture_vec = gsm.GestureClusterer._get_gesture_features(gsm.get_gesture_by_id(s_max_id))
+        gesture_dist = gsm.GestureClusterer._calculate_distance_between_vectors(g_features, highest_match_gesture_vec)
+        similarities.append(gesture_dist)
+        # print "gesture distance for most closely matching sentence was %s" % gesture_dist
+    print similarities
+    print "average gesture distance for matching sentences: %s" % np.average(np.array(similarities))
+
+
+def get_avg_gesture_distance(gsm):
+    vectors = [g['feature_vec'] for g in gsm.GestureClusterer.agd]
+    dists = []
+    for i in tqdm(range(len(vectors))):
+        # don't want to redo ones we've already done
+        for j in range(i, len(vectors)):
+            if i == j:
+                continue
+            dists.append(gsm.GestureClusterer._calculate_distance_between_vectors(vectors[i], vectors[j]))
+    print dists
+    print "average gesture distances: %s" % np.average(np.array(dists))
+
+
+
+
