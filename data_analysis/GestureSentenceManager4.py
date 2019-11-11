@@ -1,5 +1,5 @@
 #!/usr/bin/env pythons
-from GestureClusterer import *
+from GestureClusterer1 import *
 from SentenceClusterer10 import *
 from VideoManager import *
 import json
@@ -1052,7 +1052,7 @@ def LOOCV_gesture_mappings(gsm):
         g_id = sentence_phrases[i]['id']
         g = gsm.get_gesture_by_id(g_id)
         s = sentence_phrases[i]['sentence_embedding']
-        g_features = GSM.GestureClusterer._get_gesture_features(g)
+        g_features = get_gesture_feature_vec_by_id(gsm, g_id)
         max_sim = 0
         s_max_id = 0
         for j in range(len(sentence_phrases)):
@@ -1064,13 +1064,13 @@ def LOOCV_gesture_mappings(gsm):
                 max_sim = sim
                 s_max_id = sentence_phrases[j]['id']
         # now get similarity between gestures.
-        highest_match_gesture_vec = gsm.GestureClusterer._get_gesture_features(gsm.get_gesture_by_id(s_max_id))
+        highest_match_gesture_vec = get_gesture_feature_vec_by_id(gsm, s_max_id)
         gesture_dist = gsm.GestureClusterer._calculate_distance_between_vectors(g_features, highest_match_gesture_vec)
         similarities.append(gesture_dist)
         # print "gesture distance for most closely matching sentence was %s" % gesture_dist
     #print similarities
     print "average gesture distance for matching sentences: %s" % np.average(np.array(similarities))
-    # this is 430
+    # this is 0.04313320022729753
 
 def get_avg_gesture_distance(gsm):
     vectors = [g['feature_vec'] for g in gsm.GestureClusterer.agd]
@@ -1081,9 +1081,25 @@ def get_avg_gesture_distance(gsm):
             if i == j:
                 continue
             dists.append(gsm.GestureClusterer._calculate_distance_between_vectors(vectors[i], vectors[j]))
-    print dists
     print "average gesture distances: %s" % np.average(np.array(dists))
+    # this is 0.046826227552475175
+
+## todo implement get gesture by ID in GestureClusterer to get feature vec
+
+def get_gesture_feature_vec_by_id(gsm, g_id):
+    gd = gsm.GestureClusterer.agd
+    fv = [g['feature_vec'] for g in gd if g['id'] == g_id]
+    return fv[0]
+
+
+## TODO get mean/sd of average distances and matching distances
 
 
 
-
+def get_mapped_to_avg_distance_ratio(gsm):
+    avg_vector_dist = get_avg_gesture_distance(gsm)
+    avg_mapped_dist = LOOCV_gesture_mappings(gsm)
+    print "average distance: %s" % avg_vector_dist
+    print "average mapped: %s" % avg_mapped_dist
+    print "ratio: %s" % str(float(avg_mapped_dist/avg_vector_dist))
+    return float(avg_mapped_dist/avg_vector_dist)
