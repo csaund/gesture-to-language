@@ -174,7 +174,7 @@ class SentenceClusterer():
             # print "time to cluster sentence: %s" % str(e-s)
         # now recluster based on where the new centroids are
         print "created %s clusters" % len(self.clusters)
-        self._recluster_by_centroids(phrases)
+        #self._recluster_by_centroids(phrases)
         # TODO do need some sort of reclustering I think...
         # self._recluster_singletons()
         self._add_sentence_cluster_ids
@@ -330,7 +330,11 @@ class SentenceClusterer():
             v.append(len(self.clusters[c]['sentences']))
         # print "cluster lengths: %s" % v
         for k in self.clusters:
-            sim = np.inner(g['sentence_embedding'], self.clusters[k]['cluster_embedding']).max()
+            c = self.clusters[k]
+            avg_sims = []
+            for s in c['gestures']:
+                avg_sims.append(np.inner(g['sentence_embedding'], s['sentence_embedding']).max())
+            sim = np.average(np.array(avg_sims))
             if sim > max_sim:
                 nearest_cluster_id = k
                 max_sim = sim
@@ -402,10 +406,18 @@ class SentenceClusterer():
         neighbor_clust = self.clusters[nearest_neighbor_id]
         within_sims = []
         neighbor_sims = []
-        for g in c['gestures']:
-            within_sims.append(np.inner(c['cluster_embedding'], g['sentence_embedding']).max())
-        for g in neighbor_clust['gestures']:
-            neighbor_sims.append(np.inner(c['cluster_embedding'], g['sentence_embedding']).max())
+        for i in range(len(c['gestures'])):
+            g = c['gestures'][i]['sentence_embedding']
+            for j in range(len(c['gestures'])):
+                if i == j:
+                    continue
+                g2 = c['gestures'][j]['sentence_embedding']
+                within_sims.append(np.inner(g, g2).max())
+        for i in range(len(c['gestures'])):
+            g = c['gestures'][i]['sentence_embedding']
+            for j in range(len(neighbor_clust['gestures'])):
+                g2 = c['gestures'][j]['sentence_embedding']
+                neighbor_sims.append(np.inner(g, g2).max())
         a = np.average(np.array(within_sims))
         b = np.average(np.array(neighbor_sims))
         score = (b - a) / max(b, a)

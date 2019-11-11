@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
 from GestureClusterer1 import *
-from SentenceClusterer10 import *
+from SentenceClusterer13 import *
 from VideoManager import *
 import json
 import os
@@ -1050,8 +1050,8 @@ def LOOCV_gesture_mappings(gsm):
     similarities = []
     for i in tqdm(range(len(sentence_phrases))):
         g_id = sentence_phrases[i]['id']
-        g = gsm.get_gesture_by_id(g_id)
         s = sentence_phrases[i]['sentence_embedding']
+        print "sentences: %s" % sentence_phrases[i]['phase']['transcript']
         g_features = get_gesture_feature_vec_by_id(gsm, g_id)
         max_sim = 0
         s_max_id = 0
@@ -1063,6 +1063,8 @@ def LOOCV_gesture_mappings(gsm):
             if sim > max_sim:
                 max_sim = sim
                 s_max_id = sentence_phrases[j]['id']
+                print "new max: %s ; %s" % (max_sim, sentence_phrases[j]['phase']['transcript'])
+        print
         # now get similarity between gestures.
         highest_match_gesture_vec = get_gesture_feature_vec_by_id(gsm, s_max_id)
         gesture_dist = gsm.GestureClusterer._calculate_distance_between_vectors(g_features, highest_match_gesture_vec)
@@ -1070,6 +1072,7 @@ def LOOCV_gesture_mappings(gsm):
         # print "gesture distance for most closely matching sentence was %s" % gesture_dist
     #print similarities
     print "average gesture distance for matching sentences: %s" % np.average(np.array(similarities))
+    return np.average(np.array(similarities))
     # this is 0.04313320022729753
 
 def get_avg_gesture_distance(gsm):
@@ -1082,6 +1085,7 @@ def get_avg_gesture_distance(gsm):
                 continue
             dists.append(gsm.GestureClusterer._calculate_distance_between_vectors(vectors[i], vectors[j]))
     print "average gesture distances: %s" % np.average(np.array(dists))
+    return np.average(np.array(dists))
     # this is 0.046826227552475175
 
 ## todo implement get gesture by ID in GestureClusterer to get feature vec
@@ -1095,7 +1099,6 @@ def get_gesture_feature_vec_by_id(gsm, g_id):
 ## TODO get mean/sd of average distances and matching distances
 
 
-
 def get_mapped_to_avg_distance_ratio(gsm):
     avg_vector_dist = get_avg_gesture_distance(gsm)
     avg_mapped_dist = LOOCV_gesture_mappings(gsm)
@@ -1103,3 +1106,32 @@ def get_mapped_to_avg_distance_ratio(gsm):
     print "average mapped: %s" % avg_mapped_dist
     print "ratio: %s" % str(float(avg_mapped_dist/avg_vector_dist))
     return float(avg_mapped_dist/avg_vector_dist)
+
+
+def get_avg_sentence_dist(gsm):
+    sentence_phrases = gsm.SentenceClusterer.agd['phrases']
+    similarities = []
+    for i in tqdm(range(len(sentence_phrases))):
+        s = sentence_phrases[i]['sentence_embedding']
+        for j in (range(i, len(sentence_phrases))):
+            if i == j:
+                continue
+            s_j = sentence_phrases[j]['sentence_embedding']
+            similarities.append(np.inner(s, s_j).max())
+    print "average sentence similarity: %s" % np.average(np.array(similarities))
+    return np.average(np.array(similarities))
+    # this is
+
+## TODO put this into sentence clusterer
+def compare_avg_sentence_dist_with_avg_centroid_dist(gsm, s_cluster_id):
+    s_clust = gsm.SentenceClusterer.clusters[s_cluster_id]
+    cluster_embedding = s_clust['cluster_embedding']
+    avg_sentence_dist = []
+    avg_sentence_to_centroid_dist = []
+    for i in range(len(s_clust['gestures'])):
+        sentence_embedding = s_clust['gestures'][i]['sentence_embedding']
+        avg_sentence_to_centroid_dist.append(np.inner(cluster_embedding, sentence_embedding).max())
+        for j in range(i, len(s_clust['gestures'])):
+            avg_sentence_dist.append(np.inner(sentence_embedding, s_clust['gestures'][j]['sentence_embedding']).max())
+    print "average similarity to cluster embedding: %s" % np.average(np.array(avg_sentence_to_centroid_dist))
+    print "average sentence similarity: %s" % np.average(np.array(avg_sentence_dist))
