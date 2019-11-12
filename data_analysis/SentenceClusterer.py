@@ -247,6 +247,7 @@ class SentenceClusterer():
         self.has_assigned_feature_vecs = True
         return
 
+    # I think this is eating sentences?
     def _recluster_singletons(self):
         single_cluster_ids = [self.clusters[c]['cluster_id'] for c in self.clusters.keys() if len(self.clusters[c]['sentences']) == 1]
         for single_id in single_cluster_ids:
@@ -416,7 +417,7 @@ class SentenceClusterer():
         for i in range(len(c['gestures'])):
             g = c['gestures'][i]['sentence_embedding']
             for j in range(len(neighbor_clust['gestures'])):
-                g2 = c['gestures'][j]['sentence_embedding']
+                g2 = neighbor_clust['gestures'][j]['sentence_embedding']
                 neighbor_sims.append(np.inner(g, g2).max())
         a = np.average(np.array(within_sims))
         b = np.average(np.array(neighbor_sims))

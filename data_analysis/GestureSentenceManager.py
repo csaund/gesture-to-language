@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
-from GestureClusterer1 import *
-from SentenceClusterer13 import *
+from GestureClusterer import *
+from SentenceClusterer import *
 from VideoManager import *
 import json
 import os
@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from prettytable import PrettyTable
+from scipy import stats
 
 devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
@@ -880,14 +881,6 @@ class GestureSentenceManager():
         plt.show()
 
 
-
-
-def bl(gsm):
-    for i in gsm.GestureClusterer.clusters:
-        print i
-        print gsm.get_sentence_stats_for_gesture_cluster(i)
-
-
 def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
     newGSM.speaker = oldGSM.speaker
@@ -1085,7 +1078,8 @@ def get_avg_gesture_distance(gsm):
                 continue
             dists.append(gsm.GestureClusterer._calculate_distance_between_vectors(vectors[i], vectors[j]))
     print "average gesture distances: %s" % np.average(np.array(dists))
-    return np.average(np.array(dists))
+    # return np.average(np.array(dists))
+    return dists
     # this is 0.046826227552475175
 
 ## todo implement get gesture by ID in GestureClusterer to get feature vec
@@ -1135,3 +1129,184 @@ def compare_avg_sentence_dist_with_avg_centroid_dist(gsm, s_cluster_id):
             avg_sentence_dist.append(np.inner(sentence_embedding, s_clust['gestures'][j]['sentence_embedding']).max())
     print "average similarity to cluster embedding: %s" % np.average(np.array(avg_sentence_to_centroid_dist))
     print "average sentence similarity: %s" % np.average(np.array(avg_sentence_dist))
+
+## this should basically be a repeat of what I've already done
+def get_closest_sentence(gsm, full_gesture_sentence):
+    max_sim = 0
+    max_gest = 0
+    for k in gsm.SentenceClusterer.clusters:
+        c = gsm.SentenceClusterer.clusters[k]
+        for g in c['gestures']:
+            if g['id'] == full_gesture_sentence['id']:
+                continue
+            sim = np.inner(full_gesture_sentence['sentence_embedding'], g['sentence_embedding']).max()
+            if sim > max_sim:
+                max_sim = sim
+                max_gest = g
+    # print "test sentence: %s" % full_gesture_sentence['phase']['transcript']
+    # print "max sentence similarity: %s ; %s" % (max_sim, max_gest['phase']['transcript'])
+    g1fv = [g['feature_vec'] for g in gsm.GestureClusterer.agd if g['id'] == full_gesture_sentence['id']][0]
+    g2fv = [g['feature_vec'] for g in gsm.GestureClusterer.agd if g['id'] == max_gest['id']][0]
+    gesture_dist = gsm.GestureClusterer._calculate_distance_between_vectors(g1fv, g2fv)
+    # print "gesture distance: %s" % gesture_dist
+    return gesture_dist
+
+
+def get_closest_gesture_sentences(gsm):
+    avg_dists = []
+    for k in tqdm(gsm.SentenceClusterer.clusters):
+        s_clust = gsm.SentenceClusterer.clusters[k]
+        for g in s_clust['gestures']:
+            avg_dists.append(get_closest_sentence(gsm, g))
+    print "avg matching sentence gesture distance: %s" % np.average(np.array(avg_dists))
+    print "min matching sentence gesture distance: %s" % np.min(np.array(avg_dists))
+    print "max matching sentence gesture distance: %s" % np.max(np.array(avg_dists))
+    print "median matching sentence gesture distance: %s" % np.median(np.array(avg_dists))
+    print "sd matching sentence gesture distance: %s" % np.std(np.array(avg_dists))
+    return avg_dists
+
+
+def get_avg_to_mapped_ratio(gsm):
+    mapped_dists = get_closest_gesture_sentences(gsm)
+    avg_dists = get_avg_gesture_distance(gsm)
+    t, p = stats.ttest_ind(mapped_dists, avg_dists)
+    print "Mapped vs average distance are different:"
+    print "t = %s" % str(t)
+    print "p = %s" % str(p)
+    ratios = np.array(mapped_dists) / np.average(np.array(avg_dists))
+    print "Ratio of mapped/unmapped sig diff from 0"
+    t_one_samp, p_one_samp = stats.ttest_1samp(ratios, 0)
+    print "t = %s" % str(t_one_samp)
+    print "p = %s" % str(p_one_samp)
+    print "Ratio of mapped/unmapped sig diff from 1"
+    t_one_samp, p_one_samp = stats.ttest_1samp(ratios, 1)
+    print "t = %s" % str(t_one_samp)
+    print "p = %s" % str(p_one_samp)
+
+
+# Plot distance between S and S' on X,
+# g and g' on Y
+def plot_dist_s_sprime_g_gprime(gsm):
+    sentence_phrases = gsm.SentenceClusterer.agd['phrases']
+    sentence_similarites = []
+    gesture_distances = []
+    for i in range(len(sentence_phrases)):
+        print i
+        s = sentence_phrases[i]['sentence_embedding']
+        for j in tqdm((range(i, len(sentence_phrases)))):
+            if i == j:
+                continue
+            s_j = sentence_phrases[j]['sentence_embedding']
+            sentence_similarites.append(np.inner(s, s_j).max())
+            g1fv = [g['feature_vec'] for g in gsm.GestureClusterer.agd if g['id'] == sentence_phrases[i]['id']][0]
+            g2fv = [g['feature_vec'] for g in gsm.GestureClusterer.agd if g['id'] == sentence_phrases[j]['id']][0]
+            gesture_distances.append(np.linalg.norm(np.array(g1fv) - np.array(g2fv)))
+    plt.scatter(sentence_similarites, gesture_distances)
+    plt.title('Sentence Similarity vs Gesture Distance')
+    plt.xlabel('Sentence Similarity')
+    plt.ylabel('Gesture Distance')
+    plt.show()
+
+
+def get_random_gesture_from_sentence_cluster(gsm, s_cluster_id):
+    gs = gsm.SentenceClusterer.clusters[s_cluster_id]['gestures']
+    return random.choice(gs)
+
+
+def get_random_gesture_sentence_no_beats(gsm):
+    k = random.choice(gsm.SentenceClusterer.clusters.keys())
+    g = random.choice(gsm.SentenceClusterer.clusters[k]['gestures'])
+    # this doesn't work in general, hard coded for our beat gesture cluster
+    beat_ids = [g['id'] for g in gsm.GestureClusterer.clusters[2]['gestures']]
+    if g['id'] in beat_ids:
+        return get_random_gesture_sentence_no_beats(gsm)
+    return g
+
+def plot_dist_single_sentence(gsm, full_sentence):
+    sentence_phrases = gsm.SentenceClusterer.agd['phrases']
+    sentence_similarites = []
+    gesture_distances = []
+    s = full_sentence['sentence_embedding']
+    for j in tqdm((range(len(sentence_phrases)))):
+        if sentence_phrases[j]['id'] == full_sentence['id']:
+            continue
+        s_j = sentence_phrases[j]['sentence_embedding']
+        sentence_similarites.append(np.inner(s, s_j).max())
+        g1fv = [g['feature_vec'] for g in gsm.GestureClusterer.agd if g['id'] == full_sentence['id']][0]
+        g2fv = [g['feature_vec'] for g in gsm.GestureClusterer.agd if g['id'] == sentence_phrases[j]['id']][0]
+        gesture_distances.append(np.linalg.norm(np.array(g1fv) - np.array(g2fv)))
+    plt.scatter(sentence_similarites, gesture_distances)
+    plt.xlabel('Sentence Similarity')
+    plt.ylabel('Gesture Distance')
+    # return (sentence_similarites, gesture_distances)
+    sentence_similarites = np.array(sentence_similarites)
+    gesture_distances = np.array(gesture_distances)
+    linreg = stats.linregress(sentence_similarites, gesture_distances)
+    slope, intercept, r_value, p_value, std_err = linreg
+    ti = 'Sentence Similarity vs Gesture Distance for gesture %s \n r2 = %s' % (str(full_sentence['id']), r_value ** 2)
+    plt.title(ti)
+    plt.plot(sentence_similarites, intercept + slope * gesture_distances, 'r')
+    plt.text(0, 1, r_value**2)
+    plt.show()
+
+def combine_all_gesture_data(gsm):
+    gsm.complete_gesture_data = {}
+    for d in tqdm(gsm.agd):
+        gid = d['id']
+        gesture = gsm.get_gesture_by_id(d['id'])
+        m_g = [g for g in gsm.GestureClusterer.agd if g['id'] == gid][0]
+        s_g = [p for p in gsm.SentenceClusterer.agd['phrases'] if p['id'] == gid][0]
+        gest_movement_keys = [k for k in m_g.keys() if k not in gesture.keys()]
+        for nk in gest_movement_keys:
+            gesture[nk] = m_g[nk]
+        sentence_keys = [k for k in s_g.keys() if k not in gesture.keys()]
+        for nk in sentence_keys:
+            gesture[nk] = s_g[nk]
+        gsm.complete_gesture_data[gid] = gesture
+
+
+
+def get_semantically_distinguishable_gestures(gsm, take_n=0):
+    # this doesn't work in general, hard coded for our beat gesture cluster
+    beat_ids = [g['id'] for g in gsm.GestureClusterer.clusters[2]['gestures']]
+    take_n = take_n if take_n else len(gsm.complete_gesture_data)
+    totals = []
+    ks = gsm.complete_gesture_data.keys()
+    for i in tqdm(range(take_n)):
+        k = ks[i]
+        total_gest = gsm.complete_gesture_data[k]
+        s = total_gest['sentence_embedding']
+        sentence_similarities = []
+        gesture_distances = []
+        for j in ks:
+            if k == j or gsm.complete_gesture_data[j]['id'] in beat_ids:
+                continue
+            s_j = gsm.complete_gesture_data[j]['sentence_embedding']
+            sentence_similarities.append(np.inner(s, s_j).max())
+            g1fv = gsm.complete_gesture_data[k]['feature_vec']
+            g2fv = gsm.complete_gesture_data[j]['feature_vec']
+            gesture_distances.append(np.linalg.norm(np.array(g1fv) - np.array(g2fv)))
+        sentence_similarities = np.array(sentence_similarities)
+        gesture_distances = np.array(gesture_distances)
+        linreg = stats.linregress(sentence_similarities, gesture_distances)
+        slope, intercept, r_value, p_value, std_err = linreg
+        totals.append((r_value ** 2, sentence_similarities, gesture_distances, k))
+    return sorted(totals, key=lambda x: x[0], reverse=True)
+
+
+def plot_data(r_value, sentence_sims, gesture_dists, gid):
+    sentence_similarites = np.array(sentence_sims)
+    gesture_distances = np.array(gesture_dists)
+    linreg = stats.linregress(sentence_similarites, gesture_distances)
+    slope, intercept, r_value, p_value, std_err = linreg
+    ti = 'Sentence Similarity vs Gesture Distance for gesture %s \n r2 = %s' % (str(gid), r_value ** 2)
+    plt.title(ti)
+    plt.scatter(sentence_similarites, gesture_distances)
+    plt.xlabel('Sentence Similarity')
+    plt.ylabel('Gesture Distance')
+    plt.plot(sentence_similarites, intercept + slope * gesture_distances, 'r')
+    plt.text(0, 1, r_value**2)
+    plt.show()
+
+def t_test(g1, g2, mu=0):
+    return stats.ttest_ind(g1, g2)
