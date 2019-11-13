@@ -35,12 +35,14 @@ ADJ = ["JJ"]
 ## and also all the timings.
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
+# GSM.downsample_speaker()
 # GSM.cluster_gestures()    or    GSM.cluster_gestures_under_n_words(10)
 # GSM.test_k_means_gesture_clusters()
 # report = GSM.report_clusters()
 # GSM.print_sentences_by_cluster(0)
 # GSM.cluster_sentences_gesture_independent()    or     GSM.cluster_sentences_gesture_independent_under_n_words(10)
 # GSM.assign_gesture_cluster_ids_for_sentence_clusters()
+# Ann = Analyzer(GSM)           # Before this must run GSM.combine_all_gesture_data()
 
 #
 #
