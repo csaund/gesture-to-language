@@ -37,20 +37,10 @@ class SentenceClusterer():
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
         self.clusters = {}
         self.logs = []
-        if(len(seeds)):
-            for seed_g in seeds:
-                g = self._get_gesture_by_id(seed_g, all_gesture_data)
-                cluster_id = self.c_id
-                self.c_id = self.c_id + 1
-                c = {
-                        'cluster_id': cluster_id,
-                        'seed_id': g['id'],
-                        'gestures': [g['id']],
-                        'sentences': [g['phase']['transcript']]}
-                self.clusters[cluster_id] = c
+        self.get_transcript()
         self.agd = None
         self.c_id = 0
-        self.get_transcript()
+        # TODO implement seed gestures
 
     def initialize_encoder(self, module):
         with tf.compat.v1.Graph().as_default():
@@ -189,7 +179,6 @@ class SentenceClusterer():
             (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster(g)
             self._add_gesture_to_cluster(g, nearest_cluster_id)
 
-
     def _add_sentence_cluster_ids(self):
         for k in self.clusters:
             c = self.clusters[k]
@@ -215,7 +204,6 @@ class SentenceClusterer():
             # this is like updating the centroid.
         self.clusters[cluster_id]['cluster_embedding'] = self.embed_fn(self.clusters[cluster_id]['sentences'])
         g['sentence_cluster_id'] = cluster_id
-
 
     def _break_cluster(self, cluster_id):
         print "breaking up cluster %s" % cluster_id
@@ -255,7 +243,6 @@ class SentenceClusterer():
             self._add_gesture_to_cluster(self.clusters[single_id]['gestures'][0], most_sim_cluster_id)
             del self.clusters[single_id]
 
-
     def create_new_cluster_by_gestures(self, gests):
         new_cluster_id = self.c_id
         sents = [g['phase']['transcript'] for g in gests]
@@ -285,7 +272,6 @@ class SentenceClusterer():
         e = time.time()
         # print "time to create new cluster: %s" % str(e-s)
         self.clusters[new_cluster_id] = c
-
 
     def report_clusters(self, verbose=False):
         print("Number of clusters: %s" % len(self.clusters))
@@ -343,8 +329,6 @@ class SentenceClusterer():
         # print "time to get similar cluster: %s" % str(e-s)
         return (nearest_cluster_id, max_sim)
 
-
-
     def count_videos_with_phrase(self, phrase):
         vids = []
         p = self.agd['phrases']
@@ -359,7 +343,6 @@ class SentenceClusterer():
         print "total occurances: %s" % total
         print len(list(set(vids)))
         return list(set(zip(vids, counts))).sorted(key=lambda x: x[1])
-
 
     def find_cluster_ids_for_phrase(self, phrase):
         c_ids = []
@@ -376,7 +359,6 @@ class SentenceClusterer():
         print "total occurances: %s" % total
         return c_ids.sorted(key=lambda x: x[1])
 
-
     def _log(self, s):
         self.logs.append(s)
 
@@ -385,7 +367,6 @@ class SentenceClusterer():
             for l in self.logs:
                 f.write("%s\n" % l)
         f.close()
-
 
     # takes cluster id, returns cluster id of nearest neighbor
     def get_nearest_neighbor_cluster(self, cluster_id):
@@ -399,7 +380,6 @@ class SentenceClusterer():
                 max_sim = sim
                 nearest_neighbor = k
         return nearest_neighbor
-
 
     def get_silhouette_score_for_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
