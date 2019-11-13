@@ -696,7 +696,8 @@ class GestureSentenceManager():
         print "max silhouette: %s" % np.max(s)
         print "sd: %s" % np.std(s)
         return s
-    def test_k_means_gesture_clusters(self, n_words=10, min_distances=[0.01, 0.03, 0.05, 0.07], ks=[10,40,60,100,150, 200, 0]):
+
+    def test_k_means_gesture_clusters(self, min_distances=[0.01, 0.03, 0.05, 0.07], ks=[10,40,60,100,150, 200, 0]):
         n_clusters = []
         max_k = []
         avgs = []
@@ -728,7 +729,7 @@ class GestureSentenceManager():
         t.add_column("sd silhouette", sd)
         print(t)
 
-    def test_k_means_sentence_clusters(self, n_words=10, min_sims=[0.1, 0.3, 0.5, 0.7], ks=[10,40,60,100,150, 200, 0]):
+    def test_k_means_sentence_clusters(self, min_sims=[0.1, 0.3, 0.5, 0.7], ks=[10,40,60,100,150, 200, 0]):
         n_clusters = []
         max_k = []
         avgs = []
@@ -762,7 +763,6 @@ class GestureSentenceManager():
         t.add_column("max silhouette", maxs)
         t.add_column("sd silhouette", sd)
         print(t)
-
 
 ###############################################################
 #################### OTHER DATA MANAGEMENT ####################
