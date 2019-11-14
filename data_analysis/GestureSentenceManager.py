@@ -30,6 +30,13 @@ VERBS = ["V", "VB", "VBD", "VBD", "VBZ", "VBP", "VBN"]
 NOUNS = ["NN", "NNP", "NNS"]
 ADJ = ["JJ"]
 
+# rdist
+import numpy as np
+import rpy2.robjects.numpy2ri
+
+rpy2.robjects.numpy2ri.activate()
+from rpy2.robjects.packages import importr
+import rpy2.robjects as robj
 
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
@@ -964,3 +971,201 @@ def _add_nearest_cluster_for_id(gsm, c_id):
             max_sim = sim
             max_id = k
     gsm.SentenceClusterer.clusters[c_id]['nearest_cluster_id'] = max_id
+
+
+def get_random_gesture_id(gsm):
+    ks = gsm.complete_gesture_data.keys()
+    return random.choice(ks)
+
+# TODO add to analyzer
+def plot_dist_s_sprime_g_gprime_wn(gsm, gid=None):
+    gid = gid if gid else get_random_gesture_id(gsm)
+    sentence_similarities = []
+    gesture_distances = []
+    s = gsm.complete_gesture_data[gid]['phase']['transcript']
+    for j in tqdm(gsm.complete_gesture_data):
+        if gid == j:
+            continue
+        s_j = gsm.complete_gesture_data[j]['phase']['transcript']
+        sim = gsm.SentenceClusterer.get_wn_symmetric_similarity(s, s_j)
+        sentence_similarities.append(sim)
+        g1fv = gsm.complete_gesture_data[gid]['feature_vec']
+        g2fv = gsm.complete_gesture_data[j]['feature_vec']
+        gesture_distances.append(calculate_distance_between_vectors(g1fv, g2fv))
+    plt.scatter(sentence_similarities, gesture_distances)
+    plt.title('Sentence Similarity vs Gesture Distance')
+    plt.xlabel('Sentence Similarity')
+    plt.ylabel('Gesture Distance')
+    plt.show()
+
+
+def high_sim_vs_reg_sim(gsm, gid=None, n=10):
+    gid = gid if gid else get_random_gesture_id(gsm)
+    sentence_similarities = []
+    gesture_distances = []
+    s = gsm.complete_gesture_data[gid]['phase']['transcript']
+    for j in tqdm(gsm.complete_gesture_data):
+        if gid == j:
+            continue
+        s_j = gsm.complete_gesture_data[j]['phase']['transcript']
+        sim = gsm.SentenceClusterer.get_wn_symmetric_similarity(s, s_j)
+        sentence_similarities.append(sim)
+        g1fv = gsm.complete_gesture_data[gid]['feature_vec']
+        g2fv = gsm.complete_gesture_data[j]['feature_vec']
+        gesture_distances.append(calculate_distance_between_vectors(g1fv, g2fv))
+    both = sorted(zip(sentence_similarities, gesture_distances), key=lambda x: x[0], reverse=True)
+    high_semantic_sim = both[:n]
+    high_sent = [x[0] for x in high_semantic_sim]
+    high_gest = [x[1] for x in high_semantic_sim]
+    low_semantic_sim = both[n:]
+    low_sent = [x[0] for x in low_semantic_sim]
+    low_gest = [x[1] for x in low_semantic_sim]
+    print "high sentence sim: %s" % np.average(np.array(high_sent))
+    avg_high_semantic_sent = np.average(np.array(high_sent))
+    avg_high_semantic_gest = np.average(np.array(high_gest))
+    print "low sentence sim: %s" % np.average(np.array(low_sent))
+    avg_low_semantic_sent = np.average(np.array(low_sent))
+    avg_low_semantic_gest = np.average(np.array(low_gest))
+    print "high/low semantic sim ratio: %s" % str(avg_high_semantic_sent / avg_low_semantic_sent)
+    print "high/low gesture sim ratio: %s" % str(avg_high_semantic_gest / avg_low_semantic_gest)
+    plt.scatter(sentence_similarities, gesture_distances)
+    plt.title('Sentence Similarity vs Gesture Distance')
+    plt.xlabel('Sentence Similarity')
+    plt.ylabel('Gesture Distance')
+    plt.show()
+
+
+
+def plot_high_sim_vs_reg_sim_ratios(gsm, gid=None, n=10, top_n=10):
+    sentence_ratios = []
+    gesture_ratios = []
+    semantic_sim = []
+    gesture_sim = []
+    for i in tqdm(range(n)):
+        gid = get_random_gesture_id(gsm)
+        sentence_similarities = []
+        gesture_distances = []
+        s = gsm.complete_gesture_data[gid]['phase']['transcript']
+        for j in gsm.complete_gesture_data:
+            if gid == j:
+                continue
+            s_j = gsm.complete_gesture_data[j]['phase']['transcript']
+            sim = gsm.SentenceClusterer.get_wn_symmetric_similarity(s, s_j)
+            sentence_similarities.append(sim)
+            g1fv = gsm.complete_gesture_data[gid]['feature_vec']
+            g2fv = gsm.complete_gesture_data[j]['feature_vec']
+            gesture_distances.append(calculate_distance_between_vectors(g1fv, g2fv))
+        both = sorted(zip(sentence_similarities, gesture_distances), key=lambda x: x[0], reverse=True)
+        high_semantic_sim = both[:top_n]
+        low_semantic_sim = both[top_n:]
+        high_sent, high_gest, avg_high_semantic_sent, avg_high_semantic_gest = get_sent_gest_avg(high_semantic_sim)
+        low_sent, low_gest, avg_low_semantic_sent, avg_low_semantic_gest = get_sent_gest_avg(low_semantic_sim)
+        print_junk(avg_high_semantic_sent, avg_high_semantic_gest, avg_low_semantic_sent, avg_low_semantic_gest)
+        sentence_ratios.append(avg_high_semantic_sent)
+        semantic_sim += list(high_sent)
+        gesture_ratios.append(avg_high_semantic_gest)
+        gesture_sim += list(high_gest)
+    plot_junk(semantic_sim, gesture_sim)
+
+
+def plot_junk(srs, grs):
+    slope, intercept, r_value, p_value, std_err = stats.linregress(list(srs), list(grs))
+    plt.scatter(np.array(srs), np.array(grs))
+    plt.plot(np.array(srs), intercept + slope * np.array(grs), 'r')
+    plt.title('Top Sentence Similarity to Gesture Distance ratio, r2=%s' % str(r_value ** 2))
+    plt.xlabel('Sentence Similarity High/Low Ratio')
+    plt.ylabel('Gesture Distance High/Low Ratio')
+    plt.show()
+
+def print_junk(hs, hg, ls, lg):
+    print("high sentence sim: %s" % str(hs))
+    print("low sentence sim: %s" % str(ls))
+    print("high gesture sim: %s" % str(hg))
+    print("low gesture sim: %s" % str(lg))
+
+def get_sent_gest_avg(l):
+    sent = np.array([x[0] for x in l])
+    gest = np.array([x[1] for x in l])
+    return (sent, gest, np.average(np.array(sent)), np.average(np.array(gest)))
+
+
+# TODO compare out of the box approaches with our high-level feature vec approach
+def try_fastdtw(gsm, n=100):
+    fastdtws = []
+    my_ds = []
+    for i in range(n):
+        keys = gsm.complete_gesture_data.keys()
+        id1 = random.choice(keys)
+        id2 = random.choice(keys)
+        x1s, y1s = get_coords_for_gest(gsm, id1)
+        x2s, y2s = get_coords_for_gest(gsm, id2)
+        d, path = fastdtw(x1s, x2s, dist=euclidean)
+        my_d = calculate_distance_between_vectors(gsm.complete_gesture_data[id1]['feature_vec'], gsm.complete_gesture_data[id2]['feature_vec'])
+        fastdtws.append(d)
+        my_ds.append(my_d)
+    plot_junk(fastdtws, my_ds)
+
+def get_coords_for_gest(gsm, gid):
+    g = gsm.complete_gesture_data[gid]
+    xs = [i['x'] for i in g['keyframes']]
+    ys = [i['y'] for i in g['keyframes']]
+    return xs, ys
+
+    # we need 52-variate with n timestamps
+    # example gest 84886
+    # 46 time points
+    # need 52 arrays that are 46 long
+    # [x11 x21 x31 x41....] [x21 x22 x23 x24...] [x31 x32 x33 x34...]
+    # [y11 y21 y31 y41....] [y21 y22 y23 y24...] [y31 y32 y33 y34...]
+    # need to turn into
+    # [x(pos)-(time)]
+    # [x1-1 x2-1 x3-1 x4-1 x5-1...x46-1][x1-2 x2-2 x3-2 x4-2 x5-2
+    # 2-variate with 5 timestamps
+    # template = np.array([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]]).transpose()
+    # query = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+    #                   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]]).transpose()
+def try_fastdtw_multivariate(gsm, n=100):
+    fastdtws = []
+    my_ds = []
+    for i in range(n):
+        R = rpy2.robjects.r
+        DTW = importr('dtw')
+        keys = gsm.complete_gesture_data.keys()
+        id1 = random.choice(keys)
+        id2 = random.choice(keys)
+        x1s, y1s = get_coords_for_gest(gsm, id1)
+        x2s, y2s = get_coords_for_gest(gsm, id2)
+        template = np.array([x1s[i]+y1s[i] for i in range(len(x1s))])
+        rt, ct = template.shape
+        query = np.array([x2s[i]+y2s[i] for i in range(len(x2s))])
+        rq, cq = query.shape
+        # converting numpy matrices to R matrices
+        templateR = R.matrix(template, nrow=rt, ncol=ct)
+        queryR = R.matrix(query, nrow=rq, ncol=cq)
+        # Calculate the alignment vector and corresponding distance
+        try:
+            alignment = R.dtw(templateR, queryR, keep=True, step_pattern=R.rabinerJuangStepPattern(4, "c"), open_begin=True,
+                              open_end=True)
+            dist = alignment.rx('distance')[0][0]
+            fastdtws.append(dist)
+            my_d = calculate_distance_between_vectors(gsm.complete_gesture_data[id1]['feature_vec'],
+                                                      gsm.complete_gesture_data[id2]['feature_vec'])
+            my_ds.append(my_d)
+        except:
+            print "dist could not be calculated"
+    plot_junk(fastdtws, my_ds)
+
+
+# lame variable test
+x0 = ['x0-0', 'x0-1', 'x0-2', 'x0-3', 'x0-4', 'x0-5']
+x1 = ['x1-0', 'x1-1', 'x1-2', 'x1-3', 'x1-4', 'x1-5']
+y0 = ['y0-0', 'y0-1', 'y0-2', 'y0-3', 'y0-4', 'y0-5']
+x1 = ['x1-0', 'x1-1', 'x1-2', 'x1-3', 'x1-4', 'x1-5']
+
+# want
+# ['x0-0', 'x1-0', 'y0-0', 'y1-0'],
+# ['x0-1', 'x1-1', 'y0-1', 'y1-1'],
+# ['x0-2', 'x1-2', 'y0-2', 'y1-2'],
+# ['x0-3', 'x1-3', 'y0-3', 'y1-3'],
+# ['x0-4', 'x1-4', 'y0-4', 'y1-4'],
+# ['x0-5', 'x1-5', 'y0-5', 'y1-5']

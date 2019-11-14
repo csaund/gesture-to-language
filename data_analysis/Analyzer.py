@@ -72,7 +72,7 @@ class Analyzer():
         print "average sentence similarity: %s" % np.average(np.array(similarities))
         return np.average(np.array(similarities))
 
-    ## TODO put this into sentence clusterer
+    ## TODO this but for wordnet
     def compare_avg_sentence_dist_with_avg_centroid_dist(self, s_cluster_id):
         s_clust = self.SentenceClusterer.clusters[s_cluster_id]
         cluster_embedding = s_clust['cluster_embedding']
@@ -242,6 +242,26 @@ class Analyzer():
         plt.ylabel('Gesture Distance')
         plt.plot(sentence_similarities, intercept + slope * gesture_distances, 'r')
         plt.text(0, 1, r_value ** 2)
+        plt.show()
+
+    def plot_dist_s_sprime_g_gprime_wn(self):
+        sentence_similarities = []
+        gesture_distances = []
+        keys = self.complete_gesture_data.keys()
+        for i in range(len(keys)):
+            s = self.complete_gesture_data[keys[i]]['sentence_embedding']
+            for j in tqdm((range(i, len(keys)))):
+                if i == j:
+                    continue
+                s_j = self.complete_gesture_data[keys[j]]['sentence_embedding']
+                sentence_similarities.append(np.inner(s, s_j).max())
+                g1fv = self.complete_gesture_data[keys[i]]['feature_vec']
+                g2fv = self.complete_gesture_data[keys[j]]['feature_vec']
+                gesture_distances.append(calculate_distance_between_vectors(g1fv, g2fv))
+        plt.scatter(sentence_similarities, gesture_distances)
+        plt.title('Sentence Similarity vs Gesture Distance')
+        plt.xlabel('Sentence Similarity')
+        plt.ylabel('Gesture Distance')
         plt.show()
 
 
