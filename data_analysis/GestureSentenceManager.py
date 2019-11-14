@@ -1073,8 +1073,11 @@ def plot_junk(srs, grs):
     plt.scatter(np.array(srs), np.array(grs))
     plt.plot(np.array(srs), intercept + slope * np.array(grs), 'r')
     plt.title('Top Sentence Similarity to Gesture Distance ratio, r2=%s' % str(r_value ** 2))
-    plt.xlabel('Sentence Similarity High/Low Ratio')
-    plt.ylabel('Gesture Distance High/Low Ratio')
+    plt.xlabel('Gesture Distance using DTW')
+    plt.ylabel('Semantic Similarity using WN Distance')
+    axes = plt.gca()
+    axes.set_xlim([0, 600000])
+    axes.set_ylim([0, 1.1])
     plt.show()
 
 def print_junk(hs, hg, ls, lg):
@@ -1124,36 +1127,50 @@ def get_coords_for_gest(gsm, gid):
     # template = np.array([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]]).transpose()
     # query = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     #                   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]]).transpose()
-def try_fastdtw_multivariate(gsm, n=100):
+def try_fastdtw_multivariate(gsm, n=100, dist_threshold=250000):
     fastdtws = []
     my_ds = []
-    for i in range(n):
+    sem_sim = []
+    keys = gsm.complete_gesture_data.keys()
+    sample = random.sample(keys, n)
+    total_edges = 0
+    err = 0
+    for k in tqdm(sample):
         R = rpy2.robjects.r
         DTW = importr('dtw')
-        keys = gsm.complete_gesture_data.keys()
-        id1 = random.choice(keys)
-        id2 = random.choice(keys)
-        x1s, y1s = get_coords_for_gest(gsm, id1)
-        x2s, y2s = get_coords_for_gest(gsm, id2)
-        template = np.array([x1s[i]+y1s[i] for i in range(len(x1s))])
-        rt, ct = template.shape
-        query = np.array([x2s[i]+y2s[i] for i in range(len(x2s))])
-        rq, cq = query.shape
-        # converting numpy matrices to R matrices
-        templateR = R.matrix(template, nrow=rt, ncol=ct)
-        queryR = R.matrix(query, nrow=rq, ncol=cq)
-        # Calculate the alignment vector and corresponding distance
-        try:
-            alignment = R.dtw(templateR, queryR, keep=True, step_pattern=R.rabinerJuangStepPattern(4, "c"), open_begin=True,
-                              open_end=True)
-            dist = alignment.rx('distance')[0][0]
-            fastdtws.append(dist)
-            my_d = calculate_distance_between_vectors(gsm.complete_gesture_data[id1]['feature_vec'],
-                                                      gsm.complete_gesture_data[id2]['feature_vec'])
-            my_ds.append(my_d)
-        except:
-            print "dist could not be calculated"
-    plot_junk(fastdtws, my_ds)
+        id1 = k
+        for j in sample:
+            total_edges += 1
+            if j == k:
+                continue
+            id2 = j
+            x1s, y1s = get_coords_for_gest(gsm, id1)
+            x2s, y2s = get_coords_for_gest(gsm, id2)
+            template = np.array([x1s[i] for i in range(len(x1s))]) #             template = np.array([x1s[i]+y1s[i] for i in range(len(x1s))]) for x and y
+            rt, ct = template.shape
+            query = np.array([x2s[i] for i in range(len(x2s))])
+            rq, cq = query.shape
+            # converting numpy matrices to R matrices
+            templateR = R.matrix(template, nrow=rt, ncol=ct)
+            queryR = R.matrix(query, nrow=rq, ncol=cq)
+            # Calculate the alignment vector and corresponding distance
+            try:
+                alignment = R.dtw(templateR, queryR, keep=True, step_pattern=R.rabinerJuangStepPattern(4, "c"), open_begin=True,
+                                  open_end=True)
+                dist = alignment.rx('distance')[0][0]
+                s1 = gsm.complete_gesture_data[id1]['phase']['transcript']
+                s2 = gsm.complete_gesture_data[id2]['phase']['transcript']
+                semantic_sim = gsm.SentenceClusterer.get_wn_symmetric_similarity(s1, s2)
+                # many gestures will be the same... let's assume those are beat gestures??
+                fastdtws.append(dist)
+                sem_sim.append(semantic_sim)
+                my_d = calculate_distance_between_vectors(gsm.complete_gesture_data[id1]['feature_vec'], gsm.complete_gesture_data[id2]['feature_vec'])
+                my_ds.append(my_d)
+            except:
+                err += 1
+    print "total edges: %s" % total_edges
+    print "total errors: %s" % err
+    plot_junk(fastdtws, sem_sim)
 
 
 # lame variable test
