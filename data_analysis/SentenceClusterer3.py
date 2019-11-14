@@ -170,7 +170,8 @@ class SentenceClusterer():
         #self._recluster_by_centroids(phrases)
         # TODO do need some sort of reclustering I think...
         # self._recluster_singletons()
-        self._add_sentence_cluster_ids
+        self._add_sentence_cluster_ids()
+        self._add_nearest_cluster()
 
     def _recluster_by_centroids(self, phrases):
         print "reclustering by centroids"
@@ -188,6 +189,30 @@ class SentenceClusterer():
             for g in c['gestures']:
                 g['sentence_cluster_id'] = k
         return
+
+    def _add_nearest_cluster(self):
+        keys = self.clusters.keys()
+        for elem in self.clusters:
+            k = keys.pop()
+            c = self.clusters[k]
+            nearest_cluster_id = ''
+            max_sim = 0
+            for g in c['gestures']:
+                # go through the rest of the keys
+                for el in keys:
+                    sim = self._get_avg_dist_between_clusts(k, el)
+                    if sim > max_sim:
+                        max_sim = sim
+                        nearest_cluster_id = el
+            self.clusters[k]['nearest_cluster_id'] = nearest_cluster_id
+
+    def _get_avg_dist_between_clusts(self, c1_id, c2_id):
+        sims = []
+        for g in self.clusters[c1_id]['gestures']:
+            for g2 in self.clusters[c2_id]['gestures']:
+                sims.append(self.get_wn_symmetric_similarity(g['phase']['transcript'], g2['phase']['transcript']))
+        avgs = np.array(sims)
+        return np.average(avgs)
 
     def count_sentence_clusters_of_gesture(self, g_id):
         count = 0
@@ -431,8 +456,15 @@ class SentenceClusterer():
         return np.average(np.array(scores))
 
     def get_wn_symmetric_similarity(self, s1, s2):
-        return (get_wordnet_similarity(s1, s2) + get_wordnet_similarity(s2, s1)) / 2
+        sim = (get_wordnet_similarity(s1, s2) + get_wordnet_similarity(s2, s1)) / 2
+        # TODO make this better
+        # if not sim:
+        #     print "No similarity found for sentnces \n%s \n %s" % (s1, s2)
+        return sim
 
+# TODO come up with way to cache similarity between sentences so it only has to be computed
+# once per gesture... does this work though? is there any way around computing similarity between
+# EVERY sentence? POTENTIALLY MULTIPLE TIMES??
 
 def get_wordnet_similarity(s1, s2):
     """ compute the sentence similarity using Wordnet """
@@ -449,15 +481,16 @@ def get_wordnet_similarity(s1, s2):
     # For each word in the first sentence
     for synset in synsets1:
         # Get the similarity value of the most similar word in the other sentence
-        best_score = max([synset.path_similarity(ss) for ss in synsets2])
-        # Check that the similarity could have been computed
-        if best_score is not None:
-            score += best_score
-            count += 1
+        scores = [synset.path_similarity(ss) for ss in synsets2]
+        if len(scores):
+            best_score = max(scores)
+            # Check that the similarity could have been computed
+            if best_score is not None:
+                score += best_score
+                count += 1
     # Average the values
     if not count:
         # TODO find better metric for this
-        print "No similarity found for sentnces \n%s ; %s" % (s1, s2)
         return 0
     score /= count
     return score

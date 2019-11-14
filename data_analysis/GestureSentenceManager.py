@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
 from GestureClusterer import *
-from SentenceClusterer import *
+from SentenceClusterer3 import *
 from VideoManager import *
 import json
 import os
@@ -152,7 +152,7 @@ class GestureSentenceManager():
         self.complete_gesture_data = {}
         for d in tqdm(self.agd):
             gid = d['id']
-            gesture = gsm.get_gesture_by_id(d['id'])
+            gesture = self.get_gesture_by_id(gid)
             m_g = [g for g in self.GestureClusterer.agd if g['id'] == gid][0]
             s_g = [p for p in self.SentenceClusterer.agd['phrases'] if p['id'] == gid][0]
             gest_movement_keys = [k for k in m_g.keys() if k not in gesture.keys()]
@@ -894,3 +894,73 @@ def upload_data_under_n_words(gsm, under_words=10):
     print "uploading %s new agd to %s / %s" % (str(len(new_agd)), agd_bucket, new_agd_name)
     upload_object(agd_bucket, new_agd, new_agd_name)
 
+
+
+######################################################################
+####################### FOR SENTENCE CLUSTERER #######################
+######################################################################
+
+def get_silhouette_score_wn_clusters(gsm, s_cluster_id):
+    c = gsm.SentenceClusterer.clusters[s_cluster_id]
+    # ugh so we have to go through every gesture within the cluster and then
+    # every gesture in the nearest cluster
+    within_dist = []
+    nearest_neighbor_dists = []
+    for i in tqdm(range(len(c['gestures']))):
+        g = c['gestures'][i]
+        for j in range(i, len(c['gestures'])):
+            if i == j:
+                continue
+            g2 = c['gestures'][j]
+            sim = gsm.SentenceClusterer.get_wn_symmetric_similarity(g['phase']['transcript'], g2['phase']['transcript'])
+            within_dist.append(sim)
+        if 'nearest_cluster_id' not in c.keys():
+            _add_nearest_cluster_for_id(gsm, s_cluster_id)
+        neighbor_gs = gsm.SentenceClusterer.clusters[c['nearest_cluster_id']]['gestures']
+        for ng in neighbor_gs:
+            sim = gsm.SentenceClusterer.get_wn_symmetric_similarity(g['phase']['transcript'], ng['phase']['transcript'])
+            nearest_neighbor_dists.append(sim)
+    b = np.average(np.array(nearest_neighbor_dists))
+    a = np.average(np.array(within_dist))
+    print "avg neighbor sim: %s" % np.average(np.array(nearest_neighbor_dists))
+    print "avg within sim: %s" % np.average(np.array(within_dist))
+    # THIS is going to be the opposite because we're measuring similarity, not distance!!!
+    return (a - b) / max(b, a)
+
+
+def _add_nearest_cluster(gsm):
+    keys = gsm.SentenceClusterer.clusters.keys()
+    for elem in tqdm(gsm.SentenceClusterer.clusters):
+        k = keys.pop()
+        c = gsm.SentenceClusterer.clusters[k]
+        nearest_cluster_id = ''
+        max_sim = 0
+        for el in keys:
+            print "comparing %s and %s" % (k, el)
+            sim = _get_avg_dist_between_clusts(gsm, k, el)
+            if sim > max_sim:
+                max_sim = sim
+                nearest_cluster_id = el
+        gsm.SentenceClusterer.clusters[k]['nearest_cluster_id'] = nearest_cluster_id
+
+
+def _get_avg_dist_between_clusts(gsm, c1_id, c2_id):
+    sims = []
+    for g in gsm.SentenceClusterer.clusters[c1_id]['gestures']:
+        for g2 in gsm.SentenceClusterer.clusters[c2_id]['gestures']:
+            sims.append(gsm.SentenceClusterer.get_wn_symmetric_similarity(g['phase']['transcript'], g2['phase']['transcript']))
+    avgs = np.array(sims)
+    return np.average(avgs)
+
+
+def _add_nearest_cluster_for_id(gsm, c_id):
+    ks = gsm.SentenceClusterer.clusters.keys()
+    ks = [k for k in ks if k != c_id]
+    max_id = 0
+    max_sim = 0
+    for k in tqdm(ks):
+        sim = _get_avg_dist_between_clusts(gsm, c_id, k)
+        if sim > max_sim:
+            max_sim = sim
+            max_id = k
+    gsm.SentenceClusterer.clusters[c_id]['nearest_cluster_id'] = max_id
