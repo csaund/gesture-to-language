@@ -1276,8 +1276,13 @@ def sentence_cluster_only_perfect_match(gsm, threshold=0.99):
     gsm.SentenceClusterer.clear_clusters()
     gd = gsm.SentenceClusterer.agd
     cluster_id = 0
-    for g in tqdm(gd['phrases']):
+    i = 0
+    for g in gd['phrases']:
+        start = time.time()
+        print i
+        i += 1
         cluster_id += 1
+        count = 0
         # we've already found the cluster for this
         if 'sentence_cluster_id' in g.keys():
             continue
@@ -1288,9 +1293,14 @@ def sentence_cluster_only_perfect_match(gsm, threshold=0.99):
             if sim >= threshold:
                 g['sentence_cluster_id'] = cluster_id
                 k['sentence_cluster_id'] = cluster_id
+                count += 1
         if 'sentence_cluster_id' not in g.keys():
+            print "found no new clusters, making cluster %s" % cluster_id
             g['sentence_cluster_id'] = cluster_id
-    for g in tqdm(gd['phrases']):
+        end = time.time()
+        print "%s gestures added to cluster %s" % (count, cluster_id)
+        print (str(end - start))
+    for g in gd['phrases']:
         scid = g['sentence_cluster_id']
         if scid not in gsm.SentenceClusterer.clusters.keys():
             gsm.SentenceClusterer.clusters[scid] = {}
@@ -1302,3 +1312,10 @@ def sentence_cluster_only_perfect_match(gsm, threshold=0.99):
             c['sentences'].append(g['phase']['transcript'])
 
 
+def export_csv(gsm):
+    df = pandas.read_csv('hrdata.csv',
+                         index_col='Employee',
+                         parse_dates=['Hired'],
+                         header=0,
+                         names=['Employee', 'Hired', 'Salary', 'Sick Days'])
+    df.to_csv('hrdata_modified.csv')
