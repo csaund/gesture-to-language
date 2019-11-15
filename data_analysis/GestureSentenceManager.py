@@ -1077,19 +1077,63 @@ def plot_high_sim_vs_reg_sim_ratios(gsm, gid=None, n=10, top_n=10):
         gesture_sim += list(high_gest)
     plot_junk(semantic_sim, gesture_sim)
 
-
 def plot_junk(srs, grs):
     slope, intercept, r_value, p_value, std_err = stats.linregress(list(srs), list(grs))
     print "slope %s \n intercept %s \n r=%s" % (slope, intercept, r_value)
     plt.scatter(np.array(srs), np.array(grs))
-    plt.plot(np.array(srs), intercept + slope * np.array(grs), 'r')
+    regression_line = [(slope * np.array(srs)) + intercept for x in srs]
+    plt.plot(np.array(srs), regression_line, label='r')
     plt.title('Top Sentence Similarity to Gesture Distance ratio, r2=%s' % str(r_value ** 2))
     plt.xlabel('Gesture Distance using DTW')
     plt.ylabel('Semantic Similarity using WN Distance')
     axes = plt.gca()
-    axes.set_xlim([0, 600000])
-    axes.set_ylim([0, 1.1])
+    # axes.set_xlim([0, 600000])
+    # axes.set_ylim([0, 1.1])
     plt.show()
+
+
+## TODO REMOVE ALL THIS
+def GaussPolyBase(f, a, b, c, P, fp, fw):
+    return a + b*f + c*f*f + P*np.exp(-0.5*((f-fp)/fw)**2)
+## TODO remove this too it's junk
+def plot_gauss(input, output):
+    f=np.array(input)
+    s=np.array(output)
+    ds=1
+    a0, b0, c0 = 60., -3., 0.
+    P0, fp0, fw0 = 80., 11., 2.
+    nlfit, nlpcov = scipy.optimize.curve_fit(GaussPolyBase, f, s, p0=[a0, b0, c0, P0, fp0, fw0], sigma=ds)
+    a, b, c, P, fp, fw = nlfit
+    da, db, dc, dP, dfp, dfw = [np.sqrt(nlpcov[j,j]) for j in range(nlfit.size)]
+    f_fit = np.linspace(0.0, 25., 128)
+    s_fit = GaussPolyBase(f_fit, a, b, c, P, fp, fw)
+    resids = s - GaussPolyBase(f, a, b, c, P, fp, fw)
+    redchisqr = ((resids/ds)**2).sum()/float(f.size-6)
+    fig = plt.figure(1, figsize=(8,8))
+    gs = gridspec.GridSpec(2, 1, height_ratios=[6, 2])
+    ax1 = fig.add_subplot(gs[0])
+    ax1.plot(f_fit, s_fit)
+    ax1.errorbar(f, s, yerr=ds, fmt='or', ecolor='black')
+    ax1.set_xlabel('Semantic Similarity')
+    ax1.set_ylabel('Gesture Distance')
+    ax1.text(0.7, 0.95, 'a = {0:0.1f}$\pm${1:0.1f}'.format(a, da), transform = ax1.transAxes)
+    ax1.text(0.7, 0.90, 'b = {0:0.2f}$\pm${1:0.2f}'.format(b, db), transform = ax1.transAxes)
+    ax1.text(0.7, 0.85, 'c = {0:0.2f}$\pm${1:0.2f}'.format(c, dc), transform = ax1.transAxes)
+    ax1.text(0.7, 0.80, 'P = {0:0.1f}$\pm${1:0.1f}'.format(P, dP), transform = ax1.transAxes)
+    ax1.text(0.7, 0.75, 'fp = {0:0.1f}$\pm${1:0.1f}'.format(fp, dfp), transform = ax1.transAxes)
+    ax1.text(0.7, 0.70, 'fw = {0:0.1f}$\pm${1:0.1f}'.format(fw, dfw), transform = ax1.transAxes)
+    ax1.text(0.7, 0.60, '$\chi_r^2$ = {0:0.2f}'.format(redchisqr),transform = ax1.transAxes)
+    ax1.set_ylim(0, 600000)
+    ax1.set_xlim(0, 1.1)
+    ax1.set_title('$s(f) = a+bf+cf^2+P\,e^{-(f-f_p)^2/2f_w^2}$')
+    ax2 = fig.add_subplot(gs[1])
+    ax2.errorbar(f, resids, yerr = ds, ecolor="black", fmt="ro")
+    ax2.axhline(color="gray", zorder=-1)
+    ax2.set_xlabel('semantic similarity')
+    ax2.set_ylabel('error (residual)')
+    plt.show()
+
+
 
 def print_junk(hs, hg, ls, lg):
     print("high sentence sim: %s" % str(hs))
@@ -1125,6 +1169,24 @@ def get_coords_for_gest(gsm, gid):
     ys = [i['y'] for i in g['keyframes']]
     return xs, ys
 
+# TODO add this to helpers
+def reject_outliers(data, m=2):
+    return data[abs(data - np.mean(data)) < m * np.std(data)]
+
+#TODO add to GSM
+def get_beat_gesture_clusters(gsm):
+    counts = []
+    ks = gsm.GestureClusterer.clusters.keys()
+    for k in ks:
+        counts.append(len(gsm.GestureClusterer.clusters[k]['gestures']))
+    z = zip(ks, counts)
+    r = reject_outliers(np.array(counts))
+    outliers = [x[0] for x in z if x[1] not in r]
+    return outliers
+
+
+
+
 # we need 52-variate with n timestamps
 # example gest 84886
 # 46 time points
@@ -1138,12 +1200,15 @@ def get_coords_for_gest(gsm, gid):
 # template = np.array([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]]).transpose()
 # query = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
 #                   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]]).transpose()
-def try_fastdtw_multivariate(gsm, n=100, dist_threshold=250000):
+def try_fastdtw_multivariate(gsm, n=100, dist_threshold=250000, exclude_beats=True):
+    beat_clusters = get_beat_gesture_clusters(gsm) if exclude_beats else []
     fastdtws = []
     my_ds = []
     sem_sim = []
     keys = gsm.complete_gesture_data.keys()
     sample = random.sample(keys, n)
+    sample = [s for s in sample if gsm.complete_gesture_data[s]['gesture_cluster_id'] not in beat_clusters]
+    print len(sample)
     total_edges = 0
     err = 0
     for k in tqdm(sample):
@@ -1206,3 +1271,34 @@ x1 = ['x1-0', 'x1-1', 'x1-2', 'x1-3', 'x1-4', 'x1-5']
 # ['x0-3', 'x1-3', 'y0-3', 'y1-3'],
 # ['x0-4', 'x1-4', 'y0-4', 'y1-4'],
 # ['x0-5', 'x1-5', 'y0-5', 'y1-5']
+
+def sentence_cluster_only_perfect_match(gsm, threshold=0.99):
+    gsm.SentenceClusterer.clear_clusters()
+    gd = gsm.SentenceClusterer.agd
+    cluster_id = 0
+    for g in tqdm(gd['phrases']):
+        cluster_id += 1
+        # we've already found the cluster for this
+        if 'sentence_cluster_id' in g.keys():
+            continue
+        for k in gd['phrases']:
+            if 'sentence_cluster_id' in k.keys():
+                continue
+            sim = gsm.SentenceClusterer.get_wn_symmetric_similarity(g['phase']['transcript'], k['phase']['transcript'])
+            if sim >= threshold:
+                g['sentence_cluster_id'] = cluster_id
+                k['sentence_cluster_id'] = cluster_id
+        if 'sentence_cluster_id' not in g.keys():
+            g['sentence_cluster_id'] = cluster_id
+    for g in tqdm(gd['phrases']):
+        scid = g['sentence_cluster_id']
+        if scid not in gsm.SentenceClusterer.clusters.keys():
+            gsm.SentenceClusterer.clusters[scid] = {}
+            gsm.SentenceClusterer.clusters[scid]['gestures'] = [g]
+            gsm.SentenceClusterer.clusters[scid]['sentences'] = [g['phase']['transcript']]
+        else:
+            c = gsm.SentenceClusterer.clusters[scid]
+            c['gestures'].append(g)
+            c['sentences'].append(g['phase']['transcript'])
+
+
