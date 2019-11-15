@@ -1,7 +1,8 @@
 #!/usr/bin/env pythons
 from GestureClusterer import *
-from SentenceClusterer3 import *
+from SentenceClusterer1 import *
 from VideoManager import *
+from Analyzer import *
 import json
 import os
 from termcolor import colored
@@ -70,7 +71,7 @@ class GestureSentenceManager():
         self.gesture_sentence_clusters = {}
         self.get_transcript()
         self.agd = None
-        self._initialize_sentence_clusterer()
+        #self._initialize_sentence_clusterer()
         self.VideoManager = VideoManager()
         print "loading gestures"
         self.load_gestures()
@@ -978,7 +979,7 @@ def get_random_gesture_id(gsm):
     return random.choice(ks)
 
 # TODO add to analyzer
-def plot_dist_s_sprime_g_gprime_wn(gsm, gid=None):
+def plot_dist_s_sprime_g_gprime_wn(gsm, gid=None, top_n=10):
     gid = gid if gid else get_random_gesture_id(gsm)
     sentence_similarities = []
     gesture_distances = []
@@ -992,11 +993,20 @@ def plot_dist_s_sprime_g_gprime_wn(gsm, gid=None):
         g1fv = gsm.complete_gesture_data[gid]['feature_vec']
         g2fv = gsm.complete_gesture_data[j]['feature_vec']
         gesture_distances.append(calculate_distance_between_vectors(g1fv, g2fv))
+    comps = zip(sentence_similarities, gesture_distances)
+    comps = sorted(comps, key=lambda x: x[0], reverse=True)
+    high_dists = np.array([x[1] for x in comps[:top_n]])
+    low_dists = np.array([x[1] for x in comps[top_n:]])
+    print "top %s similar gesture average: %s" % (top_n, np.average(high_dists))
+    print "rest of gesture average: %s" % (np.average(low_dists))
+    print "top %s similar gesture std dev: %s" % (top_n, np.std(high_dists))
+    print "rest of gesture std dev: %s" % (np.std(low_dists))
     plt.scatter(sentence_similarities, gesture_distances)
     plt.title('Sentence Similarity vs Gesture Distance')
     plt.xlabel('Sentence Similarity')
     plt.ylabel('Gesture Distance')
     plt.show()
+    return comps
 
 
 def high_sim_vs_reg_sim(gsm, gid=None, n=10):
@@ -1070,6 +1080,7 @@ def plot_high_sim_vs_reg_sim_ratios(gsm, gid=None, n=10, top_n=10):
 
 def plot_junk(srs, grs):
     slope, intercept, r_value, p_value, std_err = stats.linregress(list(srs), list(grs))
+    print "slope %s \n intercept %s \n r=%s" % (slope, intercept, r_value)
     plt.scatter(np.array(srs), np.array(grs))
     plt.plot(np.array(srs), intercept + slope * np.array(grs), 'r')
     plt.title('Top Sentence Similarity to Gesture Distance ratio, r2=%s' % str(r_value ** 2))
@@ -1114,19 +1125,19 @@ def get_coords_for_gest(gsm, gid):
     ys = [i['y'] for i in g['keyframes']]
     return xs, ys
 
-    # we need 52-variate with n timestamps
-    # example gest 84886
-    # 46 time points
-    # need 52 arrays that are 46 long
-    # [x11 x21 x31 x41....] [x21 x22 x23 x24...] [x31 x32 x33 x34...]
-    # [y11 y21 y31 y41....] [y21 y22 y23 y24...] [y31 y32 y33 y34...]
-    # need to turn into
-    # [x(pos)-(time)]
-    # [x1-1 x2-1 x3-1 x4-1 x5-1...x46-1][x1-2 x2-2 x3-2 x4-2 x5-2
-    # 2-variate with 5 timestamps
-    # template = np.array([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]]).transpose()
-    # query = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-    #                   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]]).transpose()
+# we need 52-variate with n timestamps
+# example gest 84886
+# 46 time points
+# need 52 arrays that are 46 long
+# [x11 x21 x31 x41....] [x21 x22 x23 x24...] [x31 x32 x33 x34...]
+# [y11 y21 y31 y41....] [y21 y22 y23 y24...] [y31 y32 y33 y34...]
+# need to turn into
+# [x(pos)-(time)]
+# [x1-1 x2-1 x3-1 x4-1 x5-1...x46-1][x1-2 x2-2 x3-2 x4-2 x5-2
+# 2-variate with 5 timestamps
+# template = np.array([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]]).transpose()
+# query = np.array([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+#                   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]]).transpose()
 def try_fastdtw_multivariate(gsm, n=100, dist_threshold=250000):
     fastdtws = []
     my_ds = []
@@ -1170,7 +1181,16 @@ def try_fastdtw_multivariate(gsm, n=100, dist_threshold=250000):
                 err += 1
     print "total edges: %s" % total_edges
     print "total errors: %s" % err
+    z = zip(sem_sim, fastdtws)
+    z = sorted(z, key=lambda x: x[0], reverse=True)
+    high = np.array([x[1] for x in z[:10]])
+    low = np.array([x[1] for x in z[10:]])
+    print "high sem sim gesture distance avg: %s" % np.average(high)
+    print "low sem sim gesture distance avg: %s" % np.average(low)
+    print "high sem sim gesture std dev: %s" % np.std(high)
+    print "low sem sim gesture std dev: %s" % np.std(low)
     plot_junk(fastdtws, sem_sim)
+    return fastdtws, sem_sim
 
 
 # lame variable test

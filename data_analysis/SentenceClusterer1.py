@@ -116,8 +116,8 @@ class SentenceClusterer():
 
     def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[], include_ids=[]):
         max_number_clusters = max_number_clusters if max_number_clusters else 10000
-        # if not self.has_assigned_feature_vecs:
-        #     self._assign_feature_vectors()
+        if not self.has_assigned_feature_vecs:
+            self._assign_feature_vectors()
         self.max_number_clusters = max_number_clusters
         gd = gesture_data if gesture_data else self.agd
 
@@ -136,8 +136,8 @@ class SentenceClusterer():
         phrases = [g for g in gd['phrases'] if g['id'] not in exclude_gesture_ids]
 
         for g in tqdm(phrases):
-            if 'sentence_embedding' not in g.keys():
-                g['sentence_embedding'] = self.get_sentence_embedding(g['phase']['transcript'])
+            # if 'sentence_embedding' not in g.keys():
+            #     g['sentence_embedding'] = self.get_sentence_embedding(g['phase']['transcript'])
 
             # print "GID: %s" % g['id']
             s = time.time()
@@ -358,7 +358,7 @@ class SentenceClusterer():
         return (nearest_cluster_id, max_sim)
 
     def _get_most_similar_cluster_wn(self, g):
-        max_sim = 0
+        max_sim = -1
         nearest_cluster_id = ''
         for k in self.clusters:
             sim = self._get_avg_similarity_to_cluster(g['phase']['transcript'], k)
