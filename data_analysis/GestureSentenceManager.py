@@ -1,6 +1,6 @@
 #!/usr/bin/env pythons
 from GestureClusterer import *
-from SentenceClusterer1 import *
+from SentenceClusterer import *
 from VideoManager import *
 from Analyzer import *
 import json
@@ -50,9 +50,10 @@ import rpy2.robjects as robj
 # GSM.print_sentences_by_cluster(0)
 # GSM.cluster_sentences_gesture_independent()    or     GSM.cluster_sentences_gesture_independent_under_n_words(10)
 # GSM.assign_gesture_cluster_ids_for_sentence_clusters()
+# GSM.combine_all_gesture_data()
 # Ann = Analyzer(GSM)           # Before this must run GSM.combine_all_gesture_data()
 
-#
+
 #
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
@@ -1313,9 +1314,12 @@ def sentence_cluster_only_perfect_match(gsm, threshold=0.99):
 
 
 def export_csv(gsm):
-    df = pandas.read_csv('hrdata.csv',
-                         index_col='Employee',
-                         parse_dates=['Hired'],
-                         header=0,
-                         names=['Employee', 'Hired', 'Salary', 'Sick Days'])
-    df.to_csv('hrdata_modified.csv')
+    speakers = []
+    sentences = []
+    for k in gsm.complete_gesture_data.keys():
+        g = gsm.complete_gesture_data[k]
+        speakers.append(g['speaker'])
+        sentences.append(g['phase']['transcript'])
+    d = {'speaker': speakers, 'phrase': sentences}
+    df = pd.DataFrame(data=d)
+    df.to_csv('speaker_phrases.csv')
