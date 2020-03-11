@@ -13,8 +13,10 @@ import time
 print "loading nltk"
 ## TODO: use this?
 import nltk
-from nltk.corpus import wordnet as wn
 from nltk import sentiment as sent
+from nltk import word_tokenize, pos_tag
+from nltk.corpus import wordnet as wn
+
 
 tf.compat.v1.disable_eager_execution()
 
@@ -37,20 +39,10 @@ class SentenceClusterer():
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
         self.clusters = {}
         self.logs = []
-        if(len(seeds)):
-            for seed_g in seeds:
-                g = self._get_gesture_by_id(seed_g, all_gesture_data)
-                cluster_id = self.c_id
-                self.c_id = self.c_id + 1
-                c = {
-                        'cluster_id': cluster_id,
-                        'seed_id': g['id'],
-                        'gestures': [g['id']],
-                        'sentences': [g['phase']['transcript']]}
-                self.clusters[cluster_id] = c
         self.agd = None
-        self.c_id = 0
         self.get_transcript()
+        self.c_id = 0
+        # TODO implement seed gestures
 
     def initialize_encoder(self, module):
         with tf.compat.v1.Graph().as_default():
@@ -68,6 +60,7 @@ class SentenceClusterer():
                       "%s_timings_with_transcript.json" % self.speaker,
                       fp)
         self.agd = read_data(fp)
+        os.remove("temp.json")
 
     def encode_sentence(self, item):
         return self.embed_fn(item)
@@ -123,8 +116,8 @@ class SentenceClusterer():
 
     def cluster_sentences(self, gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=[], include_ids=[]):
         max_number_clusters = max_number_clusters if max_number_clusters else 10000
-        # if not self.has_assigned_feature_vecs:
-        #     self._assign_feature_vectors()
+        if not self.has_assigned_feature_vecs:
+            self._assign_feature_vectors()
         self.max_number_clusters = max_number_clusters
         gd = gesture_data if gesture_data else self.agd
 
@@ -143,15 +136,15 @@ class SentenceClusterer():
         phrases = [g for g in gd['phrases'] if g['id'] not in exclude_gesture_ids]
 
         for g in tqdm(phrases):
-            if 'sentence_embedding' not in g.keys():
-                g['sentence_embedding'] = self.get_sentence_embedding(g['phase']['transcript'])
+            # if 'sentence_embedding' not in g.keys():
+            #     g['sentence_embedding'] = self.get_sentence_embedding(g['phase']['transcript'])
 
             # print "GID: %s" % g['id']
             s = time.time()
             i = i + 1
             # print("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
             self._log("finding cluster for gesture %s (%s/%s)" % (g['id'], i, l))
-            (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster(g)
+            (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster_wn(g)
             # we're further away than we're allowed to be, OR this is the first cluster.
             if len(self.clusters) > max_number_clusters:
                 # print "%s over max number clusters %s" % (len(self.clusters), max_number_clusters)
@@ -177,7 +170,8 @@ class SentenceClusterer():
         #self._recluster_by_centroids(phrases)
         # TODO do need some sort of reclustering I think...
         # self._recluster_singletons()
-        self._add_sentence_cluster_ids
+        self._add_sentence_cluster_ids()
+        self._add_nearest_cluster()
 
     def _recluster_by_centroids(self, phrases):
         print "reclustering by centroids"
@@ -189,13 +183,36 @@ class SentenceClusterer():
             (nearest_cluster_id, cluster_sim) = self._get_most_similar_cluster(g)
             self._add_gesture_to_cluster(g, nearest_cluster_id)
 
-
     def _add_sentence_cluster_ids(self):
         for k in self.clusters:
             c = self.clusters[k]
             for g in c['gestures']:
                 g['sentence_cluster_id'] = k
         return
+
+    def _add_nearest_cluster(self):
+        keys = self.clusters.keys()
+        for elem in self.clusters:
+            k = keys.pop()
+            c = self.clusters[k]
+            nearest_cluster_id = ''
+            max_sim = 0
+            for g in c['gestures']:
+                # go through the rest of the keys
+                for el in keys:
+                    sim = self._get_avg_dist_between_clusts(k, el)
+                    if sim > max_sim:
+                        max_sim = sim
+                        nearest_cluster_id = el
+            self.clusters[k]['nearest_cluster_id'] = nearest_cluster_id
+
+    def _get_avg_dist_between_clusts(self, c1_id, c2_id):
+        sims = []
+        for g in self.clusters[c1_id]['gestures']:
+            for g2 in self.clusters[c2_id]['gestures']:
+                sims.append(self.get_wn_symmetric_similarity(g['phase']['transcript'], g2['phase']['transcript']))
+        avgs = np.array(sims)
+        return np.average(avgs)
 
     def count_sentence_clusters_of_gesture(self, g_id):
         count = 0
@@ -215,7 +232,6 @@ class SentenceClusterer():
             # this is like updating the centroid.
         self.clusters[cluster_id]['cluster_embedding'] = self.embed_fn(self.clusters[cluster_id]['sentences'])
         g['sentence_cluster_id'] = cluster_id
-
 
     def _break_cluster(self, cluster_id):
         print "breaking up cluster %s" % cluster_id
@@ -255,7 +271,6 @@ class SentenceClusterer():
             self._add_gesture_to_cluster(self.clusters[single_id]['gestures'][0], most_sim_cluster_id)
             del self.clusters[single_id]
 
-
     def create_new_cluster_by_gestures(self, gests):
         new_cluster_id = self.c_id
         sents = [g['phase']['transcript'] for g in gests]
@@ -285,7 +300,6 @@ class SentenceClusterer():
         e = time.time()
         # print "time to create new cluster: %s" % str(e-s)
         self.clusters[new_cluster_id] = c
-
 
     def report_clusters(self, verbose=False):
         print("Number of clusters: %s" % len(self.clusters))
@@ -343,7 +357,22 @@ class SentenceClusterer():
         # print "time to get similar cluster: %s" % str(e-s)
         return (nearest_cluster_id, max_sim)
 
+    def _get_most_similar_cluster_wn(self, g):
+        max_sim = -1
+        nearest_cluster_id = ''
+        for k in self.clusters:
+            sim = self._get_avg_similarity_to_cluster(g['phase']['transcript'], k)
+            if sim > max_sim:
+                nearest_cluster_id = k
+                max_sim = sim
+        return (nearest_cluster_id, max_sim)
 
+    def _get_avg_similarity_to_cluster(self, sentence, cluster_id):
+        c = self.clusters[cluster_id]
+        sims = []
+        for s in c['sentences']:
+            sims.append(self.get_wn_symmetric_similarity(sentence, s))
+        return np.average(np.array(sims))
 
     def count_videos_with_phrase(self, phrase):
         vids = []
@@ -360,7 +389,6 @@ class SentenceClusterer():
         print len(list(set(vids)))
         return list(set(zip(vids, counts))).sorted(key=lambda x: x[1])
 
-
     def find_cluster_ids_for_phrase(self, phrase):
         c_ids = []
         total = 0
@@ -376,7 +404,6 @@ class SentenceClusterer():
         print "total occurances: %s" % total
         return c_ids.sorted(key=lambda x: x[1])
 
-
     def _log(self, s):
         self.logs.append(s)
 
@@ -385,7 +412,6 @@ class SentenceClusterer():
             for l in self.logs:
                 f.write("%s\n" % l)
         f.close()
-
 
     # takes cluster id, returns cluster id of nearest neighbor
     def get_nearest_neighbor_cluster(self, cluster_id):
@@ -399,7 +425,6 @@ class SentenceClusterer():
                 max_sim = sim
                 nearest_neighbor = k
         return nearest_neighbor
-
 
     def get_silhouette_score_for_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
@@ -430,107 +455,64 @@ class SentenceClusterer():
             scores.append(self.get_silhouette_score_for_cluster(c))
         return np.average(np.array(scores))
 
-    ## TODO make use of these?
-    #############################################################
-    ####### EVERYTHING BELOW HERE IS NOT IN USE YET #############
-    # def wnexpand(set):
-    #       res=Set(set)
-    #       #print res
-    #       lst = []
-    #       for w in set:
-    #        for ss in wn.synsets(morph(w)):
-    #          top = Set(ss.lemma_names())
-    #          res = res.union(top)
-    #          for sim in ss.similar_tos():
-    #              res=res.union(Set(sim.lemma_names()))
-    #       for u in res:
-    #        lst.append(u.encode('ascii','ignore'))
-    #       return lst
-    #
-    #
-    # def morph(w0):
-    #       u = wn.morphy(str(w0))
-    #       if (u == None):
-    #        #print w0
-    #        return w0
-    #       else:
-    #        w = u.encode('ascii','ignore')
-    #        print w
-    #        return w
-    #
-    # def get_hypernyms(w0):
-    #     syn = wn.synsets(w0)
-    #
-    #     ## dunno when TF this happens
-    #     if type(syn) != list:
-    #         return syn.name()
-    #     ## sometimes it's an empty list??
-    #     elif len(syn) == 0:
-    #         return []
-    #
-    #     # most of the time I want hypernyms tho
-    #     hyp_list = list(set([hy.name().split('.')[0] for hy in syn]))
-    #     return hyp_list
-    #
-    #
-    # def get_sentence_sentiment_vector(self, sent, sentiment_model):
-    #     sent_vec =[]
-    #     numw = 0
-    #     for w in sent:
-    #         try:
-    #             if numw == 0:
-    #                 sent_vec = sentiment_model[w]
-    #             else:
-    #                 sent_vec = np.add(sent_vec, sentiment_model[w])
-    #             numw+=1
-    #         except:
-    #             pass
-    #     return np.asarray(sent_vec) / numw
-    #
-    #
-    # def cluster_by_sentiment(self, transcript=None):
-    #     print "clustering by sentiment"
-    #     trans = transcript if transcript else self.transcript_with_timings
-    #     sentences = self.get_sentences(trans)
-    #     sentences = self._drop_empties(sentences)
-    #     sentiment_model = Word2Vec(sentences, min_count=1)
-    #     X= map(lambda s: self.get_sentence_sentiment_vector(s, sentiment_model), sentences)
-    #
-    #     kclusterer = KMeansClusterer(NUM_CLUSTERS, distance=nltk.cluster.util.cosine_distance, repeats=25)
-    #     assigned_clusters = kclusterer.cluster(X, assign_clusters=True)
-    #
-    #     kmeans_sentiment = cluster.KMeans(n_clusters=NUM_CLUSTERS)
-    #     kmeans_sentiment.fit(X)
-    #
-    #     labels = kmeans_sentiment.labels_
-    #     centroids = kmeans_sentiment.cluster_centers_
-    #
-    #     silhouette_score = metrics.silhouette_score(X, labels, metric='euclidean')
-    #     model = TSNE(n_components=2, random_state=0)
-    #     np.set_printoptions(suppress=True)
-    #     Y=model.fit_transform(X)
-    #     plt.scatter(Y[:, 0], Y[:, 1], c=assigned_clusters, s=290,alpha=.5)
-    #
-    #     for j in range(len(sentences)):
-    #        plt.annotate(assigned_clusters[j],xy=(Y[j][0], Y[j][1]),xytext=(0,0),textcoords='offset points')
-    #        print ("%s %s" % (assigned_clusters[j],  sentences[j]))
-    #
-    #     return kmeans_sentiment
-    #
-    # def _drop_empties(self, v):
-    #     print "Dropping %s empty strings." % v.count('')
-    #     return [i for i in v if i != '']
-    #
-    # def cluster_by_tfidf(self, transcript):
-    #     print "clustering by hypernym"
-    #     hypernyms = self.get_hypernyms(transcript)
-    #
-    #     hypes_list = [x['hypernyms'] for x in hypernyms]
-    #     joined_lists = [' '.join(l) for l in hypes_list]
-    #
-    #     tfidf_vectorizer = TfidfVectorizer()
-    #     tfidf = tfidf_vectorizer.fit_transform(joined_lists)
-    #
-    #     tdidf_kmeans = KMeans(n_clusters=NUM_CLUSTERS).fit(tfidf)
-    #
-    #     return tdidf_kmeans
+    def get_wn_symmetric_similarity(self, s1, s2):
+        sim = (get_wordnet_similarity(s1, s2) + get_wordnet_similarity(s2, s1)) / 2
+        # TODO make this better
+        # if not sim:
+        #     print "No similarity found for sentnces \n%s \n %s" % (s1, s2)
+        return sim
+
+# TODO come up with way to cache similarity between sentences so it only has to be computed
+# once per gesture... does this work though? is there any way around computing similarity between
+# EVERY sentence? POTENTIALLY MULTIPLE TIMES??
+
+def get_wordnet_similarity(s1, s2):
+    """ compute the sentence similarity using Wordnet """
+    # Tokenize and tag
+    s1 = pos_tag(word_tokenize(s1))
+    s2 = pos_tag(word_tokenize(s2))
+    # Get the synsets for the tagged words
+    synsets1 = [tagged_to_synset(*tagged_word) for tagged_word in s1]
+    synsets2 = [tagged_to_synset(*tagged_word) for tagged_word in s2]
+    # Filter out the Nones
+    synsets1 = [ss for ss in synsets1 if ss]
+    synsets2 = [ss for ss in synsets2 if ss]
+    score, count = 0.0, 0
+    # For each word in the first sentence
+    for synset in synsets1:
+        # Get the similarity value of the most similar word in the other sentence
+        scores = [synset.path_similarity(ss) for ss in synsets2]
+        if len(scores):
+            best_score = max(scores)
+            # Check that the similarity could have been computed
+            if best_score is not None:
+                score += best_score
+                count += 1
+    # Average the values
+    if not count:
+        # TODO find better metric for this
+        return 0
+    score /= count
+    return score
+
+def penn_to_wn(tag):
+    """ Convert between a Penn Treebank tag to a simplified Wordnet tag """
+    if tag.startswith('N'):
+        return 'n'
+    if tag.startswith('V'):
+        return 'v'
+    if tag.startswith('J'):
+        return 'a'
+    if tag.startswith('R'):
+        return 'r'
+    return None
+
+def tagged_to_synset(word, tag):
+    wn_tag = penn_to_wn(tag)
+    if wn_tag is None:
+        return None
+    try:
+        return wn.synsets(word, wn_tag)[0]
+    except:
+        return None
+

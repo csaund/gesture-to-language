@@ -3,6 +3,7 @@ from __future__ import division
 import json
 import os
 import nltk
+import numpy as np
 
 devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
@@ -129,3 +130,6 @@ def filter_words_out_by_syntax(words, wordtype="NN"):
 def flatten(l):
     flat_list = [item for sublist in l for item in sublist]
     return flat_list
+
+def calculate_distance_between_vectors(v1, v2):
+    return np.linalg.norm(np.array(v1) - np.array(v2))

@@ -58,7 +58,7 @@ def match_transcript_to_timing(timings):
             continue
 
         if len(trans) == 0:
-            print "Something is going wrong. Aborting video transcript"
+            print "Length of transcript is 0. Aborting transcript timing matching."
             continue
 
         all_words = sorted(flatten([t['words'] for t in trans]), key=word_sort)

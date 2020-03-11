@@ -529,6 +529,7 @@ class GestureClusterer():
     def _get_keypoints_body_range(self, gesture, start, end):
         keys = []
         if not gesture['keyframes']:
+            #
             print "OH NO"
             print gesture
             return
@@ -672,22 +673,14 @@ class GestureClusterer():
             scores.append(self.get_silhouette_score(g))
         return self._avg(scores)
 
-#
-#
-# def get_closest_gesture_to_centroid(GSM, cluster_id):
-#     c = GSM.Clusterer.clusters[cluster_id]
-#     cent = c['centroid']
-#     min_d = 1000
-#     g_id = 0
-#     for g in c['gestures']:
-#         dist = GSM.Clusterer._calculate_distance_between_vectors(g['feature_vec'], cent)
-#         if dist < min_d:
-#             g_id = g['id']
-#             dist = min_d
-#     return g_id
-#
-#
-# def get_random_gesture_id_from_cluster(GSM, cluster_id):
-#     c = GSM.Clusterer.clusters[cluster_id]
-#     i = random.randrange(0, len(c['gestures']))
-#     return c['gestures'][i]['id']
+
+# our basic problem is that we need to figure out how to map distances between motions that are very long
+# vectors, and different lengths of keyframes. But we need to distinguish between the speed of those motions
+# as well...
+
+# Another big issue is that individuals get clustered together BECAUSE their large-scale movements are
+# similar. But this might not be so much of an issue... if we find patterns that are common to a movement pattern,
+# then it's just a case of a gesture cluster representing a personality that expresses a particular trait.
+
+
+# Silhouette scores for clusters are a good way of determining how many "base" gestures there may be??
