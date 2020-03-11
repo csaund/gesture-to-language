@@ -14,6 +14,15 @@ from sklearn.neighbors.nearest_centroid import NearestCentroid
 
 from common_helpers import *
 
+
+# semantics -- wn / tf
+# rhetorical
+# metaphorical
+# sentiment
+# prosody
+# motion dynamics
+
+
 # do difference between t1 and t2 for same frame,
 # and also difference between p1, p2, p3 etc at same frame
 # maybe get r_arm_distance_spread,      l_arm_distance_spread,     r_hand_distance_spread, l_hand_distance_spread
