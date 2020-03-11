@@ -312,6 +312,11 @@ class GestureClusterer():
         self._log("time to update centroid: %s" % str(e-s))
         return
 
+    ############################################################
+    #################### MOVEMENT CHARACTERISTICS ##############
+    ############################################################
+
+
     # returns minimum distance at any frame between point A on right hand and
     # point A on left hand.
     def _min_hands_together(self, gesture):
@@ -503,17 +508,15 @@ class GestureClusterer():
     ## Co-optimize gesture-language clustering (learn how)
     ## KL distance for two clusters?
 
-    ## Frame intro of paper
-
     # learn similarity of sentences from within one gesture
     # how to map gesture clusters <--> sentence clusters
     ## in the end want to optimize overlapping clusters btw gesture/language
 
     # probabilistic mapping of sentence (from gesture) to sentence cluster
 
-    ########################################################
-    ####################### Helpers ########################
-    ########################################################
+    ##############################################################
+    ####################### Helpers/Calcs ########################
+    ##############################################################
     def _avg(self, v):
         return float(sum(v) / len(v))
 
@@ -597,13 +600,16 @@ class GestureClusterer():
     def delete_log_file(self):
         os.remove(self.logfile)
 
-    ## a random helper for me to find centroids.
+    ## a random helper for me to find centroids
+    ## and peep average distances
     def _calc_dist_between_random_gestures(self):
         i = random.randrange(0, len(self.agd))
         j = random.randrange(0, len(self.agd))
         return self._calculate_distance_between_vectors(self.agd[i]['feature_vec'], self.agd[j]['feature_vec'])
 
 
+    ## lol this is wrong.
+    ## goes through each gesture twice (which actually might calculate right value but is wrong theoretically)
     def get_avg_within_cluster_distances(self, cluster_id):
         c = self.clusters[cluster_id]
         gs = c['gestures']
