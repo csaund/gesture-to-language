@@ -8,3 +8,4 @@
 *.pyc
 rock-clusters.json
 *.json
+venv/
