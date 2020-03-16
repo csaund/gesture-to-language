@@ -41,6 +41,7 @@ import rpy2.robjects as robj
 
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
+# sys.path.extend(['C:/Users/carolyns/PycharmProjects/gesture-to-language/data_analysis'])
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.downsample_speaker()
@@ -74,7 +75,7 @@ class GestureSentenceManager():
         self.agd = None
         #self._initialize_sentence_clusterer()
         self.VideoManager = VideoManager()
-        print "loading gestures"
+        print("loading gestures")
         self.load_gestures()
         self.GestureClusterer = GestureClusterer(self.agd)
 
