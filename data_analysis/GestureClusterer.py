@@ -3,8 +3,6 @@ from __future__ import division
 print "importing libs for GestureClusterer"
 import json
 import os
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import operator
 import random
