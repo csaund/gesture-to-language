@@ -2,7 +2,7 @@
 *.mkv
 *.png
 .idea*
-*.txt
+*_logs.txt
 *tmp
 *.wav
 *.pyc
