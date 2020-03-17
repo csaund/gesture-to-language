@@ -46,6 +46,7 @@ import numpy as np
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.downsample_speaker()
+# GSM.initialize_sentence_clusterer()
 # GSM.cluster_gestures()    or    GSM.cluster_gestures_under_n_words(10)
 # GSM.test_k_means_gesture_clusters()
 # report = GSM.report_clusters()
