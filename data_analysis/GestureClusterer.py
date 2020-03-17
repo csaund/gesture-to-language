@@ -85,8 +85,9 @@ class GestureClusterer():
         self.clf = NearestCentroid()
         self.logs = []
         # todo make this variable
-        self.logfile = "%s/github/gesture-to-language/cluster_logs.txt" % os.getenv("HOME")
-        self.cluster_file = "%s/github/gesture-to-language/cluster_tmp.json" % os.getenv("HOME")
+        homePath = os.getenv("HOME")
+        self.logfile = os.path.join(homePath, "GestureData", "cluster_logs.txt")
+        self.cluster_file = os.path.join(homePath, "GestureData", "cluster_tmp.json")
         self.has_assigned_feature_vecs = False
         self.total_clusters_created = 0
         ## hacky way to work around some malformatted data.

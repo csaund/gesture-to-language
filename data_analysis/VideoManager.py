@@ -16,7 +16,7 @@ class VideoManager():
         print("initializing Video Manager")
         homePath = os.getenv("HOME")
         self.base_path = os.path.join(homePath, "GestureData")
-        self.temp_output_path = 'temp_video.mp4'
+        self.temp_output_path = os.path.join(self.base_path, 'tmp', 'temp_video.mp4')
         self.df = pd.read_csv(os.path.join(self.base_path, "intervals_df.csv"))
 
     def get_video_clip(self, video_fn, start_seconds, end_seconds):
