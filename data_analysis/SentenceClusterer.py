@@ -1,6 +1,6 @@
-print "loading tf"
+print("loading tf")
 import tensorflow as tf
-print "loading tfh"
+print("loading tfh")
 import tensorflow_hub as hub
 import random
 import numpy as np
@@ -10,7 +10,7 @@ from termcolor import colored
 
 import time
 
-print "loading nltk"
+print("loading nltk")
 ## TODO: use this?
 import nltk
 from nltk import sentiment as sent
@@ -32,7 +32,7 @@ MAX_NUMBER_CLUSTERS = 10000
 class SentenceClusterer():
     def __init__(self, speaker, seeds=[]):
         self.speaker = speaker
-        print "oh boy we're in for it now."
+        print("oh boy we're in for it now.")
         self.embed_fn = self.initialize_encoder("https://tfhub.dev/google/universal-sentence-encoder/2")
         self.has_assigned_feature_vecs = False
         self.logfile = "%s/gesture-to-language/sentence_cluster_logs.txt" % os.getenv("HOME")
@@ -130,7 +130,7 @@ class SentenceClusterer():
 
         i = 0
         l = len(gd)
-        print "Clustering sentences, excluding %s gestures" % str(len(exclude_gesture_ids))
+        print("Clustering sentences, excluding %s gestures" % str(len(exclude_gesture_ids)))
 
         #double filter?
         phrases = [g for g in gd['phrases'] if g['id'] not in exclude_gesture_ids]
@@ -166,7 +166,7 @@ class SentenceClusterer():
             e = time.time()
             # print "time to cluster sentence: %s" % str(e-s)
         # now recluster based on where the new centroids are
-        print "created %s clusters" % len(self.clusters)
+        print("created %s clusters" % len(self.clusters))
         #self._recluster_by_centroids(phrases)
         # TODO do need some sort of reclustering I think...
         # self._recluster_singletons()
@@ -174,7 +174,7 @@ class SentenceClusterer():
         self._add_nearest_cluster()
 
     def _recluster_by_centroids(self, phrases):
-        print "reclustering by centroids"
+        print("reclustering by centroids")
         for k in self.clusters:
             c = self.clusters[k]
             c['gestures'] = []
@@ -191,7 +191,7 @@ class SentenceClusterer():
         return
 
     def _add_nearest_cluster(self):
-        keys = self.clusters.keys()
+        keys = list(self.clusters.keys())
         for elem in self.clusters:
             k = keys.pop()
             c = self.clusters[k]
@@ -216,7 +216,7 @@ class SentenceClusterer():
 
     def count_sentence_clusters_of_gesture(self, g_id):
         count = 0
-        for k in self.clusters.keys():
+        for k in list(self.clusters.keys()):
             c = self.clusters[k]
             for g in c['gestures']:
                 if g['id'] == g_id:
@@ -234,7 +234,7 @@ class SentenceClusterer():
         g['sentence_cluster_id'] = cluster_id
 
     def _break_cluster(self, cluster_id):
-        print "breaking up cluster %s" % cluster_id
+        print("breaking up cluster %s" % cluster_id)
         # first, get furthest sentence
         c = self.clusters[cluster_id]
         gs = c['gestures']
@@ -255,7 +255,7 @@ class SentenceClusterer():
 
     def _assign_feature_vectors(self, gesture_data=None):
         gd = gesture_data if gesture_data else self.agd
-        print "Getting initial feature vectors."
+        print("Getting initial feature vectors.")
         phrases = gd['phrases']
         for g in tqdm(phrases):
             g['sentence_embedding'] = self.get_sentence_embedding(g['phase']['transcript'])
@@ -265,7 +265,7 @@ class SentenceClusterer():
 
     # I think this is eating sentences?
     def _recluster_singletons(self):
-        single_cluster_ids = [self.clusters[c]['cluster_id'] for c in self.clusters.keys() if len(self.clusters[c]['sentences']) == 1]
+        single_cluster_ids = [self.clusters[c]['cluster_id'] for c in list(self.clusters.keys()) if len(self.clusters[c]['sentences']) == 1]
         for single_id in single_cluster_ids:
             (most_sim_cluster_id, sim) = self._get_most_similar_cluster(self.clusters[single_id]['gestures'][0])
             self._add_gesture_to_cluster(self.clusters[single_id]['gestures'][0], most_sim_cluster_id)
@@ -302,15 +302,15 @@ class SentenceClusterer():
         self.clusters[new_cluster_id] = c
 
     def report_clusters(self, verbose=False):
-        print("Number of clusters: %s" % len(self.clusters))
+        print(("Number of clusters: %s" % len(self.clusters)))
         num_clusters = len(self.clusters)
-        cluster_lengths = [len(self.clusters[c]['sentences']) for c in self.clusters.keys()]
-        print("Cluster lengths and ids: %s" % zip(self.clusters.keys(), cluster_lengths))
-        print("Avg cluster size: %s" % np.average(cluster_lengths))
-        print("Median cluster size: %s" % np.median(cluster_lengths))
-        print("Largest cluster size: %s" % max(cluster_lengths))
-        print("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd['phrases'])))
-        print("avg silhouette score:" % self.get_silhouette_scores())
+        cluster_lengths = [len(self.clusters[c]['sentences']) for c in list(self.clusters.keys())]
+        print(("Cluster lengths and ids: %s" % list(zip(list(self.clusters.keys()), cluster_lengths))))
+        print(("Avg cluster size: %s" % np.average(cluster_lengths)))
+        print(("Median cluster size: %s" % np.median(cluster_lengths)))
+        print(("Largest cluster size: %s" % max(cluster_lengths)))
+        print(("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd['phrases']))))
+        print(("avg silhouette score:" % self.get_silhouette_scores()))
         # TODO: average and median centroid distances from each other.
         # TODO: also get minimum and maximum centroid distances.
         return self.clusters
@@ -325,15 +325,15 @@ class SentenceClusterer():
         colors = ['red', 'blue']
         for i, s in enumerate(sents):
             if s:
-                print colored("%s. %s" % (i, s), colors[c])
+                print(colored("%s. %s" % (i, s), colors[c]))
                 if c:
                     c = 0
                 else:
                     c = 1
             else:
                 empties += 1
-        print "Along with %s empty strings." % empties
-        print
+        print("Along with %s empty strings." % empties)
+        print()
 
     ## instead of this need to use centroid.
     def _get_most_similar_cluster(self, g):
@@ -385,14 +385,14 @@ class SentenceClusterer():
         counts = []
         for vid in vids:
             counts.append(vids.count(vid))
-        print "total occurances: %s" % total
-        print len(list(set(vids)))
+        print("total occurances: %s" % total)
+        print(len(list(set(vids))))
         return list(set(zip(vids, counts))).sorted(key=lambda x: x[1])
 
     def find_cluster_ids_for_phrase(self, phrase):
         c_ids = []
         total = 0
-        for c in self.clusters.keys():
+        for c in list(self.clusters.keys()):
             count = 0
             for s in self.clusters[c]['sentences']:
                 if phrase in s.lower():
@@ -401,7 +401,7 @@ class SentenceClusterer():
                 c_ids.append((self.clusters[c]['cluster_id'], count))
                 total += count
 
-        print "total occurances: %s" % total
+        print("total occurances: %s" % total)
         return c_ids.sorted(key=lambda x: x[1])
 
     def _log(self, s):
@@ -416,7 +416,7 @@ class SentenceClusterer():
     # takes cluster id, returns cluster id of nearest neighbor
     def get_nearest_neighbor_cluster(self, cluster_id):
         max_sim = 0
-        nearest_neighbor = self.clusters.keys()[0]
+        nearest_neighbor = list(self.clusters.keys())[0]
         for k in self.clusters:
             if k == cluster_id:
                 continue
