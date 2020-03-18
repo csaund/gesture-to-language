@@ -18,10 +18,6 @@ devKey = str(open("%s" % os.getenv("devKey"), "r").read()).strip()
 from google.cloud import storage
 from common_helpers import *
 
-from textable import TexTable
-
-# from matplotlib_venn import venn3, venn3_circles
-# from matplotlib import pyplot as plt
 from pandas.plotting import parallel_coordinates
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -57,7 +53,6 @@ import numpy as np
 # Ann = Analyzer(GSM)           # Before this must run GSM.combine_all_gesture_data()
 
 
-#
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.GestureClusterer.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
