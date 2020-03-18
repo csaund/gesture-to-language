@@ -1,12 +1,12 @@
-from __future__ import division
+
 #!/usr/bin/env pythons
 import json
 import os
 import nltk
 import numpy as np
 
-devKey = str(open("%s/devKey" % os.getenv("HOME"), "r").read()).strip()
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
+devKey = str(open("%s" % os.getenv("devKey"), "r").read()).strip()
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 from google.cloud import storage
 ########################################################
@@ -67,9 +67,9 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(source_blob_name)
     blob.download_to_filename(destination_file_name)
-    print('Blob {} downloaded to {}.'.format(
+    print(('Blob {} downloaded to {}.'.format(
         source_blob_name,
-        destination_file_name))
+        destination_file_name)))
 
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""

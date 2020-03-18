@@ -1,10 +1,8 @@
-from __future__ import division
+
 #!/usr/bin/env pythons
-print "importing libs for GestureClusterer"
+print("importing libs for GestureClusterer")
 import json
 import os
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import operator
 import random
@@ -87,8 +85,9 @@ class GestureClusterer():
         self.clf = NearestCentroid()
         self.logs = []
         # todo make this variable
-        self.logfile = "%s/github/gesture-to-language/cluster_logs.txt" % os.getenv("HOME")
-        self.cluster_file = "%s/github/gesture-to-language/cluster_tmp.json" % os.getenv("HOME")
+        homePath = os.getenv("HOME")
+        self.logfile = os.path.join(homePath, "GestureData", "cluster_logs.txt")
+        self.cluster_file = os.path.join(homePath, "GestureData", "cluster_tmp.json")
         self.has_assigned_feature_vecs = False
         self.total_clusters_created = 0
         ## hacky way to work around some malformatted data.
@@ -102,9 +101,9 @@ class GestureClusterer():
 
     def cluster_gestures_disparate_seeds(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=250):
         gd = gesture_data if gesture_data else self.agd
-        if 'feature_vec' in gd[0].keys():
-            print "already have feature vectors in our gesture data"
-        if not self.has_assigned_feature_vecs and 'feature_vec' not in gd[0].keys():
+        if 'feature_vec' in list(gd[0].keys()):
+            print("already have feature vectors in our gesture data")
+        if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
             self._assign_feature_vectors()
 
         # randomly sample for now, even though we know that's not the best way to do it at all.
@@ -115,9 +114,9 @@ class GestureClusterer():
 
     def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=0, seed_ids=[]):
         gd = gesture_data if gesture_data else self.agd
-        if 'feature_vec' in gd[0].keys():
-            print "already have feature vectors in our gesture data"
-        if not self.has_assigned_feature_vecs and 'feature_vec' not in gd[0].keys():
+        if 'feature_vec' in list(gd[0].keys()):
+            print("already have feature vectors in our gesture data")
+        if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
             self._assign_feature_vectors()
 
         # if we're seeding our clusters with specific gestures
@@ -128,7 +127,7 @@ class GestureClusterer():
 
         i = 0
         l = len(gd)
-        print "Clustering gestures"
+        print("Clustering gestures")
         for g in tqdm(gd):
             start = time.time()
             i = i + 1
@@ -158,11 +157,11 @@ class GestureClusterer():
         # now recluster based on where the new centroids are
         self._recluster_by_centroids()
         self._write_logs()
-        print "created %s clusters" % self.total_clusters_created
+        print("created %s clusters" % self.total_clusters_created)
 
     def _recluster_singletons(self):
-        print "reclustering singletons"
-        for k in self.clusters.keys():
+        print("reclustering singletons")
+        for k in list(self.clusters.keys()):
             if len(self.clusters[k]['gestures']) == 1:
                 g = self.clusters[k]['gestures'][0]
                 (new_k, dist) = self._get_shortest_cluster_dist(g)
@@ -180,17 +179,17 @@ class GestureClusterer():
         gd = gesture_data if gesture_data else self.agd
         empty_vec = self._create_empty_feature_vector()
 
-        print "Getting initial feature vectors."
+        print("Getting initial feature vectors.")
         for g in tqdm(gd):
             if type(g['keyframes']) == type(None):
-                print "found empty vector"
+                print("found empty vector")
                 ## TODO fix this
                 g['feature_vec'] = empty_vec
             else:
                 g['feature_vec'] = self._get_gesture_features(g)
 
         empties = [g for g in self.agd if g['feature_vec'] == empty_vec]
-        print "dropping %s empty vectors from gesture clusters" % str(len(empties))
+        print("dropping %s empty vectors from gesture clusters" % str(len(empties)))
         # hacky ways to fix malformatted data
         self.agd = [g for g in self.agd if g['feature_vec'] != empty_vec]
         self.agd = [g for g in self.agd if g['id'] not in self.drop_ids]
@@ -200,13 +199,13 @@ class GestureClusterer():
         return
 
     def _normalize_feature_values(self, gesture_data=None):
-        print "Normalizing feature vectors."
+        print("Normalizing feature vectors.")
         gd = gesture_data if gesture_data else self.agd
         feat_vecs = np.array([g['feature_vec'] for g in self.agd])
-        feats_norm = np.array(map(lambda v: v / np.linalg.norm(v), feat_vecs.T))
+        feats_norm = np.array([v / np.linalg.norm(v) for v in feat_vecs.T])
         feat_vecs_normalized = feats_norm.T
-        print "Reassigning normalized vectors"
-        for i in tqdm(range(len(gd))):
+        print("Reassigning normalized vectors")
+        for i in tqdm(list(range(len(gd)))):
             gd[i]['feature_vec'] = list(feat_vecs_normalized[i])
         return
 
@@ -225,7 +224,7 @@ class GestureClusterer():
     # now that we've done the clustering, recluster and only allow clusters to form around current centroids.
     def _recluster_by_centroids(self):
         gd = self.agd
-        print "Reclustering by centroid"
+        print("Reclustering by centroid")
         # clear old gestures
         randc = 0
         for c in self.clusters:
@@ -257,19 +256,19 @@ class GestureClusterer():
         return ids
 
     def report_clusters(self, verbose=False):
-        print("Number of clusters: %s" % len(self.clusters))
-        cluster_rep = [(c, len(self.clusters[c]['gestures'])) for c in self.clusters.keys()]
-        cluster_lengths = [len(self.clusters[c]['gestures']) for c in self.clusters.keys()]
-        print("Cluster lengths: %s" % cluster_rep)
-        print("Avg cluster size: %s" % np.average(cluster_lengths))
-        print("Median cluster size: %s" % np.median(cluster_lengths))
-        print("Largest cluster size: %s" % max(cluster_lengths))
-        cluster_sparsity = [self.get_cluster_sparsity(c) for c in self.clusters.keys()]
-        print("Cluster sparsities: %s" % cluster_sparsity)
-        print("Avg cluster sparsity: %s" % np.average(cluster_sparsity))
-        print("Median cluster sparsity: %s" % np.median(cluster_sparsity))
-        print("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd)))
-        print "silhouette score: %s" % self.get_avg_silhouette_score()
+        print(("Number of clusters: %s" % len(self.clusters)))
+        cluster_rep = [(c, len(self.clusters[c]['gestures'])) for c in list(self.clusters.keys())]
+        cluster_lengths = [len(self.clusters[c]['gestures']) for c in list(self.clusters.keys())]
+        print(("Cluster lengths: %s" % cluster_rep))
+        print(("Avg cluster size: %s" % np.average(cluster_lengths)))
+        print(("Median cluster size: %s" % np.median(cluster_lengths)))
+        print(("Largest cluster size: %s" % max(cluster_lengths)))
+        cluster_sparsity = [self.get_cluster_sparsity(c) for c in list(self.clusters.keys())]
+        print(("Cluster sparsities: %s" % cluster_sparsity))
+        print(("Avg cluster sparsity: %s" % np.average(cluster_sparsity)))
+        print(("Median cluster sparsity: %s" % np.median(cluster_sparsity)))
+        print(("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd))))
+        print("silhouette score: %s" % self.get_avg_silhouette_score())
         # TODO: average and median centroid distances from each other.
         # TODO: also get minimum and maximum centroid distances.
         return self.clusters
@@ -305,7 +304,7 @@ class GestureClusterer():
         feat_vecs = [g['feature_vec'] for g in c['gestures']]
         feat_vecs = np.array(feat_vecs[0])
         self._log("old centroid: %s" % c['centroid'])
-        c['centroid'] = map(lambda x: np.average(x), feat_vecs.T)
+        c['centroid'] = [np.average(x) for x in feat_vecs.T]
         self._log("new centroid: %s" % c['centroid'])
         self.clusters[cluster_id] = c
         e = time.time()
@@ -533,16 +532,16 @@ class GestureClusterer():
         keys = []
         if not gesture['keyframes']:
             #
-            print "OH NO"
-            print gesture
+            print("OH NO")
+            print(gesture)
             return
 
         for t in gesture['keyframes']:
             if (type(t) != dict):
-                print gesture['id']
-                print "T IS NOT A DICT???"
-                print t
-                print gesture
+                print(gesture['id'])
+                print("T IS NOT A DICT???")
+                print(t)
+                print(gesture)
                 self.drop_ids.append(gesture['id'])
                 ## KNOWN TEMP FIX
                 return [{'y': [247, 242, 387, 446, 260, 425, 418, 151, 127, 131, 418, 427, 438, 459, 482, 430, 445, 468, 479, 427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491, 420, 416, 447, 415, 466, 443, 460, 473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
@@ -553,7 +552,7 @@ class GestureClusterer():
         return keys
 
     def _calculate_distance_between_gestures(self, g1, g2):
-        if 'feature_vec' in g1.keys() and 'feature_vec' in g2.keys():
+        if 'feature_vec' in list(g1.keys()) and 'feature_vec' in list(g2.keys()):
             return np.linalg.norm(np.array(g1['feature_vec']) - np.array(g2['feature_vec']))
 
         feat1 = np.array(self._get_gesture_features(g1))
@@ -658,8 +657,8 @@ class GestureClusterer():
         dists = []
         c = self.clusters[cluster_id]
         if len(c['gestures']) == 0:
-            print "WARNING: NO GESTURES FOUND IN CLUSTER ID %s" % cluster_id
-            print "num clusters: %s" % len(self.clusters)
+            print("WARNING: NO GESTURES FOUND IN CLUSTER ID %s" % cluster_id)
+            print("num clusters: %s" % len(self.clusters))
             return 0
         for g in c['gestures']:
             dists.append(self._calculate_distance_between_vectors(vec, g['feature_vec']))

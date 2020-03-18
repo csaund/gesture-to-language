@@ -3,6 +3,10 @@ $ Gesture from Language / Language to Gesture
 
 Takes data from UC Berkeleys [gesture data set](http://people.eecs.berkeley.edu/~shiry/speech2gesture/) and clusters gestures by high-level feature vectors detected by motion data. 
 
+#### Pre-reqs
+* must have environment variables `GOOGLE_APPLICATION_CREDENTIALS` and `devKey` set from google (on account with access to storage buckets)
+* `frames` and `intervals.csv` must be downloaded from instructions found below and put in `HOME/GestureData` environment location
+
 
 ### Usage
 0. Download the gesture data according to instructions [here](https://github.com/amirbar/speech2gesture/blob/master/data/dataset.md).
