@@ -12,7 +12,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 class SentimentAnalyzer:
     def __init__(self):
-        self.analyzer = SentimentIntensityAnalyzer
+        self.analyzer = SentimentIntensityAnalyzer()
 
     # takes a string that represents a single sentence,
     # returns
@@ -21,3 +21,7 @@ class SentimentAnalyzer:
         return score
 
     def analyze_sentences(self, s_list):
+        scores = []
+        for s in s_list:
+            scores.append(self.analyzer.polarity_scores(s))
+        return scores
