@@ -5,6 +5,8 @@ import json
 import os
 from common_helpers import list_blobs, download_blob, upload_blob
 import nltk
+from tqdm import tqdm
+
 # import spacy / nltk pos things
 
 devKeyPath = os.getenv("devKey")
@@ -56,8 +58,7 @@ def preprocess_json(fn):
 
 if __name__=="__main__":
     file_list = list_blobs(TRANSCRIPT_BUCKET)
-    for f in file_list[:3]:
-        print(f)
+    for f in tqdm(file_list):
         temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, TEMP_JSON_FILE)
         temp_txt_file = preprocess_json(TEMP_JSON_FILE)
         pos_outfile = get_pos_tags(f, temp_txt_file)
