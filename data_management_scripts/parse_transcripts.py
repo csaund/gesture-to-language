@@ -90,7 +90,6 @@ def write_to_file(fn, text):
     f.writelines(text)
     return
 
-
 def write_and_parse(s, rhet_outfile):
     write_to_file(TEMP_TEXT_FILE, s)
     segment_and_parse(TEMP_TEXT_FILE, rhet_outfile)
@@ -132,13 +131,5 @@ if __name__=="__main__":
     (rhet_outfile) = split_segment_parse(f, temp_txt_file)
     upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
 
-
-    #for f in file_list:
-    #    temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, "temp.json")
-    #    temp_txt_file = preprocess_json(temp_json_file)
-    #    do_segment
-    #    do_parse(temp_txt_file)
-    #    upload_blob(PARSED_BUCKET, "tmp_doc.dis", f + ".rhet_parse")
-    #    upload_blob(POS_BUCKET, "tmp.chp", f + ".pos_tags")
 
 
