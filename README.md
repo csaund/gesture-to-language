@@ -130,3 +130,7 @@ motion clusters, and evaluate THOSE mappings.
 As of now, only semantic text clustering is really implemented. We're really only expecting to
 see any sort of motion cluster with certain adjectives or adverbs. It makes sense that with the shitty clusters
 we're getting shitty results.  
+
+
+### Known Issues
+* There are audio files than are listed in the original dataset (955 total), fewer transcripts from those audio files (755), and fewer parses still of those transcripts. This is because each step of the way there were various processing issues that led to errors on different files throughout. The total number of videos processed is: ____ and the total number of gestures in the end is ____. 
