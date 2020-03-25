@@ -127,7 +127,8 @@ def google_transcribe(audio_file_path):
         encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=frame_rate,
         language_code='en-US',
-        enable_word_time_offsets=True)
+        enable_word_time_offsets=True,
+        enable_automatic_punctuation=True)
 
     # Detects speech in the audio file
     operation = client.long_running_recognize(config, audio)
