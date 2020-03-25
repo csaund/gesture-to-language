@@ -59,9 +59,6 @@ def list_blobs(bucket_name=TRANSCRIPT_BUCKET):
         f_names.append(blob.name)
     return f_names
 
-def get_transcript_data(infile):
-    return
-
 
 # take the json from json into a full transcript that can be parsed by the rhetorical parser.
 def preprocess_json(fn):
@@ -75,7 +72,7 @@ def preprocess_json(fn):
     return TEMP_TEXT_FILE
 
 
-def segment_and_parse(infile, rhet_outfile, pos_outfile):
+def segment_and_parse(infile, rhet_outfile):
     # run text through segmenter
     # run text through parser
 
@@ -85,11 +82,6 @@ def segment_and_parse(infile, rhet_outfile, pos_outfile):
     rhet_d = rhet_in.readlines()
     rhet_d.insert(0, "\n")
     rhet_out.writelines(rhet_d)
-
-    pos_out = open(pos_outfile, "a+")
-    pos_in = open("tmp.chp", "r")
-    pos_d = pos_in.readlines()
-    pos_out.writelines(pos_d)
     return
 
 
@@ -98,10 +90,13 @@ def write_to_file(fn, text):
     f.writelines(text)
     return
 
+def write_and_parse(s, rhet_outfile):
+    write_to_file(TEMP_TEXT_FILE, s)
+    segment_and_parse(TEMP_TEXT_FILE, rhet_outfile)
+
 
 def split_segment_parse(fname, fn):
     rhet_outfile = fname + ".rhet_parse"
-    pos_outfile = fname + ".pos_tags"
     f = open(fn, "r")
     raw_text = f.readlines()[0]         # need to cut this up into smaller chunks the parser can handle.
     sentences = raw_text.split(".")     # split by every sentence
@@ -110,17 +105,19 @@ def split_segment_parse(fname, fn):
     line_count = 0
     for i in range(len(sentences)):
         if i == len(sentences) - 1:
-            write_to_file(TEMP_TEXT_FILE, s)
-            segment_and_parse(TEMP_TEXT_FILE, rhet_outfile, pos_outfile)
+            write_and_parse(s, rhet_outfile)
         elif len(s + sentences[i+1]) < 400:
             s = s + sentences[i+1]
+        elif len(s) > 750:          # can normally handle this amount, I think
+            s1, s2 = s[:len(s)/2], s[len(s)/2:]
+            write_and_parse(s1, rhet_outfile)
+            write_and_parse(s2, rhet_outfile)
         else:
             line_count += 1
-            write_to_file(TEMP_TEXT_FILE, s)
-            segment_and_parse(TEMP_TEXT_FILE, rhet_outfile, pos_outfile)
+            write_and_parse(s, rhet_outfile)
             s = sentences[i + 1]
     print(line_count)
-    return (rhet_outfile, pos_outfile)
+    return (rhet_outfile)
 
     # go through and for each sentence, if it's longer than 400, chop that up as well.
     # can we do that intelligently?
@@ -131,17 +128,8 @@ if __name__=="__main__":
     print(f)
     temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, "temp.json")
     temp_txt_file = preprocess_json(temp_json_file)
-    (rhet_outfile, pos_outfile) = split_segment_parse(f, temp_txt_file)
+    (rhet_outfile) = split_segment_parse(f, temp_txt_file)
     upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
-    upload_blob(POS_BUCKET, pos_outfile, pos_outfile)
 
-
-    #for f in file_list:
-    #    temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, "temp.json")
-    #    temp_txt_file = preprocess_json(temp_json_file)
-    #    do_segment
-    #    do_parse(temp_txt_file)
-    #    upload_blob(PARSED_BUCKET, "tmp_doc.dis", f + ".rhet_parse")
-    #    upload_blob(POS_BUCKET, "tmp.chp", f + ".pos_tags")
 
 
