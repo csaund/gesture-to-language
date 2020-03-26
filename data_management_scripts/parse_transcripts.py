@@ -96,12 +96,13 @@ def segment_and_parse(infile, rhet_outfile):
 def write_to_file(fn, text):
     f = open(fn, "w")
     f.writelines(text)
+    f.close()
     return 
 
 def write_and_parse(s, rhet_outfile):
     write_to_file(TEMP_PARTIAL_TEXT_FILE, s)
-    subprocess.call(['cat', TEMP_PARTIAL_TEXT_FILE])
-    segment_and_parse(TEMP_PARTIAL_TEXT_FILE, rhet_outfile)
+    subprocess.call(['cat', 'raw_text_partial_tmp.txt'])
+    # segment_and_parse(TEMP_PARTIAL_TEXT_FILE, rhet_outfile)
 
 
 def split_segment_parse(fname, fn):
@@ -111,36 +112,34 @@ def split_segment_parse(fname, fn):
     # sentences = raw_text.split(".")     # split by every sentence
     # now make them as large as possible to parse
     s = sentences[0]
-    line_count = 0
-    # print len(sentences)
-    for i in tqdm(range(len(sentences))):
+    short_sentences = []
+    for i in range(len(sentences)):
         if i == len(sentences) - 1:
-            print("trying to write and parse")
-            write_and_parse(s, rhet_outfile)
-            s = ""
+            short_sentences.append(s)
         elif len(s + sentences[i+1]) < 400:
-            print("appending to sentence")
             s = s + sentences[i+1]
-        elif len(s) > 450:          # can normally handle this amount, I think
-            print("trying to split string that is %s chars long" % len(s))
+        elif len(s) > 550:          # can normally handle this amount, I think
             # need to split the string such that sentences are preserved 
             # as much as possible. or at least words. 
             words = s.split(" ")
-            print(words)
+            # print(words)
             w1, w2 = words[:int(len(words)/2)], words[int(len(words)/2):]
-            print("WORDS 1")
-            print(w1)
-            print("WORDS 2")
-            print(w2)
+            # print("WORDS 1")
+            # print(w1)
+            # print("WORDS 2")
+            # print(w2)
             s1, s2 = " ".join(w1), " ".join(w2)
-            write_and_parse(s1, rhet_outfile)
-            write_and_parse(s2, rhet_outfile)
-            s = ""
-        else:
-            line_count += 1
-            write_and_parse(s, rhet_outfile)
+            short_sentences.append(s1)
+            short_sentences.append(s2)
             s = sentences[i + 1]
-    # print(line_count)
+        else:
+            short_sentences.append(s)
+            s = sentences[i + 1]
+    # now go through and actually parse them
+    for sent in tqdm(short_sentences):
+        print(sent)
+        write_and_parse(sent, rhet_outfile)
+
     return (rhet_outfile)
 
     # go through and for each sentence, if it's longer than 400, chop that up as well.
@@ -153,7 +152,7 @@ if __name__=="__main__":
     temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, "temp.json")
     temp_txt_file = preprocess_json(temp_json_file)
     (rhet_outfile) = split_segment_parse(f, temp_txt_file)
-    upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
+    # upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
 
 
 
