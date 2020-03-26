@@ -3,18 +3,24 @@ from __future__ import division
 #!/usr/bin/env pythons
 import json
 import os
-# from Discourse_Parser.py import do_parse
-# from Discourse_Segmenter.py import do_segment
+import time
+import subprocess
+from tqdm import tqdm
+# actually have to call these as a subprocess
+# from Discourse_Parser import do_parse
+# from Discourse_Segmenter import do_segment
 
 devKeyPath = os.getenv("devKey")
 devKey = str(open(devKeyPath, "r").read()).strip()
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(os.getenv("HOME"), "google-creds.json")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(os.getenv("HOME"), "Downloads", "google-creds.json")
 
 from google.cloud import storage
 TRANSCRIPT_BUCKET = "audio_transcript_buckets_1"
 PARSED_BUCKET = "parsed_transcript_bucket"
 POS_BUCKET = "pos_transcript_bucket"
-TEMP_TEXT_FILE = "raw_text_tmp.txt"
+TEMP_TEXT_FILE = "raw_text_full_tmp.txt"
+TEMP_PARTIAL_TEXT_FILE = "raw_text_partial_tmp.txt"
+SEGMENTED_FILE = "segmented.txt"
 
 # to be run wherever Discourse Parser is installed (http://alt.qcri.org/tools/discourse-parser/)
 # takes all transcripts in gs://audio_transcript_buckets_1/
@@ -33,9 +39,6 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(source_blob_name)
     blob.download_to_filename(destination_file_name)
-    print('Blob {} downloaded to {}.'.format(
-        source_blob_name,
-        destination_file_name))
     return destination_file_name
 
 
@@ -63,19 +66,24 @@ def list_blobs(bucket_name=TRANSCRIPT_BUCKET):
 # take the json from json into a full transcript that can be parsed by the rhetorical parser.
 def preprocess_json(fn):
     raw_text = read_data(fn)
+    # print(len(raw_text))
     full_transcript = []
     for section in raw_text:
-        full_transcript.append((section["transcript"] + ". "))
-    outfile = open(TEMP_TEXT_FILE, "a")
-    outfile.writelines(full_transcript)
-    outfile.close()
+        full_transcript.append((section["transcript"] + "."))
+    with open(TEMP_TEXT_FILE, 'w') as f:
+        for item in full_transcript:
+            f.write("%s\n" % item)
     return TEMP_TEXT_FILE
 
 
 def segment_and_parse(infile, rhet_outfile):
     # run text through segmenter
+    subprocess.call(['python','Discourse_Segmenter.py',infile])
+    subprocess.call(['cat', SEGMENTED_FILE])
+    # do_segment(infile)   # for some reason this isn't very happy.
     # run text through parser
-
+    subprocess.call(['python', 'Discourse_Parser.py', SEGMENTED_FILE])
+    # do_parse(SEGMENTED_FILE)
     # append to appropriate outfiles
     rhet_out = open(rhet_outfile, "a+")
     rhet_in = open("tmp_doc.dis", "r")
@@ -88,35 +96,51 @@ def segment_and_parse(infile, rhet_outfile):
 def write_to_file(fn, text):
     f = open(fn, "w")
     f.writelines(text)
-    return
+    return 
 
 def write_and_parse(s, rhet_outfile):
-    write_to_file(TEMP_TEXT_FILE, s)
-    segment_and_parse(TEMP_TEXT_FILE, rhet_outfile)
+    write_to_file(TEMP_PARTIAL_TEXT_FILE, s)
+    subprocess.call(['cat', TEMP_PARTIAL_TEXT_FILE])
+    segment_and_parse(TEMP_PARTIAL_TEXT_FILE, rhet_outfile)
 
 
 def split_segment_parse(fname, fn):
     rhet_outfile = fname + ".rhet_parse"
     f = open(fn, "r")
-    raw_text = f.readlines()[0]         # need to cut this up into smaller chunks the parser can handle.
-    sentences = raw_text.split(".")     # split by every sentence
+    sentences = f.readlines()         # need to cut this up into smaller chunks the parser can handle.
+    # sentences = raw_text.split(".")     # split by every sentence
     # now make them as large as possible to parse
     s = sentences[0]
     line_count = 0
-    for i in range(len(sentences)):
+    # print len(sentences)
+    for i in tqdm(range(len(sentences))):
         if i == len(sentences) - 1:
+            print("trying to write and parse")
             write_and_parse(s, rhet_outfile)
+            s = ""
         elif len(s + sentences[i+1]) < 400:
+            print("appending to sentence")
             s = s + sentences[i+1]
-        elif len(s) > 750:          # can normally handle this amount, I think
-            s1, s2 = s[:len(s)/2], s[len(s)/2:]
+        elif len(s) > 450:          # can normally handle this amount, I think
+            print("trying to split string that is %s chars long" % len(s))
+            # need to split the string such that sentences are preserved 
+            # as much as possible. or at least words. 
+            words = s.split(" ")
+            print(words)
+            w1, w2 = words[:int(len(words)/2)], words[int(len(words)/2):]
+            print("WORDS 1")
+            print(w1)
+            print("WORDS 2")
+            print(w2)
+            s1, s2 = " ".join(w1), " ".join(w2)
             write_and_parse(s1, rhet_outfile)
             write_and_parse(s2, rhet_outfile)
+            s = ""
         else:
             line_count += 1
             write_and_parse(s, rhet_outfile)
             s = sentences[i + 1]
-    print(line_count)
+    # print(line_count)
     return (rhet_outfile)
 
     # go through and for each sentence, if it's longer than 400, chop that up as well.
@@ -125,7 +149,7 @@ def split_segment_parse(fname, fn):
 if __name__=="__main__":
     file_list = list_blobs(TRANSCRIPT_BUCKET)
     f = file_list[0]
-    print(f)
+    # print(f)
     temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, "temp.json")
     temp_txt_file = preprocess_json(temp_json_file)
     (rhet_outfile) = split_segment_parse(f, temp_txt_file)
