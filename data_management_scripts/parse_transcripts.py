@@ -99,10 +99,11 @@ def write_to_file(fn, text):
     f.close()
     return 
 
+
 def write_and_parse(s, rhet_outfile):
     write_to_file(TEMP_PARTIAL_TEXT_FILE, s)
     subprocess.call(['cat', 'raw_text_partial_tmp.txt'])
-    # segment_and_parse(TEMP_PARTIAL_TEXT_FILE, rhet_outfile)
+    segment_and_parse(TEMP_PARTIAL_TEXT_FILE, rhet_outfile)
 
 
 def split_segment_parse(fname, fn):
@@ -119,8 +120,8 @@ def split_segment_parse(fname, fn):
         elif len(s + sentences[i+1]) < 400:
             s = s + sentences[i+1]
         elif len(s) > 550:          # can normally handle this amount, I think
-            # need to split the string such that sentences are preserved 
-            # as much as possible. or at least words. 
+            # need to split the string such that sentences are preserved
+            # as much as possible. or at least words.
             words = s.split(" ")
             # print(words)
             w1, w2 = words[:int(len(words)/2)], words[int(len(words)/2):]
@@ -147,12 +148,14 @@ def split_segment_parse(fname, fn):
 
 if __name__=="__main__":
     file_list = list_blobs(TRANSCRIPT_BUCKET)
-    f = file_list[0]
-    # print(f)
-    temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, "temp.json")
-    temp_txt_file = preprocess_json(temp_json_file)
-    (rhet_outfile) = split_segment_parse(f, temp_txt_file)
-    # upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
-
-
+    for f in file_list[1:]:
+        print(f)
+        temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, "temp.json")
+        temp_txt_file = preprocess_json(temp_json_file)
+        rhet_outfile = split_segment_parse(f, temp_txt_file)
+        upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
+        os.remove(rhet_outfile)
+        os.remove(TEMP_TEXT_FILE)
+        os.remove(TEMP_PARTIAL_TEXT_FILE)
+        os.remove(SEGMENTED_FILE)
 
