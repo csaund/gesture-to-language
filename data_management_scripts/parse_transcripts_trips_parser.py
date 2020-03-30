@@ -36,15 +36,17 @@ def preprocess_json(fn):
 # actually send to the parser so we can append the xml.
 def send_to_parser(txt, rhet_outfile):
     PARAMS['input'] = txt
+    print("got params")
+    print(PARAMS)
     r = requests.post(url=PARSER_ENDPOINT, data=PARAMS)
     if r.ok:
-       # print(r.encoding)     # do we need to always make sure utf-8? should always be fine.
-       data = r.text
-       rhet_out = open(rhet_outfile, "a+")
-       rhet_out.writelines(data)
+        # print(r.encoding)     # do we need to always make sure utf-8? should always be fine.
+        data = r.text
+        rhet_out = open(rhet_outfile, "a+")
+        rhet_out.writelines(data)
     else:
-       print("ERR, got non-ok response code %s" % r.status_code)
-    # append to appropriate outfiles
+        print("ERR, got non-ok response code %s" % r.status_code)
+        print(r.reason)
     return
 
 
@@ -66,17 +68,16 @@ def split_text(txt, n=2000):
 
 if __name__ == "__main__":
     file_list = list_blobs(TRANSCRIPT_BUCKET)
-    for f in tqdm(file_list[:1]):
+    for f in file_list[:1]:
         rhet_outfile = f + '.parse.xml'
         temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, TEMP_JSON_FILE)
         raw_text = preprocess_json(TEMP_JSON_FILE)
         splits = split_text(raw_text)   # input must be shorter than 2000 chars to send to the parser
-        for s in splits:
+        for s in tqdm(splits):
+            print(s)
             send_to_parser(s, rhet_outfile)
 
         # upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
 
         #os.remove(rhet_outfile)
-        #os.remove(TEMP_TEXT_FILE)
-        #os.remove(TEMP_PARTIAL_TEXT_FILE)
-        #os.remove(SEGMENTED_FILE)
+        #os.remove(TEMP_JSON__FILE)
