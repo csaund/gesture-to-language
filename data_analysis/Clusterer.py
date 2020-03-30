@@ -21,7 +21,7 @@ class Clusterer():
     def cluster(self, data=None, k=15):
         dat = data if data else self.data
         clusterer = KMeans(n_clusters=k, random_state=10)
-        cluster_labels = clusterer.fit_predict(dat)
+        self.cluster_labels = clusterer.fit_predict(dat)
         return cluster_labels
 
 

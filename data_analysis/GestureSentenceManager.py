@@ -74,7 +74,7 @@ class GestureSentenceManager():
         self.VideoManager = VideoManager()
         print("loading gestures")
         self.load_gestures()
-        self.GestureClusterer = GestureClusterer(self.agd)
+        self.GestureAnalyzer = GestureAnalyzer(self.agd)
 
     ################################################
     ##################### SETUP ####################
@@ -108,20 +108,20 @@ class GestureSentenceManager():
     def setup(self):
         self.downsample_speaker()
         n = 87
-        self.GestureClusterer.cluster_gestures(max_cluster_distance=0.03, max_number_clusters=n)
+        self.GestureAnalyzer.cluster_gestures(max_cluster_distance=0.03, max_number_clusters=n)
         self.cluster_sentences_gesture_independent()
         self.assign_gesture_cluster_ids_for_sentence_clusters()
         self.combine_all_gesture_data()
 
     def cluster_sentences_gesture_independent(self):
-        self.agd = [g for g in self.agd if g['id'] not in self.GestureClusterer.drop_ids]
+        self.agd = [g for g in self.agd if g['id'] not in self.GestureAnalyzer.drop_ids]
         ids_for_sentences = [g['id'] for g in self.agd]
-        self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureClusterer.drop_ids, include_ids=ids_for_sentences)
+        self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureAnalyzer.drop_ids, include_ids=ids_for_sentences)
 
     def cluster_sentences_gesture_independent_under_n_words(self, n):
         ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
-        exclude_ids = exclude_ids + self.GestureClusterer.drop_ids
+        exclude_ids = exclude_ids + self.GestureAnalyzer.drop_ids
         self.SentenceClusterer.cluster_sentences(gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=exclude_ids)
 
     def cluster_gestures_under_n_words(self, n, max_number_clusters=0):
@@ -131,10 +131,10 @@ class GestureSentenceManager():
 
     def cluster_gestures(self, exclude_ids=[], max_number_clusters=0):
         if len(exclude_ids):
-            self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
+            self.GestureAnalyzer = GestureClusterer(self.filter_agd(exclude_ids))
         else:
-            self.GestureClusterer = GestureClusterer(self.agd)
-        self.GestureClusterer.cluster_gestures(None, 0.03, max_number_clusters)
+            self.GestureAnalyzer = GestureClusterer(self.agd)
+        self.GestureAnalyzer.cluster_gestures(None, 0.03, max_number_clusters)
 
     def get_transcript(self):
         if self.gesture_transcript:
@@ -160,7 +160,7 @@ class GestureSentenceManager():
         for d in tqdm(self.agd):
             gid = d['id']
             gesture = self.get_gesture_by_id(gid)
-            m_g = [g for g in self.GestureClusterer.agd if g['id'] == gid][0]
+            m_g = [g for g in self.GestureAnalyzer.agd if g['id'] == gid][0]
             s_g = [p for p in self.SentenceClusterer.agd['phrases'] if p['id'] == gid][0]
             gest_movement_keys = [k for k in list(m_g.keys()) if k not in list(gesture.keys())]
             for nk in gest_movement_keys:
@@ -174,7 +174,7 @@ class GestureSentenceManager():
     ################ REPORTING ################
     ###########################################
     def report_gesture_clusters(self):
-        self.GestureClusterer.report_clusters()
+        self.GestureAnalyzer.report_clusters()
 
     def report_sentence_clusters(self):
         self.SentenceClusterer.report_clusters()
@@ -198,7 +198,7 @@ class GestureSentenceManager():
 
     def get_sentences_by_gesture_cluster(self, cluster_id):
         self.get_transcript()
-        gesture_ids = self.GestureClusterer.get_gesture_ids_by_cluster(cluster_id)
+        gesture_ids = self.GestureAnalyzer.get_gesture_ids_by_cluster(cluster_id)
         p = self.gesture_transcript['phrases']
         sentences = [d['phase']['transcript'] for d in p if d['id'] in gesture_ids]
         return sentences
@@ -206,7 +206,7 @@ class GestureSentenceManager():
     def report_gesture_cluster_overlap_with_sentence_clusters(self):
         lens = []
         unique_matches = []
-        for g_cluster_id in self.GestureClusterer.clusters:
+        for g_cluster_id in self.GestureAnalyzer.clusters:
             s_cluster_ids = self.get_sentence_cluster_ids_for_gesture_cluster(g_cluster_id)
             print("Sentence clusters represented in g_cluster %s: %s" % (g_cluster_id, s_cluster_ids))
             lens.append(len(s_cluster_ids))
@@ -215,7 +215,7 @@ class GestureSentenceManager():
         print("avg number sentence clusters: %s" % str(float(sum(lens)) / float(len(lens))))
         print("sd of lengths of gesture clusters: %s" % str(np.std(lens)))
         print()
-        print("number of unique gesture-sentence matches: %s/%s" % (len(unique_matches), len(self.GestureClusterer.clusters)))
+        print("number of unique gesture-sentence matches: %s/%s" % (len(unique_matches), len(self.GestureAnalyzer.clusters)))
         print("unique matches: %s" % unique_matches)
 
 
@@ -235,9 +235,9 @@ class GestureSentenceManager():
         print("unique matches: %s" % unique_matches)
 
     def report_sentence_cluster_by_gesture_cluster(self):
-        gs = list(self.GestureClusterer.clusters.keys())
+        gs = list(self.GestureAnalyzer.clusters.keys())
         sents = []
-        for g in self.GestureClusterer.clusters:
+        for g in self.GestureAnalyzer.clusters:
             s_keys = self.get_sentence_cluster_ids_by_gesture_cluster_id(g)
             sents.append(s_keys)
         t = PrettyTable()
@@ -304,8 +304,8 @@ class GestureSentenceManager():
     def get_sentence_clusters_by_gesture_clusters(self):
         if(self.gesture_sentence_clusters):
             return self.gesture_sentence_clusters
-        for k in self.GestureClusterer.clusters:
-            g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gestures']]
+        for k in self.GestureAnalyzer.clusters:
+            g_ids = [g['id'] for g in self.GestureAnalyzer.clusters[k]['gestures']]
             gests = self.get_gestures_by_ids(g_ids)
             self.gesture_sentence_clusters[k] = self.SentenceClusterer.create_new_cluster_by_gestures(gests)
         return self.gesture_sentence_clusters
@@ -358,8 +358,8 @@ class GestureSentenceManager():
     ## search for a specific phrase that may appear in the transcript of these gestures.
     def get_gesture_clusters_by_transcript_phrase(self, phrase):
         clusters_containing_phrase = []
-        for k in self.GestureClusterer.clusters:
-            g_ids = self.GestureClusterer.get_gesture_ids_by_cluster(k)
+        for k in self.GestureAnalyzer.clusters:
+            g_ids = self.GestureAnalyzer.get_gesture_ids_by_cluster(k)
             gests = self.get_gestures_by_ids(g_ids)
             transcripts = [g['phase']['transcript'] for g in gests]
             count = 0
@@ -384,8 +384,8 @@ class GestureSentenceManager():
 
     # have gesture_cluster_id in them, match those?
     def get_gesture_cluster_id_for_gesture(self, g_id):
-        for k in self.GestureClusterer.clusters:
-            g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gestures']]
+        for k in self.GestureAnalyzer.clusters:
+            g_ids = [g['id'] for g in self.GestureAnalyzer.clusters[k]['gestures']]
             if g_id in g_ids:
                 return k
 
@@ -472,8 +472,8 @@ class GestureSentenceManager():
 
     def get_gesture_cluster_wordcount_data(self):
         wc = []
-        for k in self.GestureClusterer.clusters:
-            c = self.GestureClusterer.clusters[k]
+        for k in self.GestureAnalyzer.clusters:
+            c = self.GestureAnalyzer.clusters[k]
             for g in c['gestures']:
                 s = self.get_gesture_by_id(g['id'])['phase']['transcript']
                 wc.append(len(nltk.word_tokenize(s)))
@@ -501,7 +501,7 @@ class GestureSentenceManager():
         plt.show()
 
     def get_closest_gestures_in_gesture_cluster(self, cluster_id):
-        c = self.GestureClusterer.clusters[cluster_id]
+        c = self.GestureAnalyzer.clusters[cluster_id]
         (g1, g2) = (0, 0)
         min_d = 1000
         print("exploring distances for %s gestures" % str(len(c['gestures'])))
@@ -517,7 +517,7 @@ class GestureSentenceManager():
         return (g1, g2)
 
     def get_furthest_gestures_in_gesture_cluster(self, cluster_id):
-        c = self.GestureClusterer.clusters[cluster_id]
+        c = self.GestureAnalyzer.clusters[cluster_id]
         (g1, g2) = (0, 0)
         max_d = 0
         print("exploring distances for %s gestures" % str(len(c['gestures'])))
@@ -533,7 +533,7 @@ class GestureSentenceManager():
         return (g1, g2)
 
     def get_speakers_by_gesture_cluster(self, g_cluster_id):
-        c = self.GestureClusterer.clusters[g_cluster_id]
+        c = self.GestureAnalyzer.clusters[g_cluster_id]
         speakers = [self.get_gesture_by_id(g['id'])['speaker'] for g in c['gestures']]
         counts = [speakers.count(s) for s in speakers]
         both = sorted(list(set(zip(speakers,counts))), key=lambda x: x[1], reverse=True)
@@ -542,7 +542,7 @@ class GestureSentenceManager():
     # for sentence cluster S and gesture cluster G, returns proportion of sentences of S which
     # are clustered in gesture cluster G
     def get_proportion_of_sentences_in_gesture_cluster(self, s_cluster_id, g_cluster_id):
-        c = self.GestureClusterer.clusters[g_cluster_id]
+        c = self.GestureAnalyzer.clusters[g_cluster_id]
         g_ids = [g['id'] for g in c['gestures']]
         s_cluster = self.SentenceClusterer.clusters[s_cluster_id]
         matches = [g['id'] for g in s_cluster['gestures'] if g['id'] in g_ids]
@@ -585,7 +585,7 @@ class GestureSentenceManager():
         g_ids = []
         counts = []
         # todo shouldn't have to go through whole gesture clusters.
-        for k in self.GestureClusterer.clusters:
+        for k in self.GestureAnalyzer.clusters:
             if k == 2:
                 continue
             gesture_cluster = gsm.GestureClusterer.clusters[k]
@@ -627,7 +627,7 @@ class GestureSentenceManager():
 
     def get_words_by_gesture_cluster(self, g_cluster_id):
         words = []
-        c = self.GestureClusterer.clusters[g_cluster_id]
+        c = self.GestureAnalyzer.clusters[g_cluster_id]
         for gesture in c['gestures']:
             g = self.get_gesture_by_id(gesture['id'])
             if(g['phase']['transcript']):
@@ -666,7 +666,7 @@ class GestureSentenceManager():
 
     ## look, no one's happy about this.
     def show_wordclouds_by_gesture_clusters(self, g_cluster_ids=None, filter_in_syntax="", filter_out_syntax=""):
-        g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.GestureClusterer.clusters[c]['gestures'])) for c in list(self.GestureClusterer.clusters.keys())], key=lambda x: x[1])[-9:]]
+        g_cluster_ids = g_cluster_ids if g_cluster_ids else [y[0] for y in sorted([(c, len(self.GestureAnalyzer.clusters[c]['gestures'])) for c in list(self.GestureAnalyzer.clusters.keys())], key=lambda x: x[1])[-9:]]
         for i in range(0, len(g_cluster_ids)):
             print(g_cluster_ids[i])
             plt.subplot(3, 3, i+1)
@@ -765,8 +765,8 @@ class GestureSentenceManager():
         g1 =0
         g2 = 0
         while g1 == g2:
-            g1 = self.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
-            g2 = self.GestureClusterer.get_random_gesture_id_from_cluster(cluster_id)
+            g1 = self.GestureAnalyzer.get_random_gesture_id_from_cluster(cluster_id)
+            g2 = self.GestureAnalyzer.get_random_gesture_id_from_cluster(cluster_id)
         print("plotting gestures for %s, %s" % (g1, g2))
         self.plot_two_gestures(g1, g2)
 
@@ -785,10 +785,10 @@ class GestureSentenceManager():
     #####################################################
     def get_silhouette_scores_for_all_gesture_clusters(self):
         scores = []
-        for k in self.GestureClusterer.clusters:
-            scores.append(self.GestureClusterer.get_silhouette_score(k))
+        for k in self.GestureAnalyzer.clusters:
+            scores.append(self.GestureAnalyzer.get_silhouette_score(k))
         s = np.array(scores)
-        print("number of clusters: %s" % len(self.GestureClusterer.clusters))
+        print("number of clusters: %s" % len(self.GestureAnalyzer.clusters))
         print("avg silhouette: %s" % np.average(s))
         print("min silhouette: %s" % np.min(s))
         print("max silhouette: %s" % np.max(s))
@@ -819,8 +819,8 @@ class GestureSentenceManager():
             print("testing clustering for k=%s" % k)
             for dist in min_distances:
                 max_k.append(k)
-                self.GestureClusterer.clear_clusters()
-                self.GestureClusterer.cluster_gestures(max_cluster_distance=dist, max_number_clusters=k)
+                self.GestureAnalyzer.clear_clusters()
+                self.GestureAnalyzer.cluster_gestures(max_cluster_distance=dist, max_number_clusters=k)
                 scores = self.get_silhouette_scores_for_all_gesture_clusters()
                 dists.append(dist)
                 n_clusters.append(len(scores))
@@ -853,7 +853,7 @@ class GestureSentenceManager():
             for sim in min_sims:
                 max_k.append(k)
                 self.SentenceClusterer.clear_clusters()
-                self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureClusterer.drop_ids,
+                self.SentenceClusterer.cluster_sentences(exclude_gesture_ids=self.GestureAnalyzer.drop_ids,
                                                          include_ids=ids_for_sentences,
                                                          min_cluster_sim=sim,
                                                          max_number_clusters=k)
@@ -881,7 +881,7 @@ def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
     newGSM.speaker = oldGSM.speaker
     newGSM.agd = oldGSM.agd
-    newGSM.GestureClusterer = oldGSM.GestureClusterer
+    newGSM.GestureAnalyzer = oldGSM.GestureClusterer
     newGSM.SentenceClusterer = oldGSM.SentenceClusterer
     return newGSM
 
