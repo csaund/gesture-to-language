@@ -11,7 +11,7 @@ from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 
 from common_helpers import *
-
+from Clusterer import Clusterer
 
 # semantics -- wn / tf
 # rhetorical
@@ -97,6 +97,21 @@ class GestureClusterer():
         self.clusters = {}
         self.total_clusters_created = 0
         self.c_id = 0
+
+
+    def cluster_gestures_sklearn(self, k=15, gesture_data=None):
+        gd = gesture_data if gesture_data else self.agd
+        if 'feature_vec' in list(gd[0].keys()):
+            print("already have feature vectors in our gesture data")
+        if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
+            self._assign_feature_vectors()
+
+        X = [g['feature_vec'] for g in gd]
+        self.clusterer = Clusterer(data=X)
+        cluster_labels = self.clusterer.cluster()
+        for i in range(0, len(gd)):
+            gd[i]['gesture_cluster_id'] = cluster_labels[i]         # these sure as heck should be the same length
+        self.agd = gd
 
 
     def cluster_gestures_disparate_seeds(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=250):
