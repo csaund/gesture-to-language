@@ -1,4 +1,4 @@
-from sklearn.cluster import KMeans
+from sklearn import cluster
 import numpy as np
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.datasets import make_blobs          # for testing
@@ -20,9 +20,9 @@ class Clusterer():
     # PLEASE PLEASE PLEASE put in your own k :(
     def cluster(self, data=None, k=15):
         dat = data if data else self.data
-        clusterer = KMeans(n_clusters=k, random_state=10)
+        clusterer = cluster.KMeans(n_clusters=k, random_state=10)
         self.cluster_labels = clusterer.fit_predict(dat)
-        return cluster_labels
+        return self.cluster_labels
 
 
     def test_silhouette(self, range_n_clusters):

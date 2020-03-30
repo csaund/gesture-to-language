@@ -9,9 +9,10 @@ import random
 import time
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
+from sklearn.metrics import silhouette_samples, silhouette_score
 
 from common_helpers import *
-from Clusterer import Clusterer
+from sklearn import cluster
 
 # semantics -- wn / tf
 # rhetorical
@@ -90,21 +91,41 @@ class GestureAnalyzer():
         self.c_id = 0
 
 
-    def cluster_gestures_sklearn(self, k=15, gesture_data=None):
+    def cluster_gestures_kmeans(self, k=15, gesture_data=None):
         gd = gesture_data if gesture_data else self.agd
-        if 'feature_vec' in list(gd[0].keys()):
-            print("already have feature vectors in our gesture data")
-        if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
-            self._assign_feature_vectors()
-
+        self.check_feature_vecs()
         X = [g['feature_vec'] for g in gd]
-        self.clusterer = Clusterer(data=X)
-        self.cluster_labels = self.clusterer.cluster()
+        self.clusterer = cluster.KMeans(n_clusters=k, random_state=10)
+        self.cluster_labels = self.clusterer.fit_predict(X)
         self.clusters = {k:[] for k in self.cluster_labels}
         for i in range(0, len(gd)):
             gd[i]['gesture_cluster_id'] = self.cluster_labels[i]         # these sure as heck should be the same length
             self.clusters[self.cluster_labels[i]].append(gd['id'])
         self.agd = gd
+
+
+    def cluster_gestures_affinity_prop(self, gesture_data=None):
+        gd = gesture_data if gesture_data else self.agd
+        X = [g['feature_vec'] for g in gd]
+        self.cluster_labels = cluster.AffinityPropagation().fit_predict(X)
+        self.clusters = {k:[] for k in self.cluster_labels}
+        for i in range(0, len(gd)):
+            gd[i]['gesture_cluster_id'] = self.cluster_labels[i]         # these sure as heck should be the same length
+            self.clusters[self.cluster_labels[i]].append(gd['id'])
+        self.agd = gd
+
+
+    def get_silhouette(self, n_clusters):
+        X = [g['feature_vec'] for g in gd]
+        silhouette_avg = silhouette_score(X, self.cluster_labels)
+        print("For n_clusters =", n_clusters,
+              "The average silhouette_score is :", silhouette_avg)
+
+    def check_feature_vecs(self):
+        if 'feature_vec' in list(gd[0].keys()):
+            print("already have feature vectors in our gesture data")
+        if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
+            self._assign_feature_vectors()
 
 
     def _assign_feature_vectors(self, gesture_data=None):
