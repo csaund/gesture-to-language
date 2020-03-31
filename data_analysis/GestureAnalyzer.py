@@ -1,12 +1,13 @@
 
 #!/usr/bin/env pythons
-print("importing libs for GestureClusterer")
+print("importing libs for GestureAnalyzer")
 import json
 import os
 import numpy as np
 import operator
 import random
 import time
+from sklearn.decomposition import PCA
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 from sklearn.metrics import silhouette_samples, silhouette_score
@@ -85,6 +86,7 @@ class GestureAnalyzer():
         ## hacky way to work around some malformatted data.
         self.drop_ids = []
 
+
     def clear_clusters(self):
         self.clusters = {}
         self.total_clusters_created = 0
@@ -93,19 +95,20 @@ class GestureAnalyzer():
 
     def cluster_gestures_kmeans(self, k=15, gesture_data=None):
         gd = gesture_data if gesture_data else self.agd
-        self.check_feature_vecs()
+        self.check_feature_vecs(gd)
         X = [g['feature_vec'] for g in gd]
         self.clusterer = cluster.KMeans(n_clusters=k, random_state=10)
         self.cluster_labels = self.clusterer.fit_predict(X)
         self.clusters = {k:[] for k in self.cluster_labels}
         for i in range(0, len(gd)):
             gd[i]['gesture_cluster_id'] = self.cluster_labels[i]         # these sure as heck should be the same length
-            self.clusters[self.cluster_labels[i]].append(gd['id'])
+            self.clusters[int(self.cluster_labels[i])].append(gd['id'])
         self.agd = gd
 
 
     def cluster_gestures_affinity_prop(self, gesture_data=None):
         gd = gesture_data if gesture_data else self.agd
+        self.check_feature_vecs(gd)
         X = [g['feature_vec'] for g in gd]
         self.cluster_labels = cluster.AffinityPropagation().fit_predict(X)
         self.clusters = {k:[] for k in self.cluster_labels}
@@ -121,7 +124,7 @@ class GestureAnalyzer():
         print("For n_clusters =", n_clusters,
               "The average silhouette_score is :", silhouette_avg)
 
-    def check_feature_vecs(self):
+    def check_feature_vecs(self, gd):
         if 'feature_vec' in list(gd[0].keys()):
             print("already have feature vectors in our gesture data")
         if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
@@ -446,7 +449,25 @@ class GestureAnalyzer():
         f.close()
 
 
-# our basic problem is that we need to figure out how to map distances between motions that are very long
+    def maxSubArraySum(a, size):
+        max_so_far = -100000     # very big negative number
+        max_ending_here = 0
+
+        for i in range(0, size):
+            max_ending_here = max_ending_here + a[i]
+            if (max_so_far < max_ending_here):
+                max_so_far = max_ending_here
+
+            if max_ending_here < 0:
+                max_ending_here = 0
+        return max_so_far
+
+    # d1 = [1, 1, 0, 1, 9, 5, 1, 5, 6]      these two should be close
+    # d2 = [8, 4, 2, 6, 5]
+    # d3 = [9, 8, 9, 1, 0, 5, 6]            this should also be close
+    # d4 = [0, 1, 0, 1, 0, 0,  1, 2]        this should be far
+
+    # our basic problem is that we need to figure out how to map distances between motions that are very long
 # vectors, and different lengths of keyframes. But we need to distinguish between the speed of those motions
 # as well...
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env pythons
-from GestureClusterer import *
+from GestureAnalyzer import *
 from SentenceClusterer import *
 from VideoManager import *
 from Analyzer import *
@@ -51,12 +51,6 @@ import numpy as np
 # GSM.assign_gesture_cluster_ids_for_sentence_clusters()
 # GSM.combine_all_gesture_data()
 # Ann = Analyzer(GSM)           # Before this must run GSM.combine_all_gesture_data()
-
-
-# from GestureSentenceManager import *
-# GSM = GestureSentenceManager("conglomerate_under_10")
-# GSM.GestureClusterer.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
-# GSM.cluster_sentences_gesture_independent()
 
 ## manages gesture and sentence stuff.
 class GestureSentenceManager():
@@ -131,9 +125,9 @@ class GestureSentenceManager():
 
     def cluster_gestures(self, exclude_ids=[], max_number_clusters=0):
         if len(exclude_ids):
-            self.GestureAnalyzer = GestureClusterer(self.filter_agd(exclude_ids))
+            self.GestureAnalyzer = GestureAnalyzer(self.filter_agd(exclude_ids))
         else:
-            self.GestureAnalyzer = GestureClusterer(self.agd)
+            self.GestureAnalyzer = GestureAnalyzer(self.agd)
         self.GestureAnalyzer.cluster_gestures(None, 0.03, max_number_clusters)
 
     def get_transcript(self):
@@ -588,7 +582,7 @@ class GestureSentenceManager():
         for k in self.GestureAnalyzer.clusters:
             if k == 2:
                 continue
-            gesture_cluster = gsm.GestureClusterer.clusters[k]
+            gesture_cluster = gsm.GestureAnalyzer.clusters[k]
             g_cluster_ids = [g['id'] for g in gesture_cluster['gestures']]
             matches = [i for i in sentence_cluster_gesture_ids if i in g_cluster_ids]
             if len(matches):
@@ -881,7 +875,7 @@ def init_new_gsm(oldGSM):
     newGSM = GestureSentenceManager(oldGSM.speaker)
     newGSM.speaker = oldGSM.speaker
     newGSM.agd = oldGSM.agd
-    newGSM.GestureAnalyzer = oldGSM.GestureClusterer
+    newGSM.GestureAnalyzer = oldGSM.GestureAnalyzer
     newGSM.SentenceClusterer = oldGSM.SentenceClusterer
     return newGSM
 
@@ -1175,9 +1169,9 @@ def reject_outliers(data, m=2):
 #TODO add to GSM
 def get_beat_gesture_clusters(gsm):
     counts = []
-    ks = list(gsm.GestureClusterer.clusters.keys())
+    ks = list(gsm.GestureAnalyzer.clusters.keys())
     for k in ks:
-        counts.append(len(gsm.GestureClusterer.clusters[k]['gestures']))
+        counts.append(len(gsm.GestureAnalyzer.clusters[k]['gestures']))
     z = list(zip(ks, counts))
     r = reject_outliers(np.array(counts))
     outliers = [x[0] for x in z if x[1] not in r]
