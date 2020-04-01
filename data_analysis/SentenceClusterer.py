@@ -33,7 +33,7 @@ class SentenceClusterer():
     def __init__(self, speaker, seeds=[]):
         self.speaker = speaker
         print("oh boy we're in for it now.")
-        self.embed_fn = self.initialize_encoder("https://tfhub.dev/google/universal-sentence-encoder/2")
+        # self.embed_fn = self.initialize_encoder("https://tfhub.dev/google/universal-sentence-encoder/2")
         self.has_assigned_feature_vecs = False
         self.logfile = "%s/gesture-to-language/sentence_cluster_logs.txt" % os.getenv("HOME")
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
