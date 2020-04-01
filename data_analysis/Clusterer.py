@@ -46,7 +46,7 @@ class Clusterer():
                 clusterer = self.kmeans
                 cluster_labels = self.kmeans.labels_
             else:
-                clusterer = KMeans(n_clusters=n_clusters, random_state=10)
+                clusterer = KMeans(n_clusters=n_clusters, random_state=0)
                 cluster_labels = clusterer.fit_predict(X)
 
             # The silhouette_score gives the average value for all the samples.

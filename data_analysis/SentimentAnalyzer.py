@@ -54,6 +54,9 @@ class SentimentAnalyzer:
 
         return labels
 
+    def get_gesture_ids_by_cluster_id(self, c_id):
+        return [p['id'] for p in self.sent_data if p['sent_cluster_id'] == c_id]
+
     def visualize(self, n_clusters=3):
         self.clusterer.vis_clusters(self.XY, n_clusters)
 
