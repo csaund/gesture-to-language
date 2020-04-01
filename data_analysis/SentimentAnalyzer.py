@@ -2,6 +2,14 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import numpy as np
 from Clusterer import *
 
+# To visualize clusters you can do
+# ~standard loading GSM stuff (top of GestureSentenceManager.py~
+# INCLUDING initializing the "SentenceManager"
+# then
+# SA = SentimentAnalyzer(GSM.SentenceClusterer.agd['phrases'])
+# see sent data thru SA.sent_data    # peep at SA.sent_data[0]
+# SA.assign_clusters()
+# SA.visualize()     or SA.visualize_multi([2, 3, 5, 8])
 
 # analyzes sentences according to https://github.com/cjhutto/vaderSentiment#python-code-example
 # so returns in format:
@@ -49,7 +57,7 @@ class SentimentAnalyzer:
     def visualize(self, n_clusters=3):
         self.clusterer.vis_clusters(self.XY, n_clusters)
 
-    def visualize_multi(self, n_cluster_range=[3]):
+    def visualize_multi(self, n_cluster_range=[3, 4]):
         self.clusterer.silhouette_comparison(self.XY, n_cluster_range)
 
     # takes a string that represents a single sentence,
