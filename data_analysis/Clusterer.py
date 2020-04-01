@@ -19,7 +19,8 @@ class Clusterer():
         if n_clusters == self.kmeans.get_params()['n_clusters']:            # avoid re-clustering each time
             self.kmeans.fit_predict(dat)
         else:
-            self.kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit_predict(dat)
+            self.kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+            self.kmeans.fit_predict(dat)
         return self.kmeans.labels_
 
     def vis_clusters(self, dat, n_clusters=3):
