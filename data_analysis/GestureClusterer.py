@@ -211,13 +211,18 @@ class GestureClusterer():
         print("Normalizing feature vectors.")
         gd = gesture_data if gesture_data else self.agd
         feat_vecs = np.array([g['feature_vec'] for g in gd])
-        feats_norm = np.array([v / np.linalg.norm(v) for v in feat_vecs.T])
-        feat_vecs_normalized = feats_norm.T
+        feat_vecs_normalized = self._normalize_across_features(feat_vecs)
         print("Reassigning normalized vectors")
         for i in tqdm(list(range(len(gd)))):
             gd[i]['feature_vec'] = list(feat_vecs_normalized[i])
         return gd
 
+    # takes vectors, normalizes across features
+    def _normalize_across_features(self, vectors):
+        T = vectors.T
+        norms = np.array([v / np.linalg.norm(v) for v in T])
+        v_normed = norms.T
+        return v_normed
 
     def _create_new_cluster(self, seed_gest):
         self._log("creating new cluster for gesture %s" % seed_gest['id'])

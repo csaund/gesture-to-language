@@ -1,5 +1,7 @@
 import unittest
+import numpy as np
 from GestureSentenceManager import *
+from GestureClusterer import *
 
 TEST_GESTURE_IDS = [
     82775,       # both hands moving down, somewhat quickly, rock, short
@@ -43,6 +45,11 @@ ALL_LEFT_HAND_KEYPOINTS = [6] + list(range(10, 31))
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
 
 class TestMotionFeatures(unittest.TestCase):
+
+    def assertAlmostArray(self, a, b, dec=7):
+        self.assertTrue(len(a) == len(b))
+        for i in range(len(a)):
+            self.assertAlmostEqual(a[i], b[i], dec)
 
     def test_get_right_hand_one_frame(self):
         should_be = [{'y': [446, 420, 416, 447, 415, 466, 443, 460, 473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
@@ -88,13 +95,38 @@ class TestMotionFeatures(unittest.TestCase):
         with self.assertRaises(TypeError):
             s.split(2)
 
+    def test_assert_almost_equal(self):
+        self.assertAlmostArray([1.6454354332, 3.6454354352], [1.6454354, 3.64543543])
+
     def test_normalize(self):
-        d = [{'feature_vec':[2, 2, 2]},
-             {'feature_vec':[1.5, 2, 0.5]},
-             {'feature_vec':[1, 1, 1]},
-             {'feature_vec':[0, 0, 0]}]
-        response = GC._normalize_feature_values(d)
-        print(response)
+        should_be = np.array([[0, 0.37796447, 0.55215763, 0.26967994],
+       [0.83462233, 0.75592895, 0.4417261 , 0.13483997],
+       [0.38949042, 0.37796447, 0.4417261 , 0.94387981],
+       [0.38949042, 0.37796447, 0.55215763, 0.13483997]])
+        a = [0,1,5,2]
+        b = [15,2,4,1]
+        c = [7,1,4,7]
+        d = [7,1,5,1]
+        response = GC._normalize_across_features(np.array([a,b,c,d]))
+        for i in range(len(response)):
+            self.assertAlmostArray(should_be[i], response[i])
+
+    def test_normalize_GC(self):
+        a = [0,1,5,2]
+        b = [15,2,4,1]
+        c = [7,1,4,7]
+        d = [7,1,5,1]
+        should_be = [{'feature_vec': [0, 0.37796447, 0.55215763, 0.26967994]},
+                      {'feature_vec': [0.83462233, 0.75592895, 0.4417261, 0.13483997]},
+                      {'feature_vec': [0.38949042, 0.37796447, 0.4417261, 0.94387981]},
+                      {'feature_vec': [0.38949042, 0.37796447, 0.55215763, 0.13483997]}]
+        input = [{'feature_vec': a},
+                      {'feature_vec': b},
+                      {'feature_vec': c},
+                      {'feature_vec': d}]
+        response = GC._normalize_feature_values(input)
+        for i in range(len(response)):
+            self.assertAlmostArray(should_be[i]['feature_vec'], response[i]['feature_vec'])
 
     # TODO tests for:
     # RL keypoints are actually correct
