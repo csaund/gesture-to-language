@@ -210,13 +210,13 @@ class GestureClusterer():
     def _normalize_feature_values(self, gesture_data=None):
         print("Normalizing feature vectors.")
         gd = gesture_data if gesture_data else self.agd
-        feat_vecs = np.array([g['feature_vec'] for g in self.agd])
+        feat_vecs = np.array([g['feature_vec'] for g in gd])
         feats_norm = np.array([v / np.linalg.norm(v) for v in feat_vecs.T])
         feat_vecs_normalized = feats_norm.T
         print("Reassigning normalized vectors")
         for i in tqdm(list(range(len(gd)))):
             gd[i]['feature_vec'] = list(feat_vecs_normalized[i])
-        return
+        return gd
 
 
     def _create_new_cluster(self, seed_gest):
@@ -532,7 +532,6 @@ class GestureClusterer():
         keys = []
         keypoint_range = ALL_RIGHT_HAND_KEYPOINTS if hand == 'r' else ALL_LEFT_HAND_KEYPOINTS
         if not gesture['keyframes']:
-            #
             print("No keyframes found for gesture")
             print(gesture)
             return
@@ -545,8 +544,7 @@ class GestureClusterer():
                 print(gesture)
                 self.drop_ids.append(gesture['id'])
                 ## KNOWN TEMP FIX
-                return [{'y': [247, 242, 387, 446, 260, 425, 418, 151, 127, 131, 418, 427, 438, 459, 482, 430, 445, 468, 479, 427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491, 420, 416, 447, 415, 466, 443, 460, 473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
-                         'x':[326, 199, 160, 267, 449, 499, 378, 327, 305, 350, 371, 341, 317, 297, 269, 316, 280, 298, 299, 330, 317, 318, 323, 347, 335, 335, 336, 360, 353, 351, 352, 367, 343, 282, 347, 262, 357, 353, 347, 351, 342, 334, 332, 335, 330, 320, 319, 315, 319, 307, 306, 306]}]
+                return []
             y = [t['y'][i] for i in keypoint_range]
             x = [t['x'][i] for i in keypoint_range]
             keys.append({'y': y, 'x': x})

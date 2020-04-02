@@ -87,6 +87,12 @@ class GestureSentenceManager():
 
     def load_gestures(self):
         self.agd = {}
+
+        ## for testing, so it doesn't take so long to get the file.
+        if self.speaker == "test":
+            self.agd = get_data_from_path("test_agd.json")
+            return
+
         agd_bucket = "all_gesture_data"
         try:
             print("trying to get data from cloud from %s, %s" % (agd_bucket, "%s_agd.json" % self.speaker))
@@ -138,14 +144,16 @@ class GestureSentenceManager():
         self.GestureClusterer.cluster_gestures(None, 0.03, max_number_clusters)
 
     def get_transcript(self):
+        fp = "temp.json"
         if self.gesture_transcript:
             return
-        fp = "temp.json"
-        download_blob(self.full_transcript_bucket,
-                      "%s_timings_with_transcript.json" % self.speaker,
-                      fp)
+        elif self.speaker == "test":
+            fp = "test_timings_with_transcript.json"
+        else:       # TODO make this smarter so if it's already downloaded it won't download again
+            download_blob(self.full_transcript_bucket,
+                          "%s_timings_with_transcript.json" % self.speaker,
+                          fp)
         self.gesture_transcript = read_data(fp)
-        os.remove(fp)
 
     def assign_gesture_cluster_ids_for_sentence_clusters(self):
         for k in self.SentenceClusterer.clusters:

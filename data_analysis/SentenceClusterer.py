@@ -1,7 +1,7 @@
 print("loading tf")
-import tensorflow as tf
+# import tensorflow as tf
 print("loading tfh")
-import tensorflow_hub as hub
+# import tensorflow_hub as hub
 import random
 import numpy as np
 from tqdm import tqdm
@@ -18,7 +18,7 @@ from nltk import word_tokenize, pos_tag
 from nltk.corpus import wordnet as wn
 
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 
 MAX_CLUSTER_SIZE = 90
 CLUSTER_SIMILARITY_TOLERANCE = 0.6
