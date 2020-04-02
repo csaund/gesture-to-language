@@ -116,3 +116,6 @@ class Clusterer():
                          fontsize=14, fontweight='bold')
 
         plt.show()
+
+
+    # TODO add 3D visualization -- esp for Sentiment (compound)

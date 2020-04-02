@@ -495,6 +495,11 @@ class GestureClusterer():
         gesture_features = [0,0,0,0,0,0,0,0,0,0,0,0]
         return gesture_features
 
+    def get_feature_vector_by_gesture_id(self, g_id):
+        g = [g['feature_vec'] for g in self.agd if g['id'] == g_id]
+        ret = g[0] if len(g) else None
+        return ret
+
     # TODO manually make some features more/less important
     # report importance of each individual feature in clustering
     # try seeding with some gestures? -- bias, but since we're doing it based on prior gesture research it's ok
@@ -678,6 +683,8 @@ class GestureClusterer():
             scores.append(self.get_silhouette_score(g))
         return self._avg(scores)
 
+
+    #################################################################################################
 
 # our basic problem is that we need to figure out how to map distances between motions that are very long
 # vectors, and different lengths of keyframes. But we need to distinguish between the speed of those motions
