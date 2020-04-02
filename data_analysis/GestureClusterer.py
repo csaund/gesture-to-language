@@ -13,6 +13,15 @@ from sklearn.neighbors.nearest_centroid import NearestCentroid
 from common_helpers import *
 
 
+BASE_KEYPOINT = [0]
+RIGHT_BODY_KEYPOINTS = [1, 2, 3, 28]
+LEFT_BODY_KEYPOINTS = [4, 5, 6, 7]
+LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]
+RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]
+ALL_RIGHT_HAND_KEYPOINTS = [3] + list(range(31, 52))
+ALL_LEFT_HAND_KEYPOINTS = [6] + list(range(10, 31))
+BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
+
 # semantics -- wn / tf
 # rhetorical
 # metaphorical
@@ -519,20 +528,12 @@ class GestureClusterer():
     def _avg(self, v):
         return float(sum(v) / len(v))
 
-    def _get_body_keypoints(self, gesture):
-        return self._get_keypoints_body_range(gesture, 0, 7)
-
     def _get_rl_hand_keypoints(self, gesture, hand):
-        if hand == 'r':
-            return self._get_keypoints_body_range(gesture, 7, 28)
-        elif hand == 'l':
-            return self._get_keypoints_body_range(gesture, 28, 49)
-
-    def _get_keypoints_body_range(self, gesture, start, end):
         keys = []
+        keypoint_range = ALL_RIGHT_HAND_KEYPOINTS if hand == 'r' else ALL_LEFT_HAND_KEYPOINTS
         if not gesture['keyframes']:
             #
-            print("OH NO")
+            print("No keyframes found for gesture")
             print(gesture)
             return
 
@@ -546,8 +547,8 @@ class GestureClusterer():
                 ## KNOWN TEMP FIX
                 return [{'y': [247, 242, 387, 446, 260, 425, 418, 151, 127, 131, 418, 427, 438, 459, 482, 430, 445, 468, 479, 427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491, 420, 416, 447, 415, 466, 443, 460, 473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
                          'x':[326, 199, 160, 267, 449, 499, 378, 327, 305, 350, 371, 341, 317, 297, 269, 316, 280, 298, 299, 330, 317, 318, 323, 347, 335, 335, 336, 360, 353, 351, 352, 367, 343, 282, 347, 262, 357, 353, 347, 351, 342, 334, 332, 335, 330, 320, 319, 315, 319, 307, 306, 306]}]
-            y = t['y'][start:end]
-            x = t['x'][start:end]
+            y = [t['y'][i] for i in keypoint_range]
+            x = [t['x'][i] for i in keypoint_range]
             keys.append({'y': y, 'x': x})
         return keys
 
