@@ -84,17 +84,6 @@ class TestMotionFeatures(unittest.TestCase):
         response = GC._get_rl_hand_keypoints(TEST_FRAMES, "l")
         self.assertEqual(should_be, response)
 
-    def test_isupper(self):
-        self.assertTrue('FOO'.isupper())
-        self.assertFalse('Foo'.isupper())
-
-    def test_split(self):
-        s = 'hello world'
-        self.assertEqual(s.split(), ['hello', 'world'])
-        # check that s.split fails when the separator is not a string
-        with self.assertRaises(TypeError):
-            s.split(2)
-
     def test_assert_almost_equal(self):
         self.assertAlmostArray([1.6454354332, 3.6454354352], [1.6454354, 3.64543543])
 
