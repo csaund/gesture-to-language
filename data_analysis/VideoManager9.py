@@ -3,12 +3,11 @@
 print("loading modules for Video Manager")
 import argparse
 from subprocess import call
-
 import cv2
 import numpy as np
 import os
 import pandas as pd
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 
 
 class VideoManager():
@@ -26,7 +25,9 @@ class VideoManager():
         clip_output = video_fn.rsplit('.', 1)[0] + "_" + str(start_seconds) + "_" + str(end_seconds)
         target = clip_output + '.' + video_fn.split('.')[-1]
         print("extracting clip to target: %s" % target)
-        ffmpeg_extract_subclip(output_path, start_seconds, end_seconds, targetname=target)
+        with VideoFileClip(output_path) as video:
+            new = video.subclip(start_seconds, end_seconds)
+            new.write_videofile(target, audio_codec='aac')
         return
 
     def download_video(self, video_fn, output_path):
@@ -43,13 +44,14 @@ class VideoManager():
             print("no youtube video found for video_fn: %s" % link)
             return
         try:
-            command = 'youtube-dl -o {temp_path} -f mp4 {link}'.format(link=link, temp_path=self.temp_output_path)
+            command = 'youtube-dl -o {path} -f mp4 {link}'.format(link=link, path=output_path)
             res1 = call(command, shell=True)
-            cam = cv2.VideoCapture(self.temp_output_path)
-            if np.isclose(cam.get(cv2.CAP_PROP_FPS), 29.97, atol=0.03):
-                os.rename(self.temp_output_path, output_path)
-            else:
-                res2 = call('ffmpeg -i "%s" -r 30000/1001 -strict -2 "%s" -y' % (self.temp_output_path, output_path),
+            print(res1)                       # I think????
+            cam = cv2.VideoCapture(output_path)
+            # if np.isclose(cam.get(cv2.CAP_PROP_FPS), 29.97, atol=0.03):
+            #     os.rename(self.temp_output_path, output_path)
+            # else:
+            res2 = call('ffmpeg -i "%s" -r 30000/1001 -strict -2 "%s" -y' % (output_path, output_path),
                                 shell=True)
             print(("Successfully downloaded: %s" % video_fn))
         except Exception as e:
@@ -57,4 +59,8 @@ class VideoManager():
             err += 1
         finally:
             if os.path.exists(self.temp_output_path):
-                os.remove(self.temp_output_path)
+                print(self.temp_output_path)
+                #fo = open(self.temp_output_path, 'r')  # need to close the file so windows can rename it?
+                #fo.close()
+                #os.remove(self.temp_output_path)
+                return
