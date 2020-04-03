@@ -141,7 +141,6 @@ class TestMotionFeatures(unittest.TestCase):
     #         #   r_hand_rotate,
     #         #   l_hand_rotate,
     #         #   hands_cycle
-    # NORMALIZING THE FEATURE VECTORS!!!!
 
 if __name__ == '__main__':
     unittest.main()

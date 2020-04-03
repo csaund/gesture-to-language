@@ -332,17 +332,15 @@ class GestureClusterer():
 
     # returns minimum distance at any frame between point A on right hand and
     # point A on left hand.
-    def _min_hands_together(self, gesture):
-        return self._hand_togetherness(gesture, 1000, min)
+    def _min_hands_together(self, r_hand_keys, l_hand_keys):
+        return self._hand_togetherness(r_hand_keys, l_hand_keys, 1000, min)
 
     # returns maximum distance at any frame between point A on right hand and
     # point A on left hand
-    def _max_hands_apart(self, gesture):
-        return self._hand_togetherness(gesture, 0, max)
+    def _max_hands_apart(self, r_hand_keys, l_hand_keys):
+        return self._hand_togetherness(r_hand_keys, l_hand_keys, 0, max)
 
-    def _hand_togetherness(self, gesture, min_max, relate):
-        r_hand_keys = self._get_rl_hand_keypoints(gesture, 'r')
-        l_hand_keys = self._get_rl_hand_keypoints(gesture, 'l')
+    def _hand_togetherness(self, r_hand_keys, l_hand_keys, min_max, relate):
         max_dist = min_max # larger than pixel range
         for i in range(0, len(r_hand_keys)-2):
             for j in range(0, len(r_hand_keys[i]['x'])-1):
@@ -357,36 +355,34 @@ class GestureClusterer():
         return max_dist
 
     # get maximum "verticalness" aka minimum horizontalness of hands
-    def _palm_vert(self, gesture, lr):
-        return self._palm_angle_axis(gesture, lr, 'x')
+    def _palm_vert(self, keyframes):
+        return self._palm_angle_axis(keyframes, 'x')
 
     # get maximum "horizontalness" aka minimum verticalness of hands
-    def _palm_horiz(self, gesture, lr):
-        return self._palm_angle_axis(gesture, lr, 'y')
+    def _palm_horiz(self, keyframes):
+        return self._palm_angle_axis(keyframes, 'y')
 
-    def _palm_angle_axis(self, gesture, lr, xy):
-        hand_keys = self._get_rl_hand_keypoints(gesture, lr)
+    def _palm_angle_axis(self, keyframes, xy):
         p_min = 1000
-        for frame in hand_keys:
+        for frame in keyframes:
             max_frame_dist = max(frame[xy]) - min(frame[xy])
             p_min = min(p_min, max_frame_dist)
         return p_min
 
     ## max distance from low --> high the wrists move in a single stroke
-    def _wrists_up(self, gesture, lr):
-        return self._wrist_vertical_stroke(gesture, lr, operator.ge)
+    def _wrists_up(self, keyframes):
+        return self._wrist_vertical_stroke(keyframes, operator.ge)
 
     ## max distance from high --> low the wrists move in single stroke
-    def _wrists_down(self, gesture, lr):
-        return self._wrist_vertical_stroke(gesture, lr, operator.le)
+    def _wrists_down(self, keyframes):
+        return self._wrist_vertical_stroke(keyframes, operator.le)
 
-    def _wrist_vertical_stroke(self, gesture, lr, relate):
-        hand_keys = self._get_rl_hand_keypoints(gesture, lr)
+    def _wrist_vertical_stroke(self, keyframes, relate):
         total_motion = 0
         max_single_stroke = 0
-        pos = self._avg(hand_keys[0]['y'])
+        pos = self._avg(keyframes[0]['y'])
         same_direction = False
-        for frame in hand_keys:
+        for frame in keyframes:
             curr_pos = self._avg(frame['y'])
             if relate(curr_pos, pos):
                 total_motion = total_motion + abs(curr_pos - pos)
@@ -400,15 +396,13 @@ class GestureClusterer():
             max_single_stroke = max(max_single_stroke, total_motion)
         return max_single_stroke
 
-    def _wrists_outward(self, gesture):
-        return self._wrist_relational_move(gesture, operator.ge)
+    def _wrists_outward(self, r_hand_keys, l_hand_keys):
+        return self._wrist_relational_move(r_hand_keys, l_hand_keys, operator.ge)
 
-    def _wrists_inward(self, gesture):
-        return self._wrist_relational_move(gesture, operator.le)
+    def _wrists_inward(self, r_hand_keys, l_hand_keys):
+        return self._wrist_relational_move(r_hand_keys, l_hand_keys, operator.le)
 
-    def _wrist_relational_move(self, gesture, relate):
-        r_hand = self._get_rl_hand_keypoints(gesture, 'r')
-        l_hand = self._get_rl_hand_keypoints(gesture, 'l')
+    def _wrist_relational_move(self, r_hand, l_land, relate):
         moving_desired_direction = False
         total_direction_dist = 0
         max_direction_dist = 0
@@ -450,14 +444,13 @@ class GestureClusterer():
 
     # max velocity over n frames.
     # only goes over r/l hand avg pos
-    def _max_wrist_velocity(self, gesture, rl='r', num_frames=5):
-        hand_keys = self._get_rl_hand_keypoints(gesture, rl)
+    def _max_wrist_velocity(self, keyframes, num_frames=5):
         max_frame_diff = 0
         for i in range(num_frames, len(hand_keys)-1):
             frame_diff = 0
             for j in range(1, num_frames):
-                pos1 = self._get_hand_pos(hand_keys[i-(j-1)])
-                pos2 = self._get_hand_pos(hand_keys[i-j])
+                pos1 = self._get_hand_pos(keyframes[i-(j-1)])
+                pos2 = self._get_hand_pos(keyframes[i-j])
                 frame_diff = frame_diff + self._get_point_dist(pos1[0], pos1[1], pos2[0], pos2[1])
             max_frame_diff = max(max_frame_diff, frame_diff)
         return max_frame_diff
@@ -480,23 +473,25 @@ class GestureClusterer():
 
 
     def _get_gesture_features(self, gesture):
+        r_keyframes = self._get_rl_hand_keypoints(gesture, 'right')
+        l_keyframes = self._get_rl_hand_keypoints(gesture, 'left')
         gesture_features = [
-          self._palm_vert(gesture, 'l'),
-          self._palm_horiz(gesture, 'l'),
-          self._palm_vert(gesture, 'r'),
-          self._palm_horiz(gesture, 'r'),
-          self._max_hands_apart(gesture),
-          self._min_hands_together(gesture),
+          self._palm_vert(l_keyframes),
+          self._palm_horiz(l_keyframes),
+          self._palm_vert(r_keyframes),
+          self._palm_horiz(r_keyframes),
+          self._max_hands_apart(r_keyframes, l_keyframes),
+          self._min_hands_together(r_keyframes, l_keyframes),
           #   x_oscillate,
           #   y_oscillate,
-          self._wrists_up(gesture, 'r'),
-          self._wrists_up(gesture, 'l'),
-          self._wrists_down(gesture, 'r'),
-          self._wrists_down(gesture, 'l'),
-          self._wrists_outward(gesture),
-          self._wrists_inward(gesture),
-          self._max_wrist_velocity(gesture, 'r'),
-          self._max_wrist_velocity(gesture, 'l')
+          self._wrists_up(r_keyframes),
+          self._wrists_up(l_keyframes),
+          self._wrists_down(r_keyframes),
+          self._wrists_down(l_keyframes),
+          self._wrists_outward(r_keyframes, l_keyframes),
+          self._wrists_inward(r_keyframes, l_keyframes),
+          self._max_wrist_velocity(r_keyframes),
+          self._max_wrist_velocity(l_keyframes)
         #   wrists_sweep,
         #   wrist_arc,
         #   r_hand_rotate,
@@ -549,7 +544,7 @@ class GestureClusterer():
                 print(gesture)
                 self.drop_ids.append(gesture['id'])
                 ## KNOWN TEMP FIX
-                return []
+                return [{'y':[0], 'x':[0]}]
             y = [t['y'][i] for i in keypoint_range]
             x = [t['x'][i] for i in keypoint_range]
             keys.append({'y': y, 'x': x})
