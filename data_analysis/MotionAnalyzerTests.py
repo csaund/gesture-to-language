@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import numbers
 from GestureSentenceManager import *
 from GestureClusterer import *
 
@@ -42,6 +43,8 @@ LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]
 RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]
 ALL_RIGHT_HAND_KEYPOINTS = [3] + list(range(31, 52))
 ALL_LEFT_HAND_KEYPOINTS = [6] + list(range(10, 31))
+RIGHT_WRIST_KEYPOINT = 3
+LEFT_WRIST_KEYPOINT = 6
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
 
 class TestMotionFeatures(unittest.TestCase):
@@ -117,7 +120,80 @@ class TestMotionFeatures(unittest.TestCase):
         for i in range(len(response)):
             self.assertAlmostArray(should_be[i]['feature_vec'], response[i]['feature_vec'])
 
+    def test_get_gesture_features(self):
+        response = GC._get_gesture_features(TEST_FRAMES)
+        for feat in response:
+            self.assertIsInstance(feat, numbers.Number)
+
+    def test_get_max_hands_apart(self):
+        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
+        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        response = GC._max_hands_apart(r, l)
+        y1 = TEST_FRAME['keyframes'][0]['y']
+        x1 = TEST_FRAME['keyframes'][0]['x']
+        y1R = [y1[i] for i in ALL_RIGHT_HAND_KEYPOINTS]
+        x1R = [x1[i] for i in ALL_RIGHT_HAND_KEYPOINTS]
+        y1L = [y1[i] for i in ALL_LEFT_HAND_KEYPOINTS]
+        x1L = [x1[i] for i in ALL_LEFT_HAND_KEYPOINTS]
+        R = np.array((y1R, x1R))
+        L = np.array((y1L, x1L))
+        should_be = np.linalg.norm(R-L)
+        self.assertAlmostEqual(should_be, response)
+
+    def test_get_min_hands_together(self):
+        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
+        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        response = GC._min_hands_together(r, l)
+        y1 = TEST_FRAME['keyframes'][0]['y']
+        x1 = TEST_FRAME['keyframes'][0]['x']
+        y1R = [y1[i] for i in ALL_RIGHT_HAND_KEYPOINTS]
+        x1R = [x1[i] for i in ALL_RIGHT_HAND_KEYPOINTS]
+        y1L = [y1[i] for i in ALL_LEFT_HAND_KEYPOINTS]
+        x1L = [x1[i] for i in ALL_LEFT_HAND_KEYPOINTS]
+        R = np.array((y1R, x1R))
+        L = np.array((y1L, x1L))
+        should_be = np.linalg.norm(R-L)
+        self.assertAlmostEqual(should_be, response)
+
+    def test_wrists_inwards(self):
+        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
+        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        response = GC._wrists_inward(r, l)
+        keys = TEST_FRAMES['keyframes']
+        rw1 = keys[0]['x'][RIGHT_WRIST_KEYPOINT]
+        lw1 = keys[0]['x'][LEFT_WRIST_KEYPOINT]
+        dist_1 = np.linalg.norm(rw1-lw1)
+        rw2 = keys[1]['x'][RIGHT_WRIST_KEYPOINT]
+        lw2 = keys[1]['x'][LEFT_WRIST_KEYPOINT]
+        dist_2 = np.linalg.norm(rw2-lw2)
+        should_be = dist_1 - dist_2
+        print(response)
+        self.assertEqual(should_be, response)
+
+    def test_wrists_outwards(self):
+        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
+        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        response = GC._wrists_outward(r, l)
+        keys = TEST_FRAMES['keyframes']
+        rw1 = keys[0]['x'][RIGHT_WRIST_KEYPOINT]
+        lw1 = keys[0]['x'][LEFT_WRIST_KEYPOINT]
+        dist_1 = np.linalg.norm(rw1-lw1)
+        rw2 = keys[1]['x'][RIGHT_WRIST_KEYPOINT]
+        lw2 = keys[1]['x'][LEFT_WRIST_KEYPOINT]
+        dist_2 = np.linalg.norm(rw2-lw2)
+        should_be = dist_2 - dist_1
+        print(response)
+        print(should_be)
+        self.assertEqual(should_be, response)
+
+    # def test_palm_horiz(self):
+    #     keys = GC._get_rl_hand_keypoints(TEST_FRAME, 'r')
+    #     response = GC._palm_vert(keys)
+    #     print(response)
+
     # TODO tests for:
+    # clusterer gets fewer than max number of clusters
+    # cluster distance is respected?
     # RL keypoints are actually correct
     # motion detections for
     #         self._palm_vert(gesture, 'l'),
