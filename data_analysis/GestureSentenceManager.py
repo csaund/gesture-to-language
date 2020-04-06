@@ -41,6 +41,7 @@ import numpy as np
 ## and also all the timings.
 # sys.path.extend(['C:/Users/carolyns/PycharmProjects/gesture-to-language/data_analysis'])
 # from GestureSentenceManager import *
+# exec(open('setup.py').read())
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.downsample_speaker()
 # GSM._initialize_sentence_clusterer()
@@ -139,12 +140,12 @@ class GestureSentenceManager():
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
         self.cluster_gestures(exclude_ids, max_number_clusters)
 
-    def cluster_gestures(self, exclude_ids=[], max_number_clusters=0):
+    def cluster_gestures(self, exclude_ids=[], mnc=None, mcd=None):
         if len(exclude_ids):
             self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
         else:
             self.GestureClusterer = GestureClusterer(self.agd)
-        self.GestureClusterer.cluster_gestures(None, 0.03, max_number_clusters)
+        self.GestureClusterer.cluster_gestures(None, None, max_number_clusters=mnc, max_cluster_distance=mcd)
 
     def get_transcript(self):
         fp = "temp.json"

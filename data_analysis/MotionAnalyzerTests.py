@@ -5,8 +5,13 @@ from GestureSentenceManager import *
 from GestureClusterer import *
 
 TEST_GESTURE_IDS = [
-    82775,       # both hands moving down, somewhat quickly, rock, short
-    119329      #
+    3225,    # back and forth        # 10._Personal_identity_Part_I_-_Identity_across_space_and_time_and_the_soul_theory-00KDsArsQ3A_346.012679_358.491825
+    3215,    # big arm apart vertically   # 2._The_nature_of_persons_-_dualism_vs._physicalism-gh-6HyTRNNY_2430.296964_2440.774107
+    1524,    # lots of shaking in beginning, high velocity shaking  14._What_matters_cont._The_nature_of_death_Part_I-0_vqoz05W-0_114.981648_136.936937
+    3855,    # quite slow           # 3._Arguments_for_the_existence_of_the_soul_Part_I-GR63MMAi-fs_958.158158_960.894228
+    1726,    # very complex, long, sweep up, down, shaking, cycling gah #   15._The_nature_of_death_cont._Believing_you_will_die-DnYt2hiOR8c_2041.207875_2058.558559
+    4093,    # one handed   # 8._Plato_Part_III_-_Arguments_for_the_immortality_of_the_soul_cont.-oJzGgp-hoKc_2558.992326_2564.731398
+    4091,    # big outward sweep to side    # 1._Course_introduction-p2J7wSuFRl8_1451.217885_1462.495829
 ]
 
 GSM = GestureSentenceManager("test")
@@ -171,10 +176,10 @@ class TestMotionFeatures(unittest.TestCase):
         should_be = np.linalg.norm(R-L)
         self.assertAlmostEqual(should_be, response)
 
-    def test_wrists_inwards(self):
+    def test_wrists_together(self):
         r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
         l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
-        response = GC._wrists_inward(r, l)
+        response = GC._wrists_together(r, l)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
         lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
@@ -185,10 +190,10 @@ class TestMotionFeatures(unittest.TestCase):
         should_be = max(0, dist_1 - dist_2)
         self.assertEqual(should_be, response)
 
-    def test_wrists_outwards(self):
+    def test_wrists_apart(self):
         r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
         l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
-        response = GC._wrists_outward(r, l)
+        response = GC._wrists_apart(r, l)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
         lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
