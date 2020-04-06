@@ -414,10 +414,11 @@ class GestureClusterer():
     def _wrist_vertical_stroke(self, keyframes, relate):
         total_motion = 0
         max_single_stroke = 0
-        pos = self._avg(keyframes[0]['y'])
+        # 0 is the index of the wrist in handed keypoints
+        pos = keyframes[0]['y'][0]
         same_direction = False
         for frame in keyframes:
-            curr_pos = self._avg(frame['y'])
+            curr_pos = frame['y'][0]
             if relate(curr_pos, pos):
                 total_motion = total_motion + abs(curr_pos - pos)
                 pos = curr_pos
@@ -444,7 +445,10 @@ class GestureClusterer():
     def _wrist_relational_move_horizonal(self, r_hand_keys, l_hand_keys, relate):
         total_direction_dist = 0
         max_direction_dist = 0
-        prev_dist = 0
+        # the 0th keyframe of each hand is the wrist position
+        r_wrist_position = np.array([r_hand_keys[0]['x'][0], r_hand_keys[0]['y'][0]])
+        l_wrist_position = np.array([l_hand_keys[0]['x'][0], l_hand_keys[0]['y'][0]])
+        prev_dist = np.linalg.norm(r_wrist_position - l_wrist_position)
         for frame_index in range(len(r_hand_keys)):
             r_wrist_position = np.array([r_hand_keys[frame_index]['x'][0], r_hand_keys[frame_index]['y'][0]])
             l_wrist_position = np.array([l_hand_keys[frame_index]['x'][0], l_hand_keys[frame_index]['y'][0]])

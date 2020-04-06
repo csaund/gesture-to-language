@@ -91,6 +91,8 @@ class GestureSentenceManager():
         ## for testing, so it doesn't take so long to get the file.
         if self.speaker == "test":
             fp = os.path.join(os.getcwd(), "test_agd.json")    # hacky
+            if not os.path.exists(fp):
+                fp = os.path.join(os.getcwd(), "data_analysis", "test_agd.json")  # ha
             self.agd = get_data_from_path(fp)
             return
 
@@ -150,6 +152,8 @@ class GestureSentenceManager():
             return
         elif self.speaker == "test":
             fp = os.path.join(os.getcwd(), "test_timings_with_transcript.json")    # hacky
+            if not os.path.exists(fp):
+                fp = os.path.join(os.getcwd(), "data_analysis", "test_timings_with_transcript.json")  # hacky
         else:       # TODO make this smarter so if it's already downloaded it won't download again
             download_blob(self.full_transcript_bucket,
                           "%s_timings_with_transcript.json" % self.speaker,

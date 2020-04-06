@@ -36,6 +36,22 @@ TEST_FRAMES = {'keyframes':
                        348, 352, 343, 335, 333, 336, 331, 321, 320, 316, 320, 308, 307, 307]}
                  ]}
 
+TEST_FRAMES_APART = {'keyframes': [{
+                    "y": [127, 132, 196, 239, 120, 171, 215, 71, 62, 60, 229, 223, 221, 217, 215, 236, 234, 232, 228, 242,
+                          238, 235, 233, 243, 241, 238, 235, 243, 241, 239, 237, 252, 248, 248, 248, 248, 263, 261, 256,
+                          252, 266, 262, 254, 251, 267, 261, 254, 253, 265, 261, 257,255],
+                    "x": [338,293,276,266,383,412,426,344,330,351,427,426,436,443,451,432,424,417,412,428,419,412,407,
+                          423,417,410,405,419,414,410,406,263,257,248,239,231,253,254,258,261,260,263,265,266,265,269,
+                          269,269,270,274,272,272]},
+                    {"y": [127, 131, 195, 239, 120, 176, 215, 70, 60, 59, 229, 220, 218, 216, 213, 232, 230, 226, 223, 238, 234,
+                          229, 227, 241, 236, 231, 229, 241, 239, 236, 232, 251, 246, 248, 248, 248, 265, 263, 258, 255,
+                          269, 261, 255, 253, 271, 261, 254, 253, 270, 262, 257, 57],
+                    "x": [ 339, 295, 277, 266, 385, 415, 429, 351, 337, 358, 431, 430, 440, 448, 456, 437, 433, 426, 422,
+                           432, 424, 418, 416, 426, 419, 413, 412, 420, 417, 414, 412, 264, 258, 247, 239, 231, 251, 253,
+                           257, 260, 257, 263, 265, 265, 262, 270, 270, 268, 267, 273, 272, 272]}
+                    ]}
+
+
 BASE_KEYPOINT = [0]
 RIGHT_BODY_KEYPOINTS = [1, 2, 3, 28]
 LEFT_BODY_KEYPOINTS = [4, 5, 6, 7]
@@ -156,42 +172,44 @@ class TestMotionFeatures(unittest.TestCase):
         self.assertAlmostEqual(should_be, response)
 
     def test_wrists_inwards(self):
-        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
-        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+        l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
         response = GC._wrists_inward(r, l)
-        keys = TEST_FRAMES['keyframes']
-        rw1 = keys[0]['x'][RIGHT_WRIST_KEYPOINT]
-        lw1 = keys[0]['x'][LEFT_WRIST_KEYPOINT]
+        keys = TEST_FRAMES_APART['keyframes']
+        rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
+        lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
         dist_1 = np.linalg.norm(rw1-lw1)
-        rw2 = keys[1]['x'][RIGHT_WRIST_KEYPOINT]
-        lw2 = keys[1]['x'][LEFT_WRIST_KEYPOINT]
+        rw2 = np.array((keys[1]['x'][RIGHT_WRIST_KEYPOINT], keys[1]['y'][RIGHT_WRIST_KEYPOINT]))
+        lw2 = np.array((keys[1]['x'][LEFT_WRIST_KEYPOINT], keys[1]['y'][LEFT_WRIST_KEYPOINT]))
         dist_2 = np.linalg.norm(rw2-lw2)
-        should_be = dist_1 - dist_2
-        print(response)
+        should_be = max(0, dist_1 - dist_2)
         self.assertEqual(should_be, response)
 
     def test_wrists_outwards(self):
-        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
-        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+        l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
         response = GC._wrists_outward(r, l)
-        keys = TEST_FRAMES['keyframes']
-        rw1 = keys[0]['x'][RIGHT_WRIST_KEYPOINT]
-        lw1 = keys[0]['x'][LEFT_WRIST_KEYPOINT]
+        keys = TEST_FRAMES_APART['keyframes']
+        rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
+        lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
         dist_1 = np.linalg.norm(rw1-lw1)
-        rw2 = keys[1]['x'][RIGHT_WRIST_KEYPOINT]
-        lw2 = keys[1]['x'][LEFT_WRIST_KEYPOINT]
+        rw2 = np.array((keys[1]['x'][RIGHT_WRIST_KEYPOINT], keys[1]['y'][RIGHT_WRIST_KEYPOINT]))
+        lw2 = np.array((keys[1]['x'][LEFT_WRIST_KEYPOINT], keys[1]['y'][LEFT_WRIST_KEYPOINT]))
         dist_2 = np.linalg.norm(rw2-lw2)
         should_be = dist_2 - dist_1
-        print(response)
-        print(should_be)
         self.assertEqual(should_be, response)
 
-    # def test_palm_horiz(self):
-    #     keys = GC._get_rl_hand_keypoints(TEST_FRAME, 'r')
-    #     response = GC._palm_vert(keys)
-    #     print(response)
+    def test_zero_distance_same_gesture(self):
+        result = GC._calculate_distance_between_gestures(TEST_FRAMES, TEST_FRAMES)
+        self.assertEqual(0, result)
+
+    def test_wrists_up(self):
+        r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+        result = GC._wrists_up(r)
+
 
     # TODO tests for:
+    # vector math works out
     # clusterer gets fewer than max number of clusters
     # cluster distance is respected?
     # RL keypoints are actually correct
@@ -200,16 +218,12 @@ class TestMotionFeatures(unittest.TestCase):
     #         self._palm_horiz(gesture, 'l'),
     #         self._palm_vert(gesture, 'r'),
     #         self._palm_horiz(gesture, 'r'),
-    #         self._max_hands_apart(gesture),
-    #         self._min_hands_together(gesture),
     #         #   x_oscillate,
     #         #   y_oscillate,
     #         self._wrists_up(gesture, 'r'),
     #         self._wrists_up(gesture, 'l'),
     #         self._wrists_down(gesture, 'r'),
     #         self._wrists_down(gesture, 'l'),
-    #         self._wrists_outward(gesture),
-    #         self._wrists_inward(gesture),
     #         self._max_wrist_velocity(gesture, 'r'),
     #         self._max_wrist_velocity(gesture, 'l')
     #         #   wrists_sweep,
