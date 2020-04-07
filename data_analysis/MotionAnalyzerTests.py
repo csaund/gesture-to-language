@@ -12,6 +12,9 @@ TEST_GESTURE_IDS = [
     1726,    # very complex, long, sweep up, down, shaking, cycling gah #   15._The_nature_of_death_cont._Believing_you_will_die-DnYt2hiOR8c_2041.207875_2058.558559
     4093,    # one handed   # 8._Plato_Part_III_-_Arguments_for_the_immortality_of_the_soul_cont.-oJzGgp-hoKc_2558.992326_2564.731398
     4091,    # big outward sweep to side    # 1._Course_introduction-p2J7wSuFRl8_1451.217885_1462.495829
+    374,     # very long. 1:16          # 21._Other_bad_aspects_of_death_Part_II-0qrx6x3izQw_2300.633967_2390.19019
+    4001,    # super big quick open at the end # 5._Arguments_for_the_existence_of_the_soul_Part_III_-_Free_will_and_near-death_experiences-CWVlorPM3rA_819.953287_835.502169
+    4505,    # small, hold frame, slight shake  # 12._Personal_identity_Part_III_-_Objections_to_the_personality_theory-rzbJ5nkAVfE_1680.38038_1686.119453
 ]
 
 GSM = GestureSentenceManager("test")
@@ -208,10 +211,17 @@ class TestMotionFeatures(unittest.TestCase):
         result = GC._calculate_distance_between_gestures(TEST_FRAMES, TEST_FRAMES)
         self.assertEqual(0, result)
 
-    def test_wrists_up(self):
-        r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
-        result = GC._wrists_up(r)
+    def test_point_diff(self):
+        result = GC._get_point_dist(2, 3, 5, 6)
+        a = np.array([2,3])
+        b = np.array([5,6])
+        should_be = np.linalg.norm(a-b)
+        self.assertEqual(should_be, result)
 
+    # TODO create test frames that have a difference in y
+    #def test_wrists_up(self):
+    #    r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+    #    result = GC._wrists_up(r)
 
     # TODO tests for:
     # vector math works out

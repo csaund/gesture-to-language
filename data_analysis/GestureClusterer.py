@@ -10,6 +10,7 @@ import time
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 import timeit
+import matplotlib.pyplot as plt
 import statistics
 
 from common_helpers import *
@@ -25,6 +26,7 @@ RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]
 ALL_RIGHT_HAND_KEYPOINTS = [3] + list(range(31, 52))
 ALL_LEFT_HAND_KEYPOINTS = [6] + list(range(10, 31))
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
+DIRECTION_ANGLE_SWITCH = 110  # arbitrary measure of degrees to constitute hands switching direction ¯\_(ツ)_/¯
 
 # semantics -- wn / tf
 # rhetorical
@@ -471,19 +473,21 @@ class GestureClusterer():
                 prev_dist = cur_dist
         return max_direction_dist
 
-    # max velocity over n frames.
-    # only goes over r/l hand avg pos
+    # max velocity of wrist between 2 frames
+    # specifically, it just gets the max difference in distance between wrists across 2 frames
     @timeit
-    def _max_wrist_velocity(self, keyframes, num_frames=5):
-        max_frame_diff = 0
-        for i in range(num_frames, len(keyframes)-1):
-            frame_diff = 0
-            for j in range(1, num_frames):
-                pos1 = self._get_hand_pos(keyframes[i-(j-1)])
-                pos2 = self._get_hand_pos(keyframes[i-j])
-                frame_diff = frame_diff + self._get_point_dist(pos1[0], pos1[1], pos2[0], pos2[1])
-            max_frame_diff = max(max_frame_diff, frame_diff)
-        return max_frame_diff
+    def _max_wrist_velocity(self, keys):
+        max_dist = 0
+        for i in range(len(keys)-1):
+            # wrist is 0th keypoint for each hand
+            (wx0, wy0) = (keys[i]['x'][0], keys[i]['y'][0])
+            (wx1, wy1) = (keys[i+1]['x'][0], keys[i+1]['y'][0])
+            max_dist = max(max_dist, self._get_point_dist(wx0, wy0, wx1, wy1))
+        return max_dist
+
+    # get average velocity across all frames
+    def _get_avg_vel(self, keys):
+        return
 
     @timeit
     def _get_hand_pos(self, hand_keys):
@@ -495,12 +499,73 @@ class GestureClusterer():
         b = np.array((x2, y2))
         return np.linalg.norm(a-b)
 
+    # measures the number of times wrist changes direction as measured by the angle
+    # of the wrist point between frame a, b, c is greater than 100
+    def _get_back_and_forth(self, keys):
+        switches = 0
+        if len(keys) < 3:
+            return 0
+        for frame in range(len(keys)-2):
+            a = np.array([keys[frame]['x'][0], keys[frame]['y'][0]])
+            b = np.array([keys[frame+1]['x'][0], keys[frame+1]['y'][0]])
+            c = np.array([keys[frame+2]['x'][0], keys[frame+2]['y'][0]])
+            ba = a - b
+            bc = c - b
+            cos_ang = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+            full_ang = np.arccos(cos_ang)
+            if np.degrees(full_ang) >= DIRECTION_ANGLE_SWITCH:      # arbitrary measure for switching directions ¯\_(ツ)_/¯
+                switches += 1
+        return switches
+
+    # TODO check this in MotionAnalyzerTests and visually.
+    # actually right now seems to detect smooth gestures???
+    # definitely not right.
+    def _max_acceleration(self, keys):
+        max_accel = 0
+        for frame in range(len(keys)-2):
+            ax, ay = keys[frame]['x'][0], keys[frame]['y'][0]
+            bx, by = keys[frame+1]['x'][0], keys[frame+1]['y'][0]
+            cx, cy = keys[frame+2]['x'][0], keys[frame+2]['y'][0]
+            d1 = self._get_point_dist(ax, ay, bx, by)   # /1 for 1 frame (velocity, not distance technically)
+            d2 = self._get_point_dist(bx, by, cx, cy)
+            max_accel = max(max_accel, abs(d1-d2))
+        return max_accel
 
     ## across all the frames, how much does it go back and forth?
     ## basically, how much do movements switch direction? but on a big scale.
     ## average the amount over the hands
     # def self, _oscillation(gesture):
     #     return
+
+
+    # can't just do raw position, has to be ONLY in relation to the other points -- i.e. cannot just look at
+    # x,y position for any given point, but for the x,y position of each finger in relation to the palm, etc.
+    def _plot_hand_position_changes(self, keys):
+        fig = plt.figure
+        for keypoint_index in range(len(keys[0]['y'])):
+            xs = [k['x'][keypoint_index] for k in keys]
+            ys = [k['y'][keypoint_index] for k in keys]
+            plt.plot(range(len(xs)), xs, color='red')
+            plt.plot(range(len(ys)), ys, color='teal')
+        plt.show()
+
+    # given a set of keys from a hand (array length 22), returns angles between every 3 points, like trigrams
+    # works on frame i
+    def _get_hand_angles_for_frame(self, keys, frame_index):
+        kf = keys[frame_index]
+        angles = []
+        for p in range(len(kf['x'])-2):
+            a = np.array((kf['x'][p], kf['y'][p]))
+            b = np.array((kf['x'][p+1], kf['y'][p+1]))
+            c = np.array((kf['x'][p+2], kf['y'][p+2]))
+            ba = a - b
+            bc = c - b
+            cos_ang = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+            full_ang = np.arccos(cos_ang)
+            angles.append(np.degrees(full_ang))
+        return angles
+
+    # TODO map angles against frame...
 
     @timeit
     def _get_gesture_features(self, gesture):
@@ -519,10 +584,12 @@ class GestureClusterer():
           #self._wrists_up(l_keyframes),
           #self._wrists_down(r_keyframes),               # video checked
           #self._wrists_down(l_keyframes),
-          self._wrists_apart(r_keyframes, l_keyframes),
+          #self._wrists_apart(r_keyframes, l_keyframes),    # video checked
           #self._wrists_together(r_keyframes, l_keyframes),
           #self._max_wrist_velocity(r_keyframes),        # video checked
-          #self._max_wrist_velocity(l_keyframes)
+          #self._max_wrist_velocity(l_keyframes),          # TODO combine all two-handed to just max overall?
+          #self._get_back_and_forth(l_keyframes),
+          #self._max_acceleration(r_keyframes),         # DOES NOT CURRENTLY WORK -- do across many frames?
         #   wrists_sweep,
         #   wrist_arc,
         #   r_hand_rotate,

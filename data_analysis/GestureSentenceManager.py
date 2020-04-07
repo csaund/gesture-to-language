@@ -185,6 +185,18 @@ class GestureSentenceManager():
                 gesture[nk] = s_g[nk]
             self.complete_gesture_data[gid] = gesture
 
+    # can be used to replace GSM.agd
+    def get_gestures_motion_under_time(self, time):
+        ids = [g['id'] for g in self.gesture_transcript['phrases'] if (g['phase']['end_seconds'] - g['phase']['start_seconds']) < time]
+        gests = [self.get_gesture_motion_by_id(i) for i in ids]
+        return gests
+
+    # can be used to replace GSM.gesture_transcript
+    def get_gestures_transcript_under_time(self, time):
+        ids = [g['id'] for g in self.gesture_transcript['phrases'] if (g['phase']['end_seconds'] - g['phase']['start_seconds']) < time]
+        gests = [self.get_gesture_by_id(i) for i in ids]
+        return gests
+
     ###########################################
     ################ REPORTING ################
     ###########################################
@@ -514,6 +526,11 @@ class GestureSentenceManager():
         # plt.axes([0, 200, 0, .03])
         plt.grid(True)
         plt.show()
+
+    def histogram_of_gesture_lengths(self):
+        time_lengths = [(g['phase']['end_seconds'] - g['phase']['start_seconds']) for g in self.gesture_transcript['phrases']]
+        plt.hist(time_lengths, color='blue', edgecolor='black',
+                bins=int(180 / 5))
 
     def get_closest_gestures_in_gesture_cluster(self, cluster_id):
         c = self.GestureClusterer.clusters[cluster_id]
