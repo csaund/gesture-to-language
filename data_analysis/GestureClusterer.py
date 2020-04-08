@@ -162,7 +162,6 @@ class GestureClusterer():
             if g['id'] in seed_ids:
                 continue
             (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
-            avg_min_dist.append(nearest_cluster_dist)
             if max_number_clusters and len(self.clusters) > max_number_clusters:
                 self._add_gesture_to_cluster(g, nearest_cluster_id)
             # we're further away than we're allowed to be, OR this is the first cluster.
