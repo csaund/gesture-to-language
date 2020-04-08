@@ -9,7 +9,6 @@ import random
 import time
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
-import timeit
 import matplotlib.pyplot as plt
 import statistics
 
@@ -17,14 +16,15 @@ from common_helpers import *
 
 
 BASE_KEYPOINT = [0]
+# DO NOT TRUST THESE
 RIGHT_BODY_KEYPOINTS = [1, 2, 3, 28]
 LEFT_BODY_KEYPOINTS = [4, 5, 6, 7]
 RIGHT_WRIST_KEYPOINT = 3
 LEFT_WRIST_KEYPOINT = 6
-LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]
-RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]
-ALL_RIGHT_HAND_KEYPOINTS = [3] + list(range(31, 52))
-ALL_LEFT_HAND_KEYPOINTS = [6] + list(range(10, 31))
+#LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]  THESE ARE NOT RIGHT
+#RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]   THESE ARE NOT RIGHT
+ALL_RIGHT_HAND_KEYPOINTS = list(range(31, 52))
+ALL_LEFT_HAND_KEYPOINTS = list(range(10, 31))
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
 DIRECTION_ANGLE_SWITCH = 110  # arbitrary measure of degrees to constitute hands switching direction ¯\_(ツ)_/¯
 
@@ -551,19 +551,50 @@ class GestureClusterer():
 
     # given a set of keys from a hand (array length 22), returns angles between every 3 points, like trigrams
     # works on frame i
-    def _get_hand_angles_for_frame(self, keys, frame_index):
-        kf = keys[frame_index]
+    # if hand angles are roughly the same (within like, 20 degrees for each thing) then they're about the same shape
+    def _get_hand_angles_for_frame(self, handed_keys, frame_index):
+        # calculate angles for
+        # 0,1,2,3,4
+        # 0,5,6,7,8
+        # 0,9,10,11,12
+        # 0,13,14,15,16
+        # 0,17,18,19,20
+        # for each of these calc between 0-1-2, 1-2-3, 2-3-4
         angles = []
-        for p in range(len(kf['x'])-2):
-            a = np.array((kf['x'][p], kf['y'][p]))
-            b = np.array((kf['x'][p+1], kf['y'][p+1]))
-            c = np.array((kf['x'][p+2], kf['y'][p+2]))
-            ba = a - b
-            bc = c - b
-            cos_ang = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
-            full_ang = np.arccos(cos_ang)
-            angles.append(np.degrees(full_ang))
+        kf = handed_keys[frame_index]
+        for i in range(5):      # 5 fingers
+            base = np.array((kf['x'][0], kf['y'][0]))
+            a = np.array((kf['x'][(i*4)+1], kf['y'][(i*4)+1]))
+            b = np.array((kf['x'][(i*4)+2], kf['y'][(i*4)+2]))
+            c = np.array((kf['x'][(i*4)+3], kf['y'][(i*4)+3]))
+            d = np.array((kf['x'][(i*4)+4], kf['y'][(i*4)+4]))
+            basea = base - a
+            ba = b - a
+            cos_a = np.dot(basea, ba) / (np.linalg.norm(basea) * np.linalg.norm(ba))
+            ang_a = np.arccos(cos_a)
+            angles.append(np.degrees(ang_a))
+            ab = a - b
+            cb = c - b
+            cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
+            ang_b = np.arccos(cos_b)
+            angles.append(np.degrees(ang_b))
+            bc = b - c
+            dc = d - c
+            cos_c = np.dot(bc, dc) / (np.linalg.norm(bc) * np.linalg.norm(dc))
+            ang_c = np.arccos(cos_c)
+            angles.append(np.degrees(ang_c))
         return angles
+        # angles = []
+        # for p in range(len(kf['x'])-2):
+        #     a = np.array((kf['x'][p], kf['y'][p]))
+        #     b = np.array((kf['x'][p+1], kf['y'][p+1]))
+        #     c = np.array((kf['x'][p+2], kf['y'][p+2]))
+        #     ba = a - b
+        #     bc = c - b
+        #     cos_ang = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+        #     full_ang = np.arccos(cos_ang)
+        #     angles.append(np.degrees(full_ang))
+        # return angles
 
     # TODO map angles against frame...
 
