@@ -289,36 +289,12 @@ class GestureClusterer:
                 val = GESTURE_FEATURES[feature]['function'](r_keyframes, l_keyframes)
                 feature_vector.append(val)
             else:
+                # TODO combine all two-handed to just max overall?
                 val1 = GESTURE_FEATURES[feature]['function'](r_keyframes)
                 val2 = GESTURE_FEATURES[feature]['function'](l_keyframes)
                 feature_vector.append(val1)
                 feature_vector.append(val2)
         return feature_vector
-
-        # gesture_features = [
-        #  self._palm_vert(l_keyframes),
-        #  self._palm_horiz(l_keyframes),
-        #  self._palm_vert(r_keyframes),
-        #  self._palm_horiz(r_keyframes),
-        #  self._max_hands_apart(r_keyframes, l_keyframes),     # video checked
-        #  self._min_hands_together(r_keyframes, l_keyframes),
-        #  self._wrists_up(r_keyframes),
-        #  self._wrists_up(l_keyframes),
-        #  self._wrists_down(r_keyframes),               # video checked
-        #  self._wrists_down(l_keyframes),
-        #  self._wrists_apart(r_keyframes, l_keyframes),    # video checked
-        #  self._wrists_together(r_keyframes, l_keyframes),
-        #  self._max_wrist_velocity(r_keyframes),        # video checked
-        #  self._max_wrist_velocity(l_keyframes),          # TODO combine all two-handed to just max overall?
-        #  self._get_back_and_forth(l_keyframes),    # video checked but doesn't work cause some gests are long
-        #  self._max_acceleration(r_keyframes),         # DOES NOT CURRENTLY WORK -- do across many frames?
-        #   wrists_sweep,
-        #   wrist_arc,
-        #   r_hand_rotate,
-        #   l_hand_rotate,
-        #   hands_cycle
-        # ]
-        # return gesture_features
 
     # TODO manually make some features more/less important
     # report importance of each individual feature in clustering
@@ -351,9 +327,10 @@ class GestureClusterer:
             return
 
         for t in gesture['keyframes']:
-            if type(t) != dict:
+            if not isinstance(t, dict):
                 print("found empty keyframes for gesture %s" % gesture['id'])
                 print(gesture)
+                # TODO fix this, known temporary fix
                 return [{'y': [0], 'x': [0]}]
             y = [t['y'][i] for i in keypoint_range]
             x = [t['x'][i] for i in keypoint_range]
