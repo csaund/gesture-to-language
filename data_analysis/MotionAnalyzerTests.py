@@ -3,6 +3,7 @@ import numpy as np
 import numbers
 from GestureSentenceManager import *
 from GestureClusterer import *
+from GestureMovementHelpers import *
 
 TEST_GESTURE_IDS = [
     3225,    # back and forth        # 10._Personal_identity_Part_I_-_Identity_across_space_and_time_and_the_soul_theory-00KDsArsQ3A_346.012679_358.491825
