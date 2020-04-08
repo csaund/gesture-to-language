@@ -61,15 +61,17 @@ TEST_FRAMES_APART = {'keyframes': [{
 
 
 BASE_KEYPOINT = [0]
-RIGHT_BODY_KEYPOINTS = [1, 2, 3, 28]
-LEFT_BODY_KEYPOINTS = [4, 5, 6, 7]
-LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]
-RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]
-ALL_RIGHT_HAND_KEYPOINTS = [3] + list(range(31, 52))
-ALL_LEFT_HAND_KEYPOINTS = [6] + list(range(10, 31))
-RIGHT_WRIST_KEYPOINT = 3
-LEFT_WRIST_KEYPOINT = 6
+# DO NOT TRUST THESE
+RIGHT_BODY_KEYPOINTS = [1, 2, 3, 31]
+LEFT_BODY_KEYPOINTS = [4, 5, 6, 10]
+RIGHT_WRIST_KEYPOINT = 31
+LEFT_WRIST_KEYPOINT = 10
+#LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]  THESE ARE NOT RIGHT
+#RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]   THESE ARE NOT RIGHT
+ALL_RIGHT_HAND_KEYPOINTS = list(range(31, 52))
+ALL_LEFT_HAND_KEYPOINTS = list(range(10, 31))
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
+DIRECTION_ANGLE_SWITCH = 110
 
 class TestMotionFeatures(unittest.TestCase):
 
@@ -78,38 +80,51 @@ class TestMotionFeatures(unittest.TestCase):
         for i in range(len(a)):
             self.assertAlmostEqual(a[i], b[i], dec)
 
-    def test_get_right_hand_one_frame(self):
-        should_be = [{'y': [446, 420, 416, 447, 415, 466, 443, 460, 473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
-                      'x': [267, 367, 343, 282, 347, 262, 357, 353, 347, 351, 342, 334, 332, 335, 330, 320, 319, 315, 319, 307, 306, 306]
-                    }]
-        response = GC._get_rl_hand_keypoints(TEST_FRAME, "r")
-        self.assertEqual(should_be, response)
-
     def test_get_right_hand_multi_frame(self):
-        should_be = [{'y': [446, 420, 416, 447, 415, 466, 443, 460, 473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
-                      'x': [267, 367, 343, 282, 347, 262, 357, 353, 347, 351, 342, 334, 332, 335, 330, 320, 319, 315, 319, 307, 306, 306]
-                    },
-                     {'y': [447, 421, 417, 448, 416, 467, 444, 461, 474, 480, 433, 457, 473, 483, 433, 453, 463, 473, 428, 450, 455, 460],
-                      'x': [268, 368, 344, 283, 348, 263, 358, 354, 348, 352, 343, 335, 333, 336, 331, 321, 320, 316, 320, 308, 307, 307]}]
+        tfk = TEST_FRAMES['keyframes']
+        ALL_RIGHT_HAND_KEYPOINTS = np.array(list(range(31, 52)))
+        x0 = np.array(tfk[0]['x'])
+        y0 = np.array(tfk[0]['y'])
+        x1 = np.array(tfk[1]['x'])
+        y1 = np.array(tfk[1]['y'])
+        should_be = [
+            {
+                'x': x0[ALL_RIGHT_HAND_KEYPOINTS],
+                'y': y0[ALL_RIGHT_HAND_KEYPOINTS]
+            },
+            {
+                'x': x1[ALL_RIGHT_HAND_KEYPOINTS],
+                'y': y1[ALL_RIGHT_HAND_KEYPOINTS]
+            }
+        ]
         response = GC._get_rl_hand_keypoints(TEST_FRAMES, "r")
-        self.assertEqual(should_be, response)
-
-    def test_get_left_hand_one_frame(self):
-        should_be = [{'y': [418, 418, 427, 438, 459, 482, 430, 445, 468, 479, 427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491],
-                      'x': [378, 371, 341, 317, 297, 269, 316, 280, 298, 299, 330, 317, 318, 323, 347, 335, 335, 336, 360, 353, 351, 352]
-                    }]
-        response = GC._get_rl_hand_keypoints(TEST_FRAME, "l")
-        self.assertEqual(should_be, response)
+        self.assertAlmostArray(should_be[0]['x'], response[0]['x'])
+        self.assertAlmostArray(should_be[0]['y'], response[0]['y'])
+        self.assertAlmostArray(should_be[1]['x'], response[1]['x'])
+        self.assertAlmostArray(should_be[1]['y'], response[1]['y'])
 
     def test_get_left_hand_multi_frame(self):
-        should_be = [{'y': [418, 418, 427, 438, 459, 482, 430, 445, 468, 479, 427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491],
-                      'x': [378, 371, 341, 317, 297, 269, 316, 280, 298, 299, 330, 317, 318, 323, 347, 335, 335, 336, 360, 353, 351, 352]
-                    },
-                     {'y': [419, 419, 428, 439, 460, 483, 431, 446, 469, 480, 428, 457, 472, 479, 432, 462, 476, 487, 440, 465, 480, 492],
-                      'x': [379, 372, 342, 318, 298, 270, 317, 281, 299, 300, 331, 318, 319, 324, 348, 336, 336, 337, 361, 354, 352, 353]
-                    }]
+        tfk = TEST_FRAMES['keyframes']
+        ALL_LEFT_HAND_KEYPOINTS = np.array(list(range(10, 31)))
+        x0 = np.array(tfk[0]['x'])
+        y0 = np.array(tfk[0]['y'])
+        x1 = np.array(tfk[1]['x'])
+        y1 = np.array(tfk[1]['y'])
+        should_be = [
+            {
+                'x': x0[ALL_LEFT_HAND_KEYPOINTS],
+                'y': y0[ALL_LEFT_HAND_KEYPOINTS]
+            },
+            {
+                'x': x1[ALL_LEFT_HAND_KEYPOINTS],
+                'y': y1[ALL_LEFT_HAND_KEYPOINTS]
+            }
+        ]
         response = GC._get_rl_hand_keypoints(TEST_FRAMES, "l")
-        self.assertEqual(should_be, response)
+        self.assertAlmostArray(should_be[0]['x'], response[0]['x'])
+        self.assertAlmostArray(should_be[0]['y'], response[0]['y'])
+        self.assertAlmostArray(should_be[1]['x'], response[1]['x'])
+        self.assertAlmostArray(should_be[1]['y'], response[1]['y'])
 
     def test_assert_almost_equal(self):
         self.assertAlmostArray([1.6454354332, 3.6454354352], [1.6454354, 3.64543543])
