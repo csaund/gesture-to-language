@@ -23,12 +23,12 @@ GC = GSM.GestureClusterer
 
 
 TEST_FRAME = {'keyframes':
-                [{'y': [247, 242, 387, 446, 260, 425, 418, 151, 127, 131, 418, 427, 438, 459, 482, 430, 445, 468, 479,
-                        427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491, 420, 416, 447, 415, 466, 443, 460,
-                        473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
-                  'x': [326, 199, 160, 267, 449, 499, 378, 327, 305, 350, 371, 341, 317, 297, 269, 316, 280, 298, 299,
-                        330, 317, 318, 323, 347, 335, 335, 336, 360, 353, 351, 352, 367, 343, 282, 347, 262, 357, 353,
-                        347, 351, 342, 334, 332, 335, 330, 320, 319, 315, 319, 307, 306, 306]}]}
+            [{'y': [247, 242, 387, 446, 260, 425, 418, 151, 127, 131, 418, 427, 438, 459, 482, 430, 445, 468, 479,
+                    427, 456, 471, 478, 431, 461, 475, 486, 439, 464, 479, 491, 420, 416, 447, 415, 466, 443, 460,
+                    473, 479, 432, 456, 472, 482, 432, 452, 462, 472, 427, 449, 454, 459],
+              'x': [326, 199, 160, 267, 449, 499, 378, 327, 305, 350, 371, 341, 317, 297, 269, 316, 280, 298, 299,
+                    330, 317, 318, 323, 347, 335, 335, 336, 360, 353, 351, 352, 367, 343, 282, 347, 262, 357, 353,
+                    347, 351, 342, 334, 332, 335, 330, 320, 319, 315, 319, 307, 306, 306]}]}
 
 TEST_FRAMES = {'keyframes':
                 [{'y': [247, 242, 387, 446, 260, 425, 418, 151, 127, 131, 418, 427, 438, 459, 482, 430, 445, 468, 479,
@@ -49,13 +49,13 @@ TEST_FRAMES_APART = {'keyframes': [{
                     "y": [127, 132, 196, 239, 120, 171, 215, 71, 62, 60, 229, 223, 221, 217, 215, 236, 234, 232, 228, 242,
                           238, 235, 233, 243, 241, 238, 235, 243, 241, 239, 237, 252, 248, 248, 248, 248, 263, 261, 256,
                           252, 266, 262, 254, 251, 267, 261, 254, 253, 265, 261, 257,255],
-                    "x": [338,293,276,266,383,412,426,344,330,351,427,426,436,443,451,432,424,417,412,428,419,412,407,
-                          423,417,410,405,419,414,410,406,263,257,248,239,231,253,254,258,261,260,263,265,266,265,269,
-                          269,269,270,274,272,272]},
+                    "x": [338, 293, 276, 266, 383, 412, 426, 344, 330, 351, 427, 426, 436, 443, 451, 432, 424, 417, 412, 428, 419, 412, 407,
+                          423, 417, 410, 405, 419, 414, 410, 406, 263, 257, 248, 239, 231, 253, 254, 258, 261, 260, 263, 265, 266, 265, 269,
+                          269, 269, 270, 274, 272, 272]},
                     {"y": [127, 131, 195, 239, 120, 176, 215, 70, 60, 59, 229, 220, 218, 216, 213, 232, 230, 226, 223, 238, 234,
                           229, 227, 241, 236, 231, 229, 241, 239, 236, 232, 251, 246, 248, 248, 248, 265, 263, 258, 255,
                           269, 261, 255, 253, 271, 261, 254, 253, 270, 262, 257, 57],
-                    "x": [ 339, 295, 277, 266, 385, 415, 429, 351, 337, 358, 431, 430, 440, 448, 456, 437, 433, 426, 422,
+                    "x": [339, 295, 277, 266, 385, 415, 429, 351, 337, 358, 431, 430, 440, 448, 456, 437, 433, 426, 422,
                            432, 424, 418, 416, 426, 419, 413, 412, 420, 417, 414, 412, 264, 258, 247, 239, 231, 251, 253,
                            257, 260, 257, 263, 265, 265, 262, 270, 270, 268, 267, 273, 272, 272]}
                     ]}
@@ -67,12 +67,13 @@ RIGHT_BODY_KEYPOINTS = [1, 2, 3, 31]
 LEFT_BODY_KEYPOINTS = [4, 5, 6, 10]
 RIGHT_WRIST_KEYPOINT = 31
 LEFT_WRIST_KEYPOINT = 10
-#LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]  THESE ARE NOT RIGHT
-#RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]   THESE ARE NOT RIGHT
+# LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]  THESE ARE NOT RIGHT
+# RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]   THESE ARE NOT RIGHT
 ALL_RIGHT_HAND_KEYPOINTS = list(range(31, 52))
 ALL_LEFT_HAND_KEYPOINTS = list(range(10, 31))
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
 DIRECTION_ANGLE_SWITCH = 110
+
 
 class TestMotionFeatures(unittest.TestCase):
 
@@ -132,14 +133,14 @@ class TestMotionFeatures(unittest.TestCase):
 
     def test_normalize(self):
         should_be = np.array([[0, 0.37796447, 0.55215763, 0.26967994],
-       [0.83462233, 0.75592895, 0.4417261 , 0.13483997],
-       [0.38949042, 0.37796447, 0.4417261 , 0.94387981],
-       [0.38949042, 0.37796447, 0.55215763, 0.13483997]])
+           [0.83462233, 0.75592895, 0.4417261, 0.13483997],
+           [0.38949042, 0.37796447, 0.4417261, 0.94387981],
+           [0.38949042, 0.37796447, 0.5521576, 0.13483997]])
         a = [0, 1, 5, 2]
         b = [15, 2, 4, 1]
         c = [7, 1, 4, 7]
         d = [7, 1, 5, 1]
-        response = _normalize_across_features(np.array([a,b,c,d]))
+        response = _normalize_across_features(np.array([a, b, c, d]))
         for i in range(len(response)):
             self.assertAlmostArray(should_be[i], response[i])
 
@@ -152,11 +153,11 @@ class TestMotionFeatures(unittest.TestCase):
                       {'feature_vec': [0.83462233, 0.75592895, 0.4417261, 0.13483997]},
                       {'feature_vec': [0.38949042, 0.37796447, 0.4417261, 0.94387981]},
                       {'feature_vec': [0.38949042, 0.37796447, 0.55215763, 0.13483997]}]
-        input = [{'feature_vec': a},
+        gesture_input = [{'feature_vec': a},
                       {'feature_vec': b},
                       {'feature_vec': c},
                       {'feature_vec': d}]
-        response = GC._normalize_feature_values(input)
+        response = GC._normalize_feature_values(gesture_input)
         for i in range(len(response)):
             self.assertAlmostArray(should_be[i]['feature_vec'], response[i]['feature_vec'])
 
@@ -166,9 +167,9 @@ class TestMotionFeatures(unittest.TestCase):
             self.assertIsInstance(feat, numbers.Number)
 
     def test_get_max_hands_apart(self):
-        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
-        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
-        response = _max_hands_apart(r, l)
+        right = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
+        left = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        response = _max_hands_apart(right, left)
         y1 = TEST_FRAME['keyframes'][0]['y']
         x1 = TEST_FRAME['keyframes'][0]['x']
         y1R = [y1[i] for i in ALL_RIGHT_HAND_KEYPOINTS]
@@ -196,9 +197,9 @@ class TestMotionFeatures(unittest.TestCase):
         self.assertAlmostEqual(should_be, response)
 
     def test_wrists_together(self):
-        r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
-        l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
-        response = _wrists_together(r, l)
+        right = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+        left = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
+        response = _wrists_together(right, left)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
         lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
@@ -210,9 +211,9 @@ class TestMotionFeatures(unittest.TestCase):
         self.assertEqual(should_be, response)
 
     def test_wrists_apart(self):
-        r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
-        l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
-        response = _wrists_apart(r, l)
+        right = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+        left = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
+        response = _wrists_apart(right, left)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
         lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
@@ -229,15 +230,15 @@ class TestMotionFeatures(unittest.TestCase):
 
     def test_point_diff(self):
         result = _get_point_dist(2, 3, 5, 6)
-        a = np.array([2,3])
-        b = np.array([5,6])
+        a = np.array([2, 3])
+        b = np.array([5, 6])
         should_be = np.linalg.norm(a-b)
         self.assertEqual(should_be, result)
 
     # TODO create test frames that have a difference in y
-    #def test_wrists_up(self):
-    #    r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
-    #    result = GC._wrists_up(r)
+    # def test_wrists_up(self):
+    #     r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+    #     result = GC._wrists_up(r)
 
     # TODO tests for:
     # vector math works out
@@ -262,6 +263,7 @@ class TestMotionFeatures(unittest.TestCase):
     #         #   r_hand_rotate,
     #         #   l_hand_rotate,
     #         #   hands_cycle
+
 
 if __name__ == '__main__':
     unittest.main()
