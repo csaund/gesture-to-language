@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import numbers
 from GestureSentenceManager import *
-from GestureClusterer import *
+from GestureClusterer import GestureClusterer, _normalize_across_features
+from GestureMovementHelpers import _max_hands_apart, _min_hands_together, _get_point_dist, _wrists_apart, _wrists_together
 
 TEST_GESTURE_IDS = [
     3225,    # back and forth        # 10._Personal_identity_Part_I_-_Identity_across_space_and_time_and_the_soul_theory-00KDsArsQ3A_346.012679_358.491825
@@ -134,19 +135,19 @@ class TestMotionFeatures(unittest.TestCase):
        [0.83462233, 0.75592895, 0.4417261 , 0.13483997],
        [0.38949042, 0.37796447, 0.4417261 , 0.94387981],
        [0.38949042, 0.37796447, 0.55215763, 0.13483997]])
-        a = [0,1,5,2]
-        b = [15,2,4,1]
-        c = [7,1,4,7]
-        d = [7,1,5,1]
-        response = GC._normalize_across_features(np.array([a,b,c,d]))
+        a = [0, 1, 5, 2]
+        b = [15, 2, 4, 1]
+        c = [7, 1, 4, 7]
+        d = [7, 1, 5, 1]
+        response = _normalize_across_features(np.array([a,b,c,d]))
         for i in range(len(response)):
             self.assertAlmostArray(should_be[i], response[i])
 
     def test_normalize_GC(self):
-        a = [0,1,5,2]
-        b = [15,2,4,1]
-        c = [7,1,4,7]
-        d = [7,1,5,1]
+        a = [0, 1, 5, 2]
+        b = [15, 2, 4, 1]
+        c = [7, 1, 4, 7]
+        d = [7, 1, 5, 1]
         should_be = [{'feature_vec': [0, 0.37796447, 0.55215763, 0.26967994]},
                       {'feature_vec': [0.83462233, 0.75592895, 0.4417261, 0.13483997]},
                       {'feature_vec': [0.38949042, 0.37796447, 0.4417261, 0.94387981]},
@@ -167,7 +168,7 @@ class TestMotionFeatures(unittest.TestCase):
     def test_get_max_hands_apart(self):
         r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
         l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
-        response = GC._max_hands_apart(r, l)
+        response = _max_hands_apart(r, l)
         y1 = TEST_FRAME['keyframes'][0]['y']
         x1 = TEST_FRAME['keyframes'][0]['x']
         y1R = [y1[i] for i in ALL_RIGHT_HAND_KEYPOINTS]
@@ -182,7 +183,7 @@ class TestMotionFeatures(unittest.TestCase):
     def test_get_min_hands_together(self):
         r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
         l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
-        response = GC._min_hands_together(r, l)
+        response = _min_hands_together(r, l)
         y1 = TEST_FRAME['keyframes'][0]['y']
         x1 = TEST_FRAME['keyframes'][0]['x']
         y1R = [y1[i] for i in ALL_RIGHT_HAND_KEYPOINTS]
@@ -197,7 +198,7 @@ class TestMotionFeatures(unittest.TestCase):
     def test_wrists_together(self):
         r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
         l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
-        response = GC._wrists_together(r, l)
+        response = _wrists_together(r, l)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
         lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
@@ -211,7 +212,7 @@ class TestMotionFeatures(unittest.TestCase):
     def test_wrists_apart(self):
         r = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
         l = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
-        response = GC._wrists_apart(r, l)
+        response = _wrists_apart(r, l)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
         lw1 = np.array((keys[0]['x'][LEFT_WRIST_KEYPOINT], keys[0]['y'][LEFT_WRIST_KEYPOINT]))
@@ -227,7 +228,7 @@ class TestMotionFeatures(unittest.TestCase):
         self.assertEqual(0, result)
 
     def test_point_diff(self):
-        result = GC._get_point_dist(2, 3, 5, 6)
+        result = _get_point_dist(2, 3, 5, 6)
         a = np.array([2,3])
         b = np.array([5,6])
         should_be = np.linalg.norm(a-b)

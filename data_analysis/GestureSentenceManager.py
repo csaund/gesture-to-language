@@ -142,9 +142,9 @@ class GestureSentenceManager():
 
     def cluster_gestures(self, exclude_ids=[], mnc=None, mcd=None):
         if len(exclude_ids):
-            self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
+            self.GestureClusterer = self.GestureClusterer(self.filter_agd(exclude_ids))
         else:
-            self.GestureClusterer = GestureClusterer(self.agd)
+            self.GestureClusterer = self.GestureClusterer(self.agd)
         self.GestureClusterer.cluster_gestures(None, None, max_number_clusters=mnc, max_cluster_distance=mcd)
 
     def get_transcript(self):
