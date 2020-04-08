@@ -71,14 +71,15 @@ class GestureClusterer:
         self.c_id = 0
 
     @timeit
-    def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.10, max_number_clusters=0, seed_ids=None):
+    def cluster_gestures(self, gesture_data=None, gesture_features=GESTURE_FEATURES, max_cluster_distance=0.10,
+                         max_number_clusters=0, seed_ids=None):
         if seed_ids is None:
             seed_ids = []
         gd = gesture_data if gesture_data else self.agd
         if 'feature_vec' in list(gd[0].keys()):
             print("already have feature vectors in our gesture data")
         if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
-            self._assign_feature_vectors()
+            self._assign_feature_vectors(gesture_features=gesture_features)
         # if we're seeding our clusters with specific gestures
         if len(seed_ids):
             gs = [gesture for gesture in gd if gesture['id'] in seed_ids]
@@ -134,7 +135,7 @@ class GestureClusterer:
             print(self.clusters[cluster_id].keys())
 
     @timeit
-    def _assign_feature_vectors(self, gesture_data=None):
+    def _assign_feature_vectors(self, gesture_data=None, gesture_features=GESTURE_FEATURES):
         gd = gesture_data if gesture_data else self.agd
         empty_vec = _create_empty_feature_vector()
 
@@ -145,7 +146,7 @@ class GestureClusterer:
                 # TODO fix this
                 g['feature_vec'] = empty_vec
             else:
-                g['feature_vec'] = self._get_gesture_features(g)
+                g['feature_vec'] = self._get_gesture_features(g, gesture_features)
 
         empties = [g for g in self.agd if g['feature_vec'] == empty_vec]
         print("dropping %s empty vectors from gesture clusters" % str(len(empties)))
@@ -352,7 +353,7 @@ class GestureClusterer:
         for t in gesture['keyframes']:
             if type(t) != dict:
                 print("found empty keyframes for gesture %s" % gesture['id'])
-                print(t)
+                print(gesture)
                 return [{'y': [0], 'x': [0]}]
             y = [t['y'][i] for i in keypoint_range]
             x = [t['x'][i] for i in keypoint_range]
