@@ -139,20 +139,6 @@ class GestureClusterer():
         self.total_clusters_created = 0
         self.c_id = 0
 
-    '''
-    def cluster_gestures_disparate_seeds(self, gesture_data=None, max_cluster_distance=0.03, max_number_clusters=250):
-        gd = gesture_data if gesture_data else self.agd
-        if 'feature_vec' in list(gd[0].keys()):
-            print("already have feature vectors in our gesture data")
-        if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
-            self._assign_feature_vectors()
-
-        # randomly sample for now, even though we know that's not the best way to do it at all.
-        gestures = random.sample(gd, max_number_clusters)
-        random_ids = [g['id'] for g in gestures]
-        self.cluster_gestures(gd, max_cluster_distance, max_number_clusters, random_ids)
-    '''
-
     @timeit
     def cluster_gestures(self, gesture_data=None, max_cluster_distance=0.10, max_number_clusters=0, seed_ids=[]):
         gd = gesture_data if gesture_data else self.agd
@@ -160,21 +146,19 @@ class GestureClusterer():
             print("already have feature vectors in our gesture data")
         if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
             self._assign_feature_vectors()
-
         # if we're seeding our clusters with specific gestures
         if len(seed_ids):
             gs = [gesture for gesture in gd if gesture['id'] in seed_ids]
             for g in gs:
                 self._create_new_cluster(g)
 
-        return self._cluster_gestures(gd, max_cluster_distance, max_number_clusters, seed_ids)
+        self._cluster_gestures(gd, max_cluster_distance, max_number_clusters, seed_ids)
 
     @timeit
     def _cluster_gestures(self, gd, max_cluster_distance=0.03, max_number_clusters=0, seed_ids=[]):
         print("Clustering gestures")
-        avg_min_dist = []
         for g in tqdm(gd):
-            # if we've already seeded a cluster with this gesture, don't recluster it.
+            # if we've already seeded a cluster with this gesture, don't cluster it.
             if g['id'] in seed_ids:
                 continue
             (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(g)
@@ -192,9 +176,7 @@ class GestureClusterer():
         # now recluster based on where the new centroids are
         self._recluster_by_centroids()
         print("created %s clusters" % self.total_clusters_created)
-        print("avg dist: %s" % statistics.mean(avg_min_dist))
-        print("stdev dist: %s" % statistics.stdev(avg_min_dist))
-        return avg_min_dist
+        return
 
     def _recluster_singletons(self):
         print("reclustering singletons")
@@ -531,24 +513,6 @@ class GestureClusterer():
             max_accel = max(max_accel, abs(d1-d2))
         return max_accel
 
-    ## across all the frames, how much does it go back and forth?
-    ## basically, how much do movements switch direction? but on a big scale.
-    ## average the amount over the hands
-    # def self, _oscillation(gesture):
-    #     return
-
-
-    # can't just do raw position, has to be ONLY in relation to the other points -- i.e. cannot just look at
-    # x,y position for any given point, but for the x,y position of each finger in relation to the palm, etc.
-    def _plot_hand_position_changes(self, keys):
-        fig = plt.figure
-        for keypoint_index in range(len(keys[0]['y'])):
-            xs = [k['x'][keypoint_index] for k in keys]
-            ys = [k['y'][keypoint_index] for k in keys]
-            plt.plot(range(len(xs)), xs, color='red')
-            plt.plot(range(len(ys)), ys, color='teal')
-        plt.show()
-
     # given a set of keys from a hand (array length 22), returns angles between every 3 points, like trigrams
     # works on frame i
     # if hand angles are roughly the same (within like, 20 degrees for each thing) then they're about the same shape
@@ -560,9 +524,20 @@ class GestureClusterer():
         # 0,13,14,15,16
         # 0,17,18,19,20
         # for each of these calc between 0-1-2, 1-2-3, 2-3-4
+        # TODO clean this up
         angles = []
         kf = handed_keys[frame_index]
         for i in range(5):      # 5 fingers
+            #for j in range(3):      # each of the angles on the fingers (0,1,2; 1,2,3; 2,3,4)
+            #    a = np.array((kf['x'][(i * 4) + j], kf['y'][(i * 4) + j]))
+            #    b = np.array((kf['x'][(i * 4) + j+1], kf['y'][(i * 4) + j+1]))
+            #    c = np.array((kf['x'][(i * 4) + j+2], kf['y'][(i * 4) + j+2]))
+            #    ab = a - b
+            #    cb = c - b
+            #    cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
+            #    ang_b = np.arccos(cos_b)
+            #    angles.append(np.degrees(ang_b))
+            # return angles
             base = np.array((kf['x'][0], kf['y'][0]))
             a = np.array((kf['x'][(i*4)+1], kf['y'][(i*4)+1]))
             b = np.array((kf['x'][(i*4)+2], kf['y'][(i*4)+2]))
@@ -584,17 +559,6 @@ class GestureClusterer():
             ang_c = np.arccos(cos_c)
             angles.append(np.degrees(ang_c))
         return angles
-        # angles = []
-        # for p in range(len(kf['x'])-2):
-        #     a = np.array((kf['x'][p], kf['y'][p]))
-        #     b = np.array((kf['x'][p+1], kf['y'][p+1]))
-        #     c = np.array((kf['x'][p+2], kf['y'][p+2]))
-        #     ba = a - b
-        #     bc = c - b
-        #     cos_ang = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
-        #     full_ang = np.arccos(cos_ang)
-        #     angles.append(np.degrees(full_ang))
-        # return angles
 
     # TODO map angles against frame...
 
@@ -603,24 +567,24 @@ class GestureClusterer():
         r_keyframes = self._get_rl_hand_keypoints(gesture, 'r')
         l_keyframes = self._get_rl_hand_keypoints(gesture, 'l')
         gesture_features = [
-          #self._palm_vert(l_keyframes),
-          #self._palm_horiz(l_keyframes),
-          #self._palm_vert(r_keyframes),
-          #self._palm_horiz(r_keyframes),
-          #self._max_hands_apart(r_keyframes, l_keyframes),     # video checked
-          #self._min_hands_together(r_keyframes, l_keyframes),
+          self._palm_vert(l_keyframes),
+          self._palm_horiz(l_keyframes),
+          self._palm_vert(r_keyframes),
+          self._palm_horiz(r_keyframes),
+          self._max_hands_apart(r_keyframes, l_keyframes),     # video checked
+          self._min_hands_together(r_keyframes, l_keyframes),
           #   x_oscillate,
           #   y_oscillate,
-          #self._wrists_up(r_keyframes),
-          #self._wrists_up(l_keyframes),
-          #self._wrists_down(r_keyframes),               # video checked
-          #self._wrists_down(l_keyframes),
-          #self._wrists_apart(r_keyframes, l_keyframes),    # video checked
-          #self._wrists_together(r_keyframes, l_keyframes),
-          #self._max_wrist_velocity(r_keyframes),        # video checked
-          #self._max_wrist_velocity(l_keyframes),          # TODO combine all two-handed to just max overall?
-          #self._get_back_and_forth(l_keyframes),
-          #self._max_acceleration(r_keyframes),         # DOES NOT CURRENTLY WORK -- do across many frames?
+          self._wrists_up(r_keyframes),
+          self._wrists_up(l_keyframes),
+          self._wrists_down(r_keyframes),               # video checked
+          self._wrists_down(l_keyframes),
+          self._wrists_apart(r_keyframes, l_keyframes),    # video checked
+          self._wrists_together(r_keyframes, l_keyframes),
+          self._max_wrist_velocity(r_keyframes),        # video checked
+          self._max_wrist_velocity(l_keyframes),          # TODO combine all two-handed to just max overall?
+          self._get_back_and_forth(l_keyframes),    # video checked but doesn't work cause some gests are long
+          self._max_acceleration(r_keyframes),         # DOES NOT CURRENTLY WORK -- do across many frames?
         #   wrists_sweep,
         #   wrist_arc,
         #   r_hand_rotate,
