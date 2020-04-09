@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import numbers
 from GestureSentenceManager import *
-from GestureClusterer import GestureClusterer, _normalize_across_features
+from GestureClusterer import GestureClusterer, _normalize_across_features, _get_rl_hand_keypoints
 from GestureMovementHelpers import _max_hands_apart, _min_hands_together, _get_point_dist, _wrists_apart, _wrists_together
 
 TEST_GESTURE_IDS = [
@@ -99,7 +99,7 @@ class TestMotionFeatures(unittest.TestCase):
                 'y': y1[ALL_RIGHT_HAND_KEYPOINTS]
             }
         ]
-        response = GC._get_rl_hand_keypoints(TEST_FRAMES, "r")
+        response = _get_rl_hand_keypoints(TEST_FRAMES, "r")
         self.assertAlmostArray(should_be[0]['x'], response[0]['x'])
         self.assertAlmostArray(should_be[0]['y'], response[0]['y'])
         self.assertAlmostArray(should_be[1]['x'], response[1]['x'])
@@ -122,7 +122,7 @@ class TestMotionFeatures(unittest.TestCase):
                 'y': y1[ALL_LEFT_HAND_KEYPOINTS]
             }
         ]
-        response = GC._get_rl_hand_keypoints(TEST_FRAMES, "l")
+        response = _get_rl_hand_keypoints(TEST_FRAMES, "l")
         self.assertAlmostArray(should_be[0]['x'], response[0]['x'])
         self.assertAlmostArray(should_be[0]['y'], response[0]['y'])
         self.assertAlmostArray(should_be[1]['x'], response[1]['x'])
@@ -167,8 +167,8 @@ class TestMotionFeatures(unittest.TestCase):
             self.assertIsInstance(feat, numbers.Number)
 
     def test_get_max_hands_apart(self):
-        right = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
-        left = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        right = _get_rl_hand_keypoints(TEST_FRAMES, 'r')
+        left = _get_rl_hand_keypoints(TEST_FRAMES, 'l')
         response = _max_hands_apart(right, left)
         y1 = TEST_FRAME['keyframes'][0]['y']
         x1 = TEST_FRAME['keyframes'][0]['x']
@@ -182,8 +182,8 @@ class TestMotionFeatures(unittest.TestCase):
         self.assertAlmostEqual(should_be, response)
 
     def test_get_min_hands_together(self):
-        r = GC._get_rl_hand_keypoints(TEST_FRAMES, 'r')
-        l = GC._get_rl_hand_keypoints(TEST_FRAMES, 'l')
+        r = _get_rl_hand_keypoints(TEST_FRAMES, 'r')
+        l = _get_rl_hand_keypoints(TEST_FRAMES, 'l')
         response = _min_hands_together(r, l)
         y1 = TEST_FRAME['keyframes'][0]['y']
         x1 = TEST_FRAME['keyframes'][0]['x']
@@ -197,8 +197,8 @@ class TestMotionFeatures(unittest.TestCase):
         self.assertAlmostEqual(should_be, response)
 
     def test_wrists_together(self):
-        right = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
-        left = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
+        right = _get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+        left = _get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
         response = _wrists_together(right, left)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))
@@ -211,8 +211,8 @@ class TestMotionFeatures(unittest.TestCase):
         self.assertEqual(should_be, response)
 
     def test_wrists_apart(self):
-        right = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
-        left = GC._get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
+        right = _get_rl_hand_keypoints(TEST_FRAMES_APART, 'r')
+        left = _get_rl_hand_keypoints(TEST_FRAMES_APART, 'l')
         response = _wrists_apart(right, left)
         keys = TEST_FRAMES_APART['keyframes']
         rw1 = np.array((keys[0]['x'][RIGHT_WRIST_KEYPOINT], keys[0]['y'][RIGHT_WRIST_KEYPOINT]))

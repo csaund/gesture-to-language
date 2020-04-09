@@ -6,12 +6,12 @@ import numpy as np
 
 BASE_KEYPOINT = [0]
 # DO NOT TRUST THESE
-RIGHT_BODY_KEYPOINTS = [1, 2, 3, 28]
-LEFT_BODY_KEYPOINTS = [4, 5, 6, 7]
+RIGHT_BODY_KEYPOINTS = [1, 2, 3, 31]
+LEFT_BODY_KEYPOINTS = [4, 5, 6, 10]
 RIGHT_WRIST_KEYPOINT = 3
 LEFT_WRIST_KEYPOINT = 6
-# LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]  THESE ARE NOT RIGHT
-# RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]   THESE ARE NOT RIGHT
+LEFT_HAND_KEYPOINTS = lambda x: [10] + [11 + (x * 4) + j for j in range(4)]  # CHECK THESE
+RIGHT_HAND_KEYPOINTS = lambda x: [31] + [32 + (x * 4) + j for j in range(4)]   # CHECK THESE
 ALL_RIGHT_HAND_KEYPOINTS = list(range(31, 52))
 ALL_LEFT_HAND_KEYPOINTS = list(range(10, 31))
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
@@ -198,6 +198,21 @@ def _max_acceleration(keys):
         d2 = _get_point_dist(bx, by, cx, cy)
         max_accel = max(max_accel, abs(d1-d2))
     return max_accel
+
+
+def _plot_hand_angles_across_frame(handed_keys):
+    xs = []
+    ys = []
+    frame_angles = [_get_hand_angles_for_frame(handed_keys, i) for i in range(len(handed_keys))]
+    for i in range(len(handed_keys)):
+        angles = _get_hand_angles_for_frame(handed_keys, i)
+        ys.append(angles)
+        xs.append([i for k in list(range(len(angles)))])
+    test_x = [x[0] for x in xs]
+    test_y = [y[0] for y in ys]
+
+    #plt.show()
+    plt.plot(test_x, test_y)
 
 
 # given a set of keys from a hand (array length 22), returns angles between every 3 points, like trigrams
