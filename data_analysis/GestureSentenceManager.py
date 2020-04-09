@@ -31,12 +31,6 @@ ADJ = ["JJ"]
 # rdist
 import numpy as np
 
-# the following aren't used but could be, but have trouble installing on windows,
-# import rpy2.robjects.numpy2ri
-# rpy2.robjects.numpy2ri.activate()
-# from rpy2.robjects.packages import importr
-# import rpy2.robjects as robj
-
 ## the following commands assume you have a full transcript in the cloud
 ## and also all the timings.
 # sys.path.extend(['C:/Users/carolyns/PycharmProjects/gesture-to-language/data_analysis'])

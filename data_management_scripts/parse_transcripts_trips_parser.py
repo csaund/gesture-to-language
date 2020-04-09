@@ -4,6 +4,7 @@ import requests
 from common_helpers import *
 # import xml.etree.ElementTree as ET        # will do this in the rhetorical clusterer.
 from tqdm import tqdm
+import time
 
 devKeyPath = os.getenv("devKey")
 devKey = str(open(devKeyPath, "r").read()).strip()
@@ -34,7 +35,7 @@ def preprocess_json(fn):
 
 
 # actually send to the parser so we can append the xml.
-def send_to_parser(txt, rhet_outfile):
+def send_to_parser(txt, outfile):
     PARAMS['input'] = txt
     print("got params")
     print(PARAMS)
@@ -42,7 +43,7 @@ def send_to_parser(txt, rhet_outfile):
     if r.ok:
         # print(r.encoding)     # do we need to always make sure utf-8? should always be fine.
         data = r.text
-        rhet_out = open(rhet_outfile, "a+")
+        rhet_out = open(outfile, "a+")
         rhet_out.writelines(data)
     else:
         print("ERR, got non-ok response code %s" % r.status_code)
@@ -56,7 +57,7 @@ def split_text(txt, n=2000):
     sentence = ""
     words = txt.split(" ")
     for w in words:
-        if (len(sentence) + len(w) + 2) < 2000:    # make the longest thing you can
+        if (len(sentence) + len(w) + 2) < n:    # make the longest thing you can
             sentence += w + " "
         else:       # when you can't make anymore, upload it.
             chunks.append(sentence)
@@ -68,7 +69,10 @@ def split_text(txt, n=2000):
 
 if __name__ == "__main__":
     file_list = list_blobs(TRANSCRIPT_BUCKET)
+    already_parsed = list_blobs(PARSED_BUCKET)
     for f in file_list[:1]:
+        if f+'.parse.xml' in already_parsed:
+            continue
         rhet_outfile = f + '.parse.xml'
         temp_json_file = download_blob(TRANSCRIPT_BUCKET, f, TEMP_JSON_FILE)
         raw_text = preprocess_json(TEMP_JSON_FILE)
@@ -76,8 +80,9 @@ if __name__ == "__main__":
         for s in tqdm(splits):
             print(s)
             send_to_parser(s, rhet_outfile)
+            time.sleep(15)
 
-        # upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
+        upload_blob(PARSED_BUCKET, rhet_outfile, rhet_outfile)
 
-        #os.remove(rhet_outfile)
-        #os.remove(TEMP_JSON__FILE)
+        os.remove(rhet_outfile)
+        os.remove(TEMP_JSON_FILE)
