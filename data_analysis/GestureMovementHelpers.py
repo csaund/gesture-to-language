@@ -215,52 +215,37 @@ def _plot_hand_angles_across_frame(handed_keys):
     plt.plot(test_x, test_y)
 
 
+def _calculate_angle(a, b, c):
+    ab = a - b
+    cb = c - b
+    cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
+    ang_b = np.arccos(cos_b)
+    return np.degrees(ang_b)
+
+
 # given a set of keys from a hand (array length 22), returns angles between every 3 points, like trigrams
 # works on frame i
 # if hand angles are roughly the same (within like, 20 degrees for each thing) then they're about the same shape
-    # TODO map angles against frame...
+# calculate angles for
+# 0,1,2,3,4
+# 0,5,6,7,8
+# 0,9,10,11,12
+# 0,13,14,15,16
+# 0,17,18,19,20
+# for each of these calc between 0-1-2, 1-2-3, 2-3-4
+# TODO map angles against frame...
 def _get_hand_angles_for_frame(handed_keys, frame_index):
-    # calculate angles for
-    # 0,1,2,3,4
-    # 0,5,6,7,8
-    # 0,9,10,11,12
-    # 0,13,14,15,16
-    # 0,17,18,19,20
-    # for each of these calc between 0-1-2, 1-2-3, 2-3-4
-    # TODO clean this up
     angles = []
     kf = handed_keys[frame_index]
     for i in range(5):      # 5 fingers
-        # for j in range(3):      # each of the angles on the fingers (0,1,2; 1,2,3; 2,3,4)
-        #    a = np.array((kf['x'][(i * 4) + j], kf['y'][(i * 4) + j]))
-        #    b = np.array((kf['x'][(i * 4) + j+1], kf['y'][(i * 4) + j+1]))
-        #    c = np.array((kf['x'][(i * 4) + j+2], kf['y'][(i * 4) + j+2]))
-        #    ab = a - b
-        #    cb = c - b
-        #    cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
-        #    ang_b = np.arccos(cos_b)
-        #    angles.append(np.degrees(ang_b))
-        # return angles
         base = np.array((kf['x'][0], kf['y'][0]))
         a = np.array((kf['x'][(i*4)+1], kf['y'][(i*4)+1]))
         b = np.array((kf['x'][(i*4)+2], kf['y'][(i*4)+2]))
         c = np.array((kf['x'][(i*4)+3], kf['y'][(i*4)+3]))
         d = np.array((kf['x'][(i*4)+4], kf['y'][(i*4)+4]))
-        basea = base - a
-        ba = b - a
-        cos_a = np.dot(basea, ba) / (np.linalg.norm(basea) * np.linalg.norm(ba))
-        ang_a = np.arccos(cos_a)
-        angles.append(np.degrees(ang_a))
-        ab = a - b
-        cb = c - b
-        cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
-        ang_b = np.arccos(cos_b)
-        angles.append(np.degrees(ang_b))
-        bc = b - c
-        dc = d - c
-        cos_c = np.dot(bc, dc) / (np.linalg.norm(bc) * np.linalg.norm(dc))
-        ang_c = np.arccos(cos_c)
-        angles.append(np.degrees(ang_c))
+        angles.append(_calculate_angle(base, a, b))
+        angles.append(_calculate_angle(a, b, c))
+        angles.append(_calculate_angle(b, c, d))
     return angles
 
 
