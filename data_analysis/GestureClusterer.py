@@ -47,6 +47,27 @@ def _avg(v):
     return float(sum(v) / len(v))
 
 
+@timeit
+def _get_rl_hand_keypoints(gesture, hand):
+    keys = []
+    keypoint_range = ALL_RIGHT_HAND_KEYPOINTS if hand == 'r' else ALL_LEFT_HAND_KEYPOINTS
+    if not gesture['keyframes']:
+        print("No keyframes found for gesture")
+        print(gesture)
+        return
+
+    for t in gesture['keyframes']:
+        if not isinstance(t, dict):
+            print("found empty keyframes for gesture %s" % gesture['id'])
+            print(gesture)
+            # TODO fix this, known temporary fix
+            return [{'y': [0], 'x': [0]}]
+        y = [t['y'][i] for i in keypoint_range]
+        x = [t['x'][i] for i in keypoint_range]
+        keys.append({'y': y, 'x': x})
+    return keys
+
+
 class GestureClusterer:
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
@@ -281,8 +302,8 @@ class GestureClusterer:
     ############################################################
     @timeit
     def _get_gesture_features(self, gesture, gesture_features=GESTURE_FEATURES):
-        r_keyframes = self._get_rl_hand_keypoints(gesture, 'r')
-        l_keyframes = self._get_rl_hand_keypoints(gesture, 'l')
+        r_keyframes = _get_rl_hand_keypoints(gesture, 'r')
+        l_keyframes = _get_rl_hand_keypoints(gesture, 'l')
         feature_vector = []
         for feature in gesture_features:
             if not GESTURE_FEATURES[feature]['separate_hands']:
@@ -317,26 +338,6 @@ class GestureClusterer:
     ##############################################################
     # Helpers/Calculators ########################################
     ##############################################################
-    @timeit
-    def _get_rl_hand_keypoints(self, gesture, hand):
-        keys = []
-        keypoint_range = ALL_RIGHT_HAND_KEYPOINTS if hand == 'r' else ALL_LEFT_HAND_KEYPOINTS
-        if not gesture['keyframes']:
-            print("No keyframes found for gesture")
-            print(gesture)
-            return
-
-        for t in gesture['keyframes']:
-            if not isinstance(t, dict):
-                print("found empty keyframes for gesture %s" % gesture['id'])
-                print(gesture)
-                # TODO fix this, known temporary fix
-                return [{'y': [0], 'x': [0]}]
-            y = [t['y'][i] for i in keypoint_range]
-            x = [t['x'][i] for i in keypoint_range]
-            keys.append({'y': y, 'x': x})
-        return keys
-
     @timeit
     def _calculate_distance_between_gestures(self, g1, g2):
         if 'feature_vec' in list(g1.keys()) and 'feature_vec' in list(g2.keys()):

@@ -2,16 +2,16 @@ import operator
 from common_helpers import *
 import time
 import numpy as np
-
+import statistics
 
 BASE_KEYPOINT = [0]
 # DO NOT TRUST THESE
-RIGHT_BODY_KEYPOINTS = [1, 2, 3, 28]
-LEFT_BODY_KEYPOINTS = [4, 5, 6, 7]
+RIGHT_BODY_KEYPOINTS = [1, 2, 3, 31]
+LEFT_BODY_KEYPOINTS = [4, 5, 6, 10]
 RIGHT_WRIST_KEYPOINT = 3
 LEFT_WRIST_KEYPOINT = 6
-# LEFT_HAND_KEYPOINTS = lambda x: [7] + [8 + (x * 4) + j for j in range(4)]  THESE ARE NOT RIGHT
-# RIGHT_HAND_KEYPOINTS = lambda x: [28] + [29 + (x * 4) + j for j in range(4)]   THESE ARE NOT RIGHT
+LEFT_HAND_KEYPOINTS = lambda x: [10] + [11 + (x * 4) + j for j in range(4)]  # CHECK THESE
+RIGHT_HAND_KEYPOINTS = lambda x: [31] + [32 + (x * 4) + j for j in range(4)]   # CHECK THESE
 ALL_RIGHT_HAND_KEYPOINTS = list(range(31, 52))
 ALL_LEFT_HAND_KEYPOINTS = list(range(10, 31))
 BODY_KEYPOINTS = RIGHT_BODY_KEYPOINTS + LEFT_BODY_KEYPOINTS
@@ -200,52 +200,79 @@ def _max_acceleration(keys):
     return max_accel
 
 
+def _plot_hand_angles_across_frame(handed_keys, angle_i=None, smoothing=0):
+    xs = []
+    ys = []
+    for i in range(len(handed_keys)):
+        angles = _get_hand_angles_for_frame(handed_keys, i)
+        ys.append(angles[angle_i])
+        xs.append(i)
+
+    # test trying to smooth....
+    if smoothing:
+        for i in range(1, len(ys)):
+            if abs(ys[i] - ys[i-1]) > smoothing:
+                ys[i] = ys[i-1]
+
+    #plt.show()
+    plt.plot(xs, ys)
+
+
+def _calculate_angle(a, b, c):
+    ab = a - b
+    cb = c - b
+    cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
+    ang_b = np.arccos(cos_b)
+    return np.degrees(ang_b)
+
+
+def plot_finger_average_across_frames(handed_keys, finger_i=0):
+    xs = []
+    ys = []
+    for i in range(len(handed_keys)):
+        angles = _get_average_finger_angles(handed_keys, i)
+        ys.append(angles[finger_i])
+        xs.append(i)
+    #plt.show()
+    print(xs)
+    print(ys)
+    plt.plot(xs, ys)
+
+
+def _get_average_finger_angles(handed_keys, frame_index):
+    angles = _get_hand_angles_for_frame(handed_keys, frame_index)
+    fing1 = angles[0:3]
+    fing2 = angles[3:6]
+    fing3 = angles[6:9]
+    fing4 = angles[9:12]
+    fing5 = angles[12:15]
+    return [statistics.mean(fing1), statistics.mean(fing2), statistics.mean(fing3), statistics.mean(fing4),
+            statistics.mean(fing5)]
+
+
 # given a set of keys from a hand (array length 22), returns angles between every 3 points, like trigrams
 # works on frame i
 # if hand angles are roughly the same (within like, 20 degrees for each thing) then they're about the same shape
-    # TODO map angles against frame...
+# calculate angles for
+# 0,1,2,3,4
+# 0,5,6,7,8
+# 0,9,10,11,12
+# 0,13,14,15,16
+# 0,17,18,19,20
+# for each of these calc between 0-1-2, 1-2-3, 2-3-4
+# TODO map angles against frame...
 def _get_hand_angles_for_frame(handed_keys, frame_index):
-    # calculate angles for
-    # 0,1,2,3,4
-    # 0,5,6,7,8
-    # 0,9,10,11,12
-    # 0,13,14,15,16
-    # 0,17,18,19,20
-    # for each of these calc between 0-1-2, 1-2-3, 2-3-4
-    # TODO clean this up
     angles = []
     kf = handed_keys[frame_index]
     for i in range(5):      # 5 fingers
-        # for j in range(3):      # each of the angles on the fingers (0,1,2; 1,2,3; 2,3,4)
-        #    a = np.array((kf['x'][(i * 4) + j], kf['y'][(i * 4) + j]))
-        #    b = np.array((kf['x'][(i * 4) + j+1], kf['y'][(i * 4) + j+1]))
-        #    c = np.array((kf['x'][(i * 4) + j+2], kf['y'][(i * 4) + j+2]))
-        #    ab = a - b
-        #    cb = c - b
-        #    cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
-        #    ang_b = np.arccos(cos_b)
-        #    angles.append(np.degrees(ang_b))
-        # return angles
         base = np.array((kf['x'][0], kf['y'][0]))
         a = np.array((kf['x'][(i*4)+1], kf['y'][(i*4)+1]))
         b = np.array((kf['x'][(i*4)+2], kf['y'][(i*4)+2]))
         c = np.array((kf['x'][(i*4)+3], kf['y'][(i*4)+3]))
         d = np.array((kf['x'][(i*4)+4], kf['y'][(i*4)+4]))
-        basea = base - a
-        ba = b - a
-        cos_a = np.dot(basea, ba) / (np.linalg.norm(basea) * np.linalg.norm(ba))
-        ang_a = np.arccos(cos_a)
-        angles.append(np.degrees(ang_a))
-        ab = a - b
-        cb = c - b
-        cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
-        ang_b = np.arccos(cos_b)
-        angles.append(np.degrees(ang_b))
-        bc = b - c
-        dc = d - c
-        cos_c = np.dot(bc, dc) / (np.linalg.norm(bc) * np.linalg.norm(dc))
-        ang_c = np.arccos(cos_c)
-        angles.append(np.degrees(ang_c))
+        angles.append(_calculate_angle(base, a, b))
+        angles.append(_calculate_angle(a, b, c))
+        angles.append(_calculate_angle(b, c, d))
     return angles
 
 
