@@ -1,4 +1,3 @@
-
 #!/usr/bin/env pythons
 import json
 import os
@@ -9,6 +8,8 @@ devKey = str(open("%s" % os.getenv("devKey"), "r").read()).strip()
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 from google.cloud import storage
+
+
 ########################################################
 ############### Getting Actual Keyframes ###############
 ########################################################
@@ -24,6 +25,7 @@ def timestring_to_int(time):
     timesec = (hrs * 60 * 60) + (mins * 60) + secs
     return timesec
 
+
 # takes start time in form of X_X_IND_m_s.txt, end time in form of X_X_IND_m_s.txt
 # and question time in form of X_X_IND_m_s.txt
 # returns whether or not question time is between start and end times
@@ -34,6 +36,7 @@ def is_within_time(start_time, end_time, question_time):
     if (q < s) or (q > e):
         return False
     return True
+
 
 def extract_txt_data(basepath, filepath):
     fn = filepath.split('.txt')[0]
@@ -55,11 +58,13 @@ def get_data_from_path(data_path):
         data = json.load(f)
     return data
 
+
 def get_data_from_blob(bucket_name, source_blob_name):
     download_blob(bucket_name, source_blob_name, "tmp.json")
     d = get_data_from_path("tmp.json")
     os.remove("tmp.json")
     return d
+
 
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
@@ -70,6 +75,7 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
     print(('Blob {} downloaded to {}.'.format(
         source_blob_name,
         destination_file_name)))
+
 
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
@@ -95,19 +101,23 @@ def upload_to_gcloud_from_path(fn, path):
     blob = bucket.blob(fn)
     blob.upload_from_filename(path)
 
+
 def read_data(fp):
     with open(fp, 'r') as f:
         t = json.load(f)
     return t
 
+
 def touch(path):
     with open(path, 'a'):
         os.utime(path, None)
+
 
 def write_data(fp, data):
     with open(fp, 'w') as f:
         json.dump(data, f, indent=4)
     f.close()
+
 
 def write_data_serialize(fp, data):
     with open(fp, 'w') as f:
@@ -121,15 +131,18 @@ def filter_words_by_syntax(words, wordtype="NN"):
     ws = [w[0] for w in tagged if w[1] in wordtype]
     return ws
 
+
 # takes words, returns B.O.W. that excludes particular wordtpe
 def filter_words_out_by_syntax(words, wordtype="NN"):
     tagged = nltk.pos_tag(words)
     ws = [w[0] for w in tagged if w[1] not in wordtype]
     return ws
 
+
 def flatten(l):
     flat_list = [item for sublist in l for item in sublist]
     return flat_list
+
 
 def calculate_distance_between_vectors(v1, v2):
     return np.linalg.norm(np.array(v1) - np.array(v2))

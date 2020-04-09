@@ -3,6 +3,7 @@ from GestureClusterer import *
 from SentenceClusterer import *
 from VideoManager import *
 from Analyzer import *
+from SentimentAnalyzer import *
 import json
 import os
 from termcolor import colored
@@ -40,9 +41,10 @@ import numpy as np
 ## and also all the timings.
 # sys.path.extend(['C:/Users/carolyns/PycharmProjects/gesture-to-language/data_analysis'])
 # from GestureSentenceManager import *
+# exec(open('setup.py').read())
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.downsample_speaker()
-# GSM.initialize_sentence_clusterer()
+# GSM._initialize_sentence_clusterer()
 # GSM.cluster_gestures()    or    GSM.cluster_gestures_under_n_words(10)
 # GSM.test_k_means_gesture_clusters()
 # report = GSM.report_clusters()
@@ -86,6 +88,15 @@ class GestureSentenceManager():
 
     def load_gestures(self):
         self.agd = {}
+
+        ## for testing, so it doesn't take so long to get the file.
+        if self.speaker == "test":
+            fp = os.path.join(os.getcwd(), "test_agd.json")    # hacky
+            if not os.path.exists(fp):
+                fp = os.path.join(os.getcwd(), "data_analysis", "test_agd.json")  # ha
+            self.agd = get_data_from_path(fp)
+            return
+
         agd_bucket = "all_gesture_data"
         try:
             print("trying to get data from cloud from %s, %s" % (agd_bucket, "%s_agd.json" % self.speaker))
@@ -129,22 +140,26 @@ class GestureSentenceManager():
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
         self.cluster_gestures(exclude_ids, max_number_clusters)
 
-    def cluster_gestures(self, exclude_ids=[], max_number_clusters=0):
+    def cluster_gestures(self, exclude_ids=[], mnc=None, mcd=None):
         if len(exclude_ids):
-            self.GestureClusterer = GestureClusterer(self.filter_agd(exclude_ids))
+            self.GestureClusterer = self.GestureClusterer(self.filter_agd(exclude_ids))
         else:
-            self.GestureClusterer = GestureClusterer(self.agd)
-        self.GestureClusterer.cluster_gestures(None, 0.03, max_number_clusters)
+            self.GestureClusterer = self.GestureClusterer(self.agd)
+        self.GestureClusterer.cluster_gestures(None, None, max_number_clusters=mnc, max_cluster_distance=mcd)
 
     def get_transcript(self):
+        fp = "temp.json"
         if self.gesture_transcript:
             return
-        fp = "temp.json"
-        download_blob(self.full_transcript_bucket,
-                      "%s_timings_with_transcript.json" % self.speaker,
-                      fp)
+        elif self.speaker == "test":
+            fp = os.path.join(os.getcwd(), "test_timings_with_transcript.json")    # hacky
+            if not os.path.exists(fp):
+                fp = os.path.join(os.getcwd(), "data_analysis", "test_timings_with_transcript.json")  # hacky
+        else:       # TODO make this smarter so if it's already downloaded it won't download again
+            download_blob(self.full_transcript_bucket,
+                          "%s_timings_with_transcript.json" % self.speaker,
+                          fp)
         self.gesture_transcript = read_data(fp)
-        os.remove(fp)
 
     def assign_gesture_cluster_ids_for_sentence_clusters(self):
         for k in self.SentenceClusterer.clusters:
@@ -169,6 +184,18 @@ class GestureSentenceManager():
             for nk in sentence_keys:
                 gesture[nk] = s_g[nk]
             self.complete_gesture_data[gid] = gesture
+
+    # can be used to replace GSM.agd
+    def get_gestures_motion_under_time(self, time):
+        ids = [g['id'] for g in self.gesture_transcript['phrases'] if (g['phase']['end_seconds'] - g['phase']['start_seconds']) < time]
+        gests = [self.get_gesture_motion_by_id(i) for i in ids]
+        return gests
+
+    # can be used to replace GSM.gesture_transcript
+    def get_gestures_transcript_under_time(self, time):
+        ids = [g['id'] for g in self.gesture_transcript['phrases'] if (g['phase']['end_seconds'] - g['phase']['start_seconds']) < time]
+        gests = [self.get_gesture_by_id(i) for i in ids]
+        return gests
 
     ###########################################
     ################ REPORTING ################
@@ -499,6 +526,11 @@ class GestureSentenceManager():
         # plt.axes([0, 200, 0, .03])
         plt.grid(True)
         plt.show()
+
+    def histogram_of_gesture_lengths(self):
+        time_lengths = [(g['phase']['end_seconds'] - g['phase']['start_seconds']) for g in self.gesture_transcript['phrases']]
+        plt.hist(time_lengths, color='blue', edgecolor='black',
+                bins=int(180 / 5))
 
     def get_closest_gestures_in_gesture_cluster(self, cluster_id):
         c = self.GestureClusterer.clusters[cluster_id]

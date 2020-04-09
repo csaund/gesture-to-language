@@ -1,7 +1,7 @@
 print("loading tf")
-import tensorflow as tf
+# import tensorflow as tf
 print("loading tfh")
-import tensorflow_hub as hub
+# import tensorflow_hub as hub
 import random
 import numpy as np
 from tqdm import tqdm
@@ -18,7 +18,7 @@ from nltk import word_tokenize, pos_tag
 from nltk.corpus import wordnet as wn
 
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 
 MAX_CLUSTER_SIZE = 90
 CLUSTER_SIMILARITY_TOLERANCE = 0.6
@@ -33,7 +33,7 @@ class SentenceClusterer():
     def __init__(self, speaker, seeds=[]):
         self.speaker = speaker
         print("oh boy we're in for it now.")
-        self.embed_fn = self.initialize_encoder("https://tfhub.dev/google/universal-sentence-encoder/2")
+        # self.embed_fn = self.initialize_encoder("https://tfhub.dev/google/universal-sentence-encoder/2")
         self.has_assigned_feature_vecs = False
         self.logfile = "%s/gesture-to-language/sentence_cluster_logs.txt" % os.getenv("HOME")
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
