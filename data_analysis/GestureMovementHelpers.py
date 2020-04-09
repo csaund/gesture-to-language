@@ -2,7 +2,7 @@ import operator
 from common_helpers import *
 import time
 import numpy as np
-
+import statistics
 
 BASE_KEYPOINT = [0]
 # DO NOT TRUST THESE
@@ -200,19 +200,22 @@ def _max_acceleration(keys):
     return max_accel
 
 
-def _plot_hand_angles_across_frame(handed_keys):
+def _plot_hand_angles_across_frame(handed_keys, angle_i=None, smoothing=0):
     xs = []
     ys = []
-    frame_angles = [_get_hand_angles_for_frame(handed_keys, i) for i in range(len(handed_keys))]
     for i in range(len(handed_keys)):
         angles = _get_hand_angles_for_frame(handed_keys, i)
-        ys.append(angles)
-        xs.append([i for k in list(range(len(angles)))])
-    test_x = [x[0] for x in xs]
-    test_y = [y[0] for y in ys]
+        ys.append(angles[angle_i])
+        xs.append(i)
+
+    # test trying to smooth....
+    if smoothing:
+        for i in range(1, len(ys)):
+            if abs(ys[i] - ys[i-1]) > smoothing:
+                ys[i] = ys[i-1]
 
     #plt.show()
-    plt.plot(test_x, test_y)
+    plt.plot(xs, ys)
 
 
 def _calculate_angle(a, b, c):
@@ -221,6 +224,30 @@ def _calculate_angle(a, b, c):
     cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
     ang_b = np.arccos(cos_b)
     return np.degrees(ang_b)
+
+
+def plot_finger_average_across_frames(handed_keys, finger_i=0):
+    xs = []
+    ys = []
+    for i in range(len(handed_keys)):
+        angles = _get_average_finger_angles(handed_keys, i)
+        ys.append(angles[finger_i])
+        xs.append(i)
+    #plt.show()
+    print(xs)
+    print(ys)
+    plt.plot(xs, ys)
+
+
+def _get_average_finger_angles(handed_keys, frame_index):
+    angles = _get_hand_angles_for_frame(handed_keys, frame_index)
+    fing1 = angles[0:3]
+    fing2 = angles[3:6]
+    fing3 = angles[6:9]
+    fing4 = angles[9:12]
+    fing5 = angles[12:15]
+    return [statistics.mean(fing1), statistics.mean(fing2), statistics.mean(fing3), statistics.mean(fing4),
+            statistics.mean(fing5)]
 
 
 # given a set of keys from a hand (array length 22), returns angles between every 3 points, like trigrams
