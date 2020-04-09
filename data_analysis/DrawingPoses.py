@@ -71,7 +71,7 @@ def draw_pose_custom(gesture, frame, img=None, img_width=1280, img_height=720, o
         plt.close()
 
 
-def save_video(temp_folder, g, output_fn, delete_tmp=True):
+def save_video(g, output_fn,temp_folder='temp_gesture_plots',  delete_tmp=True):
     if not (os.path.exists(temp_folder)):
         os.makedirs(temp_folder)
 
