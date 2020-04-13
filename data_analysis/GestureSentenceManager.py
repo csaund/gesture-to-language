@@ -1,20 +1,10 @@
 #!/usr/bin/env pythons
-from GestureClusterer import *
-from SentenceClusterer import *
-from VideoManager import *
-from Analyzer import *
-from SentimentAnalyzer import *
-import json
 import os
 from termcolor import colored
-import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from prettytable import PrettyTable
 from scipy import stats
-
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
-
 from google.cloud import storage
 from common_helpers import *
 
@@ -22,6 +12,11 @@ from pandas.plotting import parallel_coordinates
 import networkx as nx
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
+
+from data_analysis.VideoManager import VideoManager
+from data_analysis.GestureClusterer import GestureClusterer
+from data_analysis.GestureMovementHelpers import GESTURE_FEATURES
+from data_analysis.SentenceClusterer import SentenceClusterer
 
 VERBS = ["V", "VB", "VBD", "VBD", "VBZ", "VBP", "VBN"]
 NOUNS = ["NN", "NNP", "NNS"]
@@ -53,11 +48,10 @@ import numpy as np
 # GSM.GestureClusterer.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
 # GSM.cluster_sentences_gesture_independent()
 
-## manages gesture and sentence stuff.
 class GestureSentenceManager():
-    def __init__(self, speaker, seeds=[]):
-        ## this is where the magic is gonna happen.
-        ## get all the gestures
+    def __init__(self, speaker):
+        # this is where the magic is gonna happen.
+        # get all the gestures
         self.speaker = speaker
         self.cluster_bucket_name = "%s_clusters" % speaker
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
@@ -65,7 +59,7 @@ class GestureSentenceManager():
         self.gesture_sentence_clusters = {}
         self.get_transcript()
         self.agd = None
-        #self._initialize_sentence_clusterer()
+        # self._initialize_sentence_clusterer()
         self.VideoManager = VideoManager()
         print("loading gestures")
         self.load_gestures()
@@ -128,17 +122,19 @@ class GestureSentenceManager():
         exclude_ids = exclude_ids + self.GestureClusterer.drop_ids
         self.SentenceClusterer.cluster_sentences(gesture_data=None, min_cluster_sim=0.5, max_cluster_size=90, max_number_clusters=1000, exclude_gesture_ids=exclude_ids)
 
-    def cluster_gestures_under_n_words(self, n, max_number_clusters=0):
+    def cluster_gestures_under_n_words(self, n, max_number_clusters=0, gesture_features=GESTURE_FEATURES):
         ids_fewer_than_n = self.get_gesture_ids_fewer_than_n_words(n)
         exclude_ids = [g['id'] for g in self.gesture_transcript['phrases'] if g['id'] not in ids_fewer_than_n]
-        self.cluster_gestures(exclude_ids, max_number_clusters)
+        self.cluster_gestures(exclude_ids, max_number_clusters, gesture_features=gesture_features)
 
-    def cluster_gestures(self, exclude_ids=[], mnc=None, mcd=None):
+    def cluster_gestures(self, exclude_ids=[], mnc=None, mcd=None, gesture_features=GESTURE_FEATURES):
         if len(exclude_ids):
             self.GestureClusterer = self.GestureClusterer(self.filter_agd(exclude_ids))
         else:
             self.GestureClusterer = self.GestureClusterer(self.agd)
-        self.GestureClusterer.cluster_gestures(None, None, max_number_clusters=mnc, max_cluster_distance=mcd)
+        self.GestureClusterer.cluster_gestures(None, None, max_number_clusters=mnc,
+                                               max_cluster_distance=mcd,
+                                               gesture_features=gesture_features)
 
     def get_transcript(self):
         fp = "temp.json"
