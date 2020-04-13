@@ -13,7 +13,6 @@ import plotly.graph_objects as go
 from prettytable import PrettyTable
 from scipy import stats
 
-devKey = str(open("%s" % os.getenv("devKey"), "r").read()).strip()
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 from google.cloud import storage
