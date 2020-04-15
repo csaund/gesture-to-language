@@ -3,6 +3,7 @@ from common_helpers import *
 import time
 import numpy as np
 import statistics
+from matplotlib import cm, pyplot as plt
 
 BASE_KEYPOINT = [0]
 # DO NOT TRUST THESE
@@ -185,6 +186,135 @@ def _get_back_and_forth(keys):
     return switches
 
 
+def _detect_cycles(keys):
+    return keys
+    # what happens in a cycle?
+    # the fingers rotate around the wrist
+    # the angle of each of the fingers stays relatively constant
+    # the wrist stays in relatively the same place, or moves slowly
+    # the fingers all have relatively the same angle?
+    # tips all make a rough circle shape
+    # plot finger TIP path between frames, observe
+    # gest 1726
+    # check if fingertip points are within certain distance of a circle?
+
+
+# draw the path of wrist and each fingertip across n frames.
+# used to visualize cycles.
+def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10):
+    # across all frames
+    #for frame_index in range(0, len(handed_keys)-n):
+    if len(handed_keys) < (starting_frame + n):
+        print(starting_frame + n)
+        print("Attempting to go outside of keyframe range. Will only go to frame %s" % len(handed_keys))
+        n = len(handed_keys) - starting_frame
+    fingers = {
+        'base': {
+            'x': [],
+            'y': [],
+            'color': 'gray'
+        },
+        0: {
+            'x': [],
+            'y': [],
+            'color': 'red'
+        },
+        1: {
+            'x': [],
+            'y': [],
+            'color': 'blue'
+        },
+        2: {
+            'x': [],
+            'y': [],
+            'color': 'green'
+        },
+        3: {
+            'x': [],
+            'y': [],
+            'color': 'orange'
+        },
+        4: {
+            'x': [],
+            'y': [],
+            'color': 'purple'
+        },
+    }
+
+    for k in range(starting_frame, starting_frame + n):
+        kf = handed_keys[k]
+        for i in range(5):
+            # base_pos = np.array((kf['x'][0], kf['y'][0]))
+            # tip_pos = np.array((kf['x'][(i * 4) + 4], kf['y'][(i * 4) + 4]))
+            fingers['base']['x'].append(kf['x'][0])
+            fingers['base']['y'].append(kf['y'][0])
+            fingers[i]['x'].append(kf['x'][(i * 4) + 4])
+            fingers[i]['y'].append(kf['y'][(i * 4) + 4])
+
+    plt.plot(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
+    plt.plot(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
+    plt.plot(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
+    plt.plot(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
+    plt.plot(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
+    plt.plot(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
+
+    plt.show()
+    return fingers
+
+
+def detect_cycles(handed_keys, starting_frame, est_cycle_length):
+    # see that start and end point are within some margin of error
+    # that probably depends on the width of the cycle -- say 20% of largest distance?
+    fingers = draw_finger_tip_path_across_frames(handed_keys, starting_frame, est_cycle_length)
+    # draw a circle defined by starting and furthest point
+    # calculate distance of all points from that circle (for JUST that finger)
+
+
+# for all points (x,y) in xs, ys, return maximum distance between any two.
+def get_furthest_distance(xs, ys):
+    if len(xs) != len(ys):
+        print("unequal length of xs and ys. Unable to calculate max distance")
+        return None
+    ps = [(xs[i], ys[i]) for i in range(len(xs))]
+    ps = [(xs[i], ys[i]) for i in range(len(xs))]
+    max_dist = 0
+    for i in range(len(ps)):
+        for j in range(i, len(ps)):
+            max_dist = max(max_dist, _get_point_dist(ps[i][0], ps[i][1], ps[j][0], ps[j][1]))
+    return max_dist
+
+
+def get_average_distance(xs, ys):
+    if len(xs) != len(ys):
+        print("unequal length of xs and ys. Unable to calculate max distance")
+        return None
+    ps = [(xs[i], ys[i]) for i in range(len(xs))]
+    ps = [(xs[i], ys[i]) for i in range(len(xs))]
+    dists = []
+    for i in range(len(ps)):
+        for j in range(i, len(ps)):
+            dists.append(_get_point_dist(ps[i][0], ps[i][1], ps[j][0], ps[j][1]))
+    return statistics.mean(dists)
+
+
+def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
+    # r = get_furthest_distance(xs, ys) / 2
+    # instead of furthest, r should be avg dist between points / 2
+    r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
+    i = int(len(xs) / 2)
+    print(i)
+    print(xs[0], ys[0])
+    print(xs[i], ys[i])
+    px = max(xs) - (max(xs) - min(xs))/2
+    py = max(ys) - (max(ys) - min(ys))/2
+    #px = statistics.mean([xs[0], xs[i]])
+    #py = statistics.mean([ys[0], ys[i]])
+    print(px, py)
+    print(r)
+    c = plt.Circle((px, py), r, color=color, alpha=alpha)
+    plt.gcf().gca().add_artist(c)
+
+
 # TODO check this in MotionAnalyzerTests and visually.
 # actually right now seems to detect smooth gestures???
 # definitely not right.
@@ -214,7 +344,6 @@ def _plot_hand_angles_across_frame(handed_keys, angle_i=None, smoothing=0):
             if abs(ys[i] - ys[i-1]) > smoothing:
                 ys[i] = ys[i-1]
 
-    #plt.show()
     plt.plot(xs, ys)
 
 
@@ -233,7 +362,7 @@ def plot_finger_average_across_frames(handed_keys, finger_i=0):
         angles = _get_average_finger_angles(handed_keys, i)
         ys.append(angles[finger_i])
         xs.append(i)
-    #plt.show()
+    # plt.show()
     print(xs)
     print(ys)
     plt.plot(xs, ys)
@@ -319,6 +448,10 @@ GESTURE_FEATURES = {
     'max_wrist_velocity': {
         'separate_hands': True,
         'function': _max_wrist_velocity
+    },
+    'cycles': {
+        'separate_hands': True,
+        'function': _detect_cycles
     }
     # 'acceleration': {
     #     'separate_hands': True,
