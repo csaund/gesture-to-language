@@ -206,7 +206,6 @@ def _detect_cycles(keys):
 # used to visualize cycles.
 def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10):
     # across all frames
-    #for frame_index in range(0, len(handed_keys)-n):
     if len(handed_keys) < (starting_frame + n):
         print(starting_frame + n)
         print("Attempting to go outside of keyframe range. Will only go to frame %s" % len(handed_keys))
@@ -305,21 +304,25 @@ def get_average_distance(xs, ys):
 
 # need to get least squares circle.
 def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
-    # instead of furthest, r should be avg dist between points / 2
+    x, y, least_sqr = get_leastsqr_circle(np.array(xs), np.array(ys))
     r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
-    i = int(len(xs) / 2)
+    c = plt.Circle((x, y), r, color=color, alpha=alpha)
+    plt.gcf().gca().add_artist(c)
+    # instead of furthest, r should be avg dist between points / 2
+    # r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
+    # i = int(len(xs) / 2)
     # print(i)
     # print(xs[0], ys[0])
     # print(xs[i], ys[i])
-    px = max(xs) - (max(xs) - min(xs))/2
-    py = max(ys) - (max(ys) - min(ys))/2
+    # px = max(xs) - (max(xs) - min(xs))/2
+    # py = max(ys) - (max(ys) - min(ys))/2
     # px = statistics.mean([xs[0], xs[i]])
     # py = statistics.mean([ys[0], ys[i]])
     # print(px, py)
     # print(r)
-    c = plt.Circle((px, py), r, color=color, alpha=alpha)
-    plt.gcf().gca().add_artist(c)
-    return px, py, r
+    # c = plt.Circle((px, py), r, color=color, alpha=alpha)
+    # plt.gcf().gca().add_artist(c)
+    return x, y, least_sqr
 
 
 # https://www.geeksforgeeks.org/shortest-distance-between-a-point-and-a-circle/
@@ -480,19 +483,18 @@ GESTURE_FEATURES = {
 }
 
 
-
-
-
 # get least squares circle
 # https://scipy-cookbook.readthedocs.io/items/Least_Squares_Circle.html
-def calc_R(xc, yc, xs, ys):
+def calc_r(xc, yc, xs, ys):
     """ calculate the distance of each 2D points from the center (xc, yc) """
     return np.sqrt((xs-xc)**2 + (ys-yc)**2)
 
+
 def f_2(cx, cy, xs, ys):
     """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
-    Ri = calc_R(cx, cy, xs, ys)
+    Ri = calc_r(cx, cy, xs, ys)
     return Ri - Ri.mean()
+
 
 def get_leastsqr_circle(xs, ys):
     # coordinates of the barycenter
@@ -503,7 +505,7 @@ def get_leastsqr_circle(xs, ys):
                                      center_estimate)
 
     xc_2, yc_2 = center_2
-    Ri_2 = calc_R(xc_2, yc_2, xs, ys)
+    Ri_2 = calc_r(xc_2, yc_2, xs, ys)
     R_2 = Ri_2.mean()
-    residu_2 = sum((Ri_2 - R_2) ** 2)
-    return residu_2
+    least_sqr = sum((Ri_2 - R_2) ** 2)
+    return xc_2, yc_2, least_sqr
