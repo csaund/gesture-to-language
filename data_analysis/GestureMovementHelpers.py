@@ -302,27 +302,103 @@ def get_average_distance(xs, ys):
     return statistics.mean(dists)
 
 
+# quick helper 15 4 20
+# will not work to use lstsqr as measure, bc doesn't measure dist to circle EDGE which I think is what we need.
+# but this favors smaller motions, need to adjust for how many pixels the whole thing takes up.
+def get_finger_sqrs(fingers):
+    a, b, lbase = draw_middle_path_circle(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
+    a, b, l0 = draw_middle_path_circle(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
+    a, b, l1 = draw_middle_path_circle(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
+    a, b, l2 = draw_middle_path_circle(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
+    a, b, l3 = draw_middle_path_circle(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
+    a, b, l4 = draw_middle_path_circle(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
+    t = np.array([lbase, l0, l1, l2, l3, l4])
+    print(t)
+    print(np.mean(t))
+
+
 # need to get least squares circle.
 def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
-    x, y, least_sqr = get_leastsqr_circle(np.array(xs), np.array(ys))
-    r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
-    c = plt.Circle((x, y), r, color=color, alpha=alpha)
-    plt.gcf().gca().add_artist(c)
-    # instead of furthest, r should be avg dist between points / 2
+    # x, y, least_sqr = get_leastsqr_circle(np.array(xs), np.array(ys))
     # r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
-    # i = int(len(xs) / 2)
+    # c = plt.Circle((x, y), r, color=color, alpha=alpha)
+    # plt.gcf().gca().add_artist(c)
+    # instead of furthest, r should be avg dist between points / 2
+    r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
+    i = int(len(xs) / 2)
     # print(i)
     # print(xs[0], ys[0])
     # print(xs[i], ys[i])
-    # px = max(xs) - (max(xs) - min(xs))/2
-    # py = max(ys) - (max(ys) - min(ys))/2
+    px = max(xs) - (max(xs) - min(xs))/2
+    py = max(ys) - (max(ys) - min(ys))/2
     # px = statistics.mean([xs[0], xs[i]])
     # py = statistics.mean([ys[0], ys[i]])
     # print(px, py)
     # print(r)
-    # c = plt.Circle((px, py), r, color=color, alpha=alpha)
-    # plt.gcf().gca().add_artist(c)
-    return x, y, least_sqr
+    Ri = calc_r(px, py, np.array(xs), np.array(ys))
+    least_sqr = Ri.mean()
+    # need to be getting distance to EDGE of circle
+    c = plt.Circle((px, py), r, color=color, alpha=alpha)
+    plt.gcf().gca().add_artist(c)
+
+    # penalize angles < 90?
+    # angles = []
+    # for i in range(len(xs)-2):
+    #     a = np.array([xs[i], ys[i]])
+    #     b = np.array([xs[i+1], ys[i+1]])
+    #     c = np.array([xs[i+2], ys[i+2]])
+    #     ang = _calculate_angle(a,b,c)
+    #     if not isinstance(a, numbers.Number):
+    #         print(a, b, c)
+    #     angles.append(ang)
+    # print(angles)
+    # add penalization
+
+    # path visit sectors in order?
+    # we're going polar
+    xs = np.array(xs)
+    ys = np.array(ys)
+    # fuck it can't convert polar coordinates to new origin, I'll just convert the cartesian coords FIRST.
+    pol_xs = xs - px
+    pol_ys = ys - py
+    pols = [cart2pol(pol_xs[i], pol_ys[i]) for i in range(len(xs))]
+    rs = [p[0] for p in pols]
+    thetas = [p[1] for p in pols]
+    for t in thetas:        # check these are continuous, penalize if not.
+        # just want them going in same direction, don't really care which way.
+
+
+    # just penalize for going wrong direction
+    print(rs)
+    print(thetas)
+    return px, py, least_sqr.mean()
+
+
+def cart2pol(x, y):
+    rho = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y, x)
+    return(rho, phi)
+
+def pol2cart(rho, phi):
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return(x, y)
+
+
+# WE'E ONTO SOMETHING HERE.
+def same_dir_theta(ts):
+    same_dir = []
+    opp_dir = []
+    for i in range(1, len(ts)-1):
+        if ts[i-1] < ts[i] < ts[i+1]:
+            same_dir.append('d')
+        elif ts[i-1] > ts[i] > ts[i+1]:
+            same_dir.append('u')
+        else:
+            same_dir.append('-')
+    print(opp_dir)
+    print(same_dir)
+    return
 
 
 # https://www.geeksforgeeks.org/shortest-distance-between-a-point-and-a-circle/
