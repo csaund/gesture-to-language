@@ -325,7 +325,6 @@ def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
     # plt.gcf().gca().add_artist(c)
     # instead of furthest, r should be avg dist between points / 2
     r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
-    i = int(len(xs) / 2)
     # print(i)
     # print(xs[0], ys[0])
     # print(xs[i], ys[i])
@@ -363,15 +362,22 @@ def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
     pol_ys = ys - py
     pols = [cart2pol(pol_xs[i], pol_ys[i]) for i in range(len(xs))]
     rs = [p[0] for p in pols]
-    thetas = [p[1] for p in pols]
-    for t in thetas:        # check these are continuous, penalize if not.
-        # just want them going in same direction, don't really care which way.
-
-
+    thetas = [p[1] for p in pols]       # check these are continuous, penalize if not.
+    dirs = same_dir_theta(thetas)    # just want them going in same direction, don't really care which way.
+    bonus = 0
+    for i in range(1, len(dirs)):
+        if (dirs[i] == dirs[i-1]) and dirs[i] != '-':
+            bonus += _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
+        else:
+            bonus -= _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
+    aribitrary_measure = least_sqr.mean() - bonus
+    print(dirs)
+    print("bonus:", bonus)
+    print("lsm - bonus:", least_sqr.mean() - bonus)
     # just penalize for going wrong direction
-    print(rs)
-    print(thetas)
-    return px, py, least_sqr.mean()
+    # if it's going in right direction, subtract from lsm
+    # if it's going in wrong direction, add?
+    return px, py, aribitrary_measure
 
 
 def cart2pol(x, y):
@@ -386,9 +392,11 @@ def pol2cart(rho, phi):
 
 
 # WE'E ONTO SOMETHING HERE.
+# can tell if something IS a cycle
+# can also be used to detect cycles (when you get lots of the same direction in a row)
+# problem with that is centering the coordinates around wherever the center circle is
 def same_dir_theta(ts):
     same_dir = []
-    opp_dir = []
     for i in range(1, len(ts)-1):
         if ts[i-1] < ts[i] < ts[i+1]:
             same_dir.append('d')
@@ -396,9 +404,7 @@ def same_dir_theta(ts):
             same_dir.append('u')
         else:
             same_dir.append('-')
-    print(opp_dir)
-    print(same_dir)
-    return
+    return same_dir
 
 
 # https://www.geeksforgeeks.org/shortest-distance-between-a-point-and-a-circle/
