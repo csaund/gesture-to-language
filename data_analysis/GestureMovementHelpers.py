@@ -262,10 +262,15 @@ def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10):
     return fingers
 
 
-def detect_cycles(handed_keys, starting_frame, est_cycle_length):
+def detect_cycles(handed_keys, starting_frame, est_cycle_length=15):
     # see that start and end point are within some margin of error
     # that probably depends on the width of the cycle -- say 20% of largest distance?
     fingers = draw_finger_tip_path_across_frames(handed_keys, starting_frame, est_cycle_length)
+    finger = fingers[3]
+    cx, cy, r = draw_middle_path_circle(finger['x'], finger['y'], finger['color'])
+    ps = [(finger['x'][i], finger['y'][i]) for i in range(len(finger['x']))]
+    dists = [dist_btw_point_and_circle(cx, cy, r, ps[i][0], ps[i][1]) for i in range(len(ps))]
+    return statistics.mean(dists)
     # draw a circle defined by starting and furthest point
     # calculate distance of all points from that circle (for JUST that finger)
 
@@ -275,7 +280,6 @@ def get_furthest_distance(xs, ys):
     if len(xs) != len(ys):
         print("unequal length of xs and ys. Unable to calculate max distance")
         return None
-    ps = [(xs[i], ys[i]) for i in range(len(xs))]
     ps = [(xs[i], ys[i]) for i in range(len(xs))]
     max_dist = 0
     for i in range(len(ps)):
@@ -289,7 +293,6 @@ def get_average_distance(xs, ys):
         print("unequal length of xs and ys. Unable to calculate max distance")
         return None
     ps = [(xs[i], ys[i]) for i in range(len(xs))]
-    ps = [(xs[i], ys[i]) for i in range(len(xs))]
     dists = []
     for i in range(len(ps)):
         for j in range(i, len(ps)):
@@ -298,21 +301,26 @@ def get_average_distance(xs, ys):
 
 
 def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
-    # r = get_furthest_distance(xs, ys) / 2
     # instead of furthest, r should be avg dist between points / 2
     r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
     i = int(len(xs) / 2)
-    print(i)
-    print(xs[0], ys[0])
-    print(xs[i], ys[i])
+    # print(i)
+    # print(xs[0], ys[0])
+    # print(xs[i], ys[i])
     px = max(xs) - (max(xs) - min(xs))/2
     py = max(ys) - (max(ys) - min(ys))/2
-    #px = statistics.mean([xs[0], xs[i]])
-    #py = statistics.mean([ys[0], ys[i]])
-    print(px, py)
-    print(r)
+    # px = statistics.mean([xs[0], xs[i]])
+    # py = statistics.mean([ys[0], ys[i]])
+    # print(px, py)
+    # print(r)
     c = plt.Circle((px, py), r, color=color, alpha=alpha)
     plt.gcf().gca().add_artist(c)
+    return px, py, r
+
+
+# https://www.geeksforgeeks.org/shortest-distance-between-a-point-and-a-circle/
+def dist_btw_point_and_circle(cx, cy, r, px, py):
+    return abs(((((px - cx) ** 2) + ((py - cy) ** 2)) ** (1 / 2)) - r)
 
 
 # TODO check this in MotionAnalyzerTests and visually.
