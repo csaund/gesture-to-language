@@ -189,22 +189,9 @@ def _get_back_and_forth(keys):
     return switches
 
 
-def _detect_cycles(keys):
-    return keys
-    # what happens in a cycle?
-    # the fingers rotate around the wrist
-    # the angle of each of the fingers stays relatively constant
-    # the wrist stays in relatively the same place, or moves slowly
-    # the fingers all have relatively the same angle?
-    # tips all make a rough circle shape
-    # plot finger TIP path between frames, observe
-    # gest 1726
-    # check if fingertip points are within certain distance of a circle?
-
-
 # draw the path of wrist and each fingertip across n frames.
 # used to visualize cycles.
-def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10):
+def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10, do_plot=True):
     # across all frames
     if len(handed_keys) < (starting_frame + n):
         print(starting_frame + n)
@@ -253,26 +240,74 @@ def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10):
             fingers[i]['x'].append(kf['x'][(i * 4) + 4])
             fingers[i]['y'].append(kf['y'][(i * 4) + 4])
 
-    plt.plot(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
-    plt.plot(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
-    plt.plot(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
-    plt.plot(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
-    plt.plot(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
-    plt.plot(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
+    if do_plot:
+        plt.plot(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
+        plt.plot(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
+        plt.plot(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
+        plt.plot(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
+        plt.plot(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
+        plt.plot(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
 
-    plt.show()
+        plt.show()
+
     return fingers
 
 
-def detect_cycles(handed_keys, starting_frame, est_cycle_length=15):
+def detect_cycle(handed_keys, cycle_length=15):
+    scores = []
+    min_score = 100000
+    min_frame = 0
+    for i in range(len(handed_keys)):
+        score = evaluate_cycle(handed_keys, i, cycle_length=cycle_length, do_plot=False)
+        scores.append((i, score))
+        if score < min_score:
+            min_frame = i
+            min_score = score
+    print("best cycle start: ", min_frame)
+    print("best cycle score: ", min_score)
+
+    # and then see that the best scoring frames are near each other?
+
+    return scores
+
+
+# check how many of the numbers within n of x are in top 25%
+def num_high_scores_around_x(scores, n=7):
+    cutoff = int(len(scores) / 4)
+    top_tier = [e[0] for e in scores[:cutoff]]
+    noice = []
+    exclude = []
+    for e in top_tier:
+        if e in exclude:
+            continue
+        incl = 0
+        print(e)
+        for i in range(-n, n):
+            if e + i in top_tier:
+                exclude.append(e+i)
+                incl += 1
+        noice.append(incl / (n * 2))
+    return noice
+
+
+def detect_worst_cycle(handed_keys, cycle_length=15):
+    max_score = 0
+    max_frame = 0
+    for i in range(len(handed_keys)):
+        score = evaluate_cycle(handed_keys, i, cycle_length=cycle_length, do_plot=False)
+        if score > max_score:
+            max_frame = i
+            max_score = score
+    print("best cycle start: ", max_frame)
+    print("best cycle score: ", max_score)
+
+
+def evaluate_cycle(handed_keys, starting_frame, cycle_length=15, do_plot=True):
     # see that start and end point are within some margin of error
     # that probably depends on the width of the cycle -- say 20% of largest distance?
-    fingers = draw_finger_tip_path_across_frames(handed_keys, starting_frame, est_cycle_length)
-    finger = fingers[3]
-    cx, cy, r = draw_middle_path_circle(finger['x'], finger['y'], finger['color'])
-    ps = [(finger['x'][i], finger['y'][i]) for i in range(len(finger['x']))]
-    dists = [dist_btw_point_and_circle(cx, cy, r, ps[i][0], ps[i][1]) for i in range(len(ps))]
-    return statistics.mean(dists)
+    fingers = draw_finger_tip_path_across_frames(handed_keys, starting_frame, cycle_length, do_plot=do_plot)
+    scores = get_finger_sqrs(fingers, do_plot=do_plot)
+    return scores.mean()
     # draw a circle defined by starting and furthest point
     # calculate distance of all points from that circle (for JUST that finger)
 
@@ -305,56 +340,32 @@ def get_average_distance(xs, ys):
 # quick helper 15 4 20
 # will not work to use lstsqr as measure, bc doesn't measure dist to circle EDGE which I think is what we need.
 # but this favors smaller motions, need to adjust for how many pixels the whole thing takes up.
-def get_finger_sqrs(fingers):
-    a, b, lbase = draw_middle_path_circle(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
-    a, b, l0 = draw_middle_path_circle(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
-    a, b, l1 = draw_middle_path_circle(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
-    a, b, l2 = draw_middle_path_circle(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
-    a, b, l3 = draw_middle_path_circle(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
-    a, b, l4 = draw_middle_path_circle(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
-    t = np.array([lbase, l0, l1, l2, l3, l4])
-    print(t)
-    print(np.mean(t))
+def get_finger_sqrs(fingers, do_plot=True):
+    a, b, lbase = draw_middle_path_circle(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'], do_plot=do_plot)
+    a, b, l0 = draw_middle_path_circle(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'], do_plot=do_plot)
+    a, b, l1 = draw_middle_path_circle(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'], do_plot=do_plot)
+    a, b, l2 = draw_middle_path_circle(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'], do_plot=do_plot)
+    a, b, l3 = draw_middle_path_circle(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'], do_plot=do_plot)
+    a, b, l4 = draw_middle_path_circle(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'], do_plot=do_plot)
+    return np.array([lbase, l0, l1, l2, l3, l4])
 
 
 # need to get least squares circle.
-def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
-    # x, y, least_sqr = get_leastsqr_circle(np.array(xs), np.array(ys))
-    # r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
-    # c = plt.Circle((x, y), r, color=color, alpha=alpha)
-    # plt.gcf().gca().add_artist(c)
-    # instead of furthest, r should be avg dist between points / 2
+# TODO make this get distance to EDGE of circle!!
+def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3, do_plot=True):
+    # make a circle that is squiggly but pretty good for true cycles.
+    # TODO maybe this has to be more ovular.
     r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
-    # print(i)
-    # print(xs[0], ys[0])
-    # print(xs[i], ys[i])
     px = max(xs) - (max(xs) - min(xs))/2
     py = max(ys) - (max(ys) - min(ys))/2
-    # px = statistics.mean([xs[0], xs[i]])
-    # py = statistics.mean([ys[0], ys[i]])
-    # print(px, py)
-    # print(r)
     Ri = calc_r(px, py, np.array(xs), np.array(ys))
     least_sqr = Ri.mean()
-    # need to be getting distance to EDGE of circle
-    c = plt.Circle((px, py), r, color=color, alpha=alpha)
-    plt.gcf().gca().add_artist(c)
+    if do_plot:
+        c = plt.Circle((px, py), r, color=color, alpha=alpha)
+        plt.gcf().gca().add_artist(c)
 
-    # penalize angles < 90?
-    # angles = []
-    # for i in range(len(xs)-2):
-    #     a = np.array([xs[i], ys[i]])
-    #     b = np.array([xs[i+1], ys[i+1]])
-    #     c = np.array([xs[i+2], ys[i+2]])
-    #     ang = _calculate_angle(a,b,c)
-    #     if not isinstance(a, numbers.Number):
-    #         print(a, b, c)
-    #     angles.append(ang)
-    # print(angles)
-    # add penalization
-
-    # path visit sectors in order?
-    # we're going polar
+    # penalize paths that don't go in a circle.      # TODO penalize angles < 90?
+    # we're going polar.
     xs = np.array(xs)
     ys = np.array(ys)
     # fuck it can't convert polar coordinates to new origin, I'll just convert the cartesian coords FIRST.
@@ -371,12 +382,6 @@ def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
         else:
             bonus -= _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
     aribitrary_measure = least_sqr.mean() - bonus
-    print(dirs)
-    print("bonus:", bonus)
-    print("lsm - bonus:", least_sqr.mean() - bonus)
-    # just penalize for going wrong direction
-    # if it's going in right direction, subtract from lsm
-    # if it's going in wrong direction, add?
     return px, py, aribitrary_measure
 
 
