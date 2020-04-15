@@ -4,6 +4,9 @@ import time
 import numpy as np
 import statistics
 from matplotlib import cm, pyplot as plt
+from scipy import optimize
+from math import sqrt
+
 
 BASE_KEYPOINT = [0]
 # DO NOT TRUST THESE
@@ -300,6 +303,7 @@ def get_average_distance(xs, ys):
     return statistics.mean(dists)
 
 
+# need to get least squares circle.
 def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3):
     # instead of furthest, r should be avg dist between points / 2
     r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
@@ -474,3 +478,32 @@ GESTURE_FEATURES = {
     #     'function': _max_wrist_velocity
     # }
 }
+
+
+
+
+
+# get least squares circle
+# https://scipy-cookbook.readthedocs.io/items/Least_Squares_Circle.html
+def calc_R(xc, yc, xs, ys):
+    """ calculate the distance of each 2D points from the center (xc, yc) """
+    return np.sqrt((xs-xc)**2 + (ys-yc)**2)
+
+def f_2(cx, cy, xs, ys):
+    """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
+    Ri = calc_R(cx, cy, xs, ys)
+    return Ri - Ri.mean()
+
+def get_leastsqr_circle(xs, ys):
+    # coordinates of the barycenter
+    x_m = statistics.mean(xs)
+    y_m = statistics.mean(ys)
+    center_estimate = x_m, y_m
+    center_2, ier = optimize.leastsq(lambda c: f_2(c[0], c[1], xs, ys),
+                                     center_estimate)
+
+    xc_2, yc_2 = center_2
+    Ri_2 = calc_R(xc_2, yc_2, xs, ys)
+    R_2 = Ri_2.mean()
+    residu_2 = sum((Ri_2 - R_2) ** 2)
+    return residu_2
