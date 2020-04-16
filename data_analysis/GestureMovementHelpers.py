@@ -257,7 +257,7 @@ def detect_cycle(handed_keys, cycle_length=15):
     scores = []
     min_score = 100000
     min_frame = 0
-    for i in range(len(handed_keys)):
+    for i in range(len(handed_keys)-cycle_length):
         score = evaluate_cycle(handed_keys, i, cycle_length=cycle_length, do_plot=False)
         scores.append((i, score))
         if score < min_score:
@@ -266,28 +266,29 @@ def detect_cycle(handed_keys, cycle_length=15):
     print("best cycle start: ", min_frame)
     print("best cycle score: ", min_score)
 
-    # and then see that the best scoring frames are near each other?
-
-    return scores
+    # and then see that the best scoring frames are near each other
+    scores.sort(key=lambda x: x[1])
+    top_scores = compact_and_sort_cycle_scores(scores)
+    return top_scores[:3]
 
 
 # check how many of the numbers within n of x are in top 25%
-def num_high_scores_around_x(scores, n=7):
+def compact_and_sort_cycle_scores(scores, n=8):
     cutoff = int(len(scores) / 4)
-    top_tier = [e[0] for e in scores[:cutoff]]
-    noice = []
+    top_tier = scores[:cutoff]
+    top_scores = []
     exclude = []
     for e in top_tier:
-        if e in exclude:
+        if e[0] in exclude:
             continue
         incl = 0
-        print(e)
         for i in range(-n, n):
-            if e + i in top_tier:
-                exclude.append(e+i)
+            if e[0] + i in [e[0] for e in top_tier]:
+                exclude.append(e[0]+i)
                 incl += 1
-        noice.append(incl / (n * 2))
-    return noice
+        top_scores.append((e[0], incl / (n * 2), e[1]))
+        top_scores.sort(key=lambda x: x[1], reverse=True)
+    return top_scores
 
 
 def detect_worst_cycle(handed_keys, cycle_length=15):
@@ -337,42 +338,58 @@ def get_average_distance(xs, ys):
     return statistics.mean(dists)
 
 
+def draw_middle_circle(xs, ys, color='gray', alpha=0.3):
+    r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
+    px = max(xs) - (max(xs) - min(xs))/2
+    py = max(ys) - (max(ys) - min(ys))/2
+    c = plt.Circle((px, py), r, color=color, alpha=alpha)
+    plt.gcf().gca().add_artist(c)
+
+
 # quick helper 15 4 20
 # will not work to use lstsqr as measure, bc doesn't measure dist to circle EDGE which I think is what we need.
 # but this favors smaller motions, need to adjust for how many pixels the whole thing takes up.
 def get_finger_sqrs(fingers, do_plot=True):
-    a, b, lbase = draw_middle_path_circle(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'], do_plot=do_plot)
-    a, b, l0 = draw_middle_path_circle(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'], do_plot=do_plot)
-    a, b, l1 = draw_middle_path_circle(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'], do_plot=do_plot)
-    a, b, l2 = draw_middle_path_circle(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'], do_plot=do_plot)
-    a, b, l3 = draw_middle_path_circle(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'], do_plot=do_plot)
-    a, b, l4 = draw_middle_path_circle(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'], do_plot=do_plot)
+    if do_plot:
+        for i in range(0, 6):
+            if i == 5:
+                draw_middle_circle(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
+                continue
+            draw_middle_circle(fingers[i]['x'], fingers[i]['y'], color=fingers[i]['color'])
+
+    lbase = calculate_cycle_score(fingers['base']['x'], fingers['base']['y'])
+    l0 = calculate_cycle_score(fingers[0]['x'], fingers[0]['y'])
+    l1 = calculate_cycle_score(fingers[1]['x'], fingers[1]['y'])
+    l2 = calculate_cycle_score(fingers[2]['x'], fingers[2]['y'])
+    l3 = calculate_cycle_score(fingers[3]['x'], fingers[3]['y'])
+    l4 = calculate_cycle_score(fingers[4]['x'], fingers[4]['y'])
     return np.array([lbase, l0, l1, l2, l3, l4])
 
 
 # need to get least squares circle.
 # TODO make this get distance to EDGE of circle!!
-def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3, do_plot=True):
+def calculate_cycle_score(xs, ys):
     # make a circle that is squiggly but pretty good for true cycles.
     # TODO maybe this has to be more ovular.
-    r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
+
+    # penalize paths that don't go in a circle.      # TODO penalize angles < 90? -- yes, specifically the more
+    # we're going polar.                             # TODO bad it is, the more we need to penalize it (lower from 90)
+    xs = np.array(xs)                                # TODO maybe just penalize that there are DIFFERENT angles?
+    ys = np.array(ys)
+    # fuck it can't convert polar coordinates to new origin, I'll just convert the cartesian coords FIRST.
+    polar_score = calculate_path_direction_score(xs, ys)
+    return polar_score
+
+
+def calculate_path_direction_score(xs, ys):
     px = max(xs) - (max(xs) - min(xs))/2
     py = max(ys) - (max(ys) - min(ys))/2
     Ri = calc_r(px, py, np.array(xs), np.array(ys))
     least_sqr = Ri.mean()
-    if do_plot:
-        c = plt.Circle((px, py), r, color=color, alpha=alpha)
-        plt.gcf().gca().add_artist(c)
-
-    # penalize paths that don't go in a circle.      # TODO penalize angles < 90?
-    # we're going polar.
-    xs = np.array(xs)
-    ys = np.array(ys)
-    # fuck it can't convert polar coordinates to new origin, I'll just convert the cartesian coords FIRST.
     pol_xs = xs - px
     pol_ys = ys - py
     pols = [cart2pol(pol_xs[i], pol_ys[i]) for i in range(len(xs))]
-    rs = [p[0] for p in pols]
+    rs = np.array([p[0] for p in pols])
     thetas = [p[1] for p in pols]       # check these are continuous, penalize if not.
     dirs = same_dir_theta(thetas)    # just want them going in same direction, don't really care which way.
     bonus = 0
@@ -381,14 +398,16 @@ def draw_middle_path_circle(xs, ys, color='gray', alpha=0.3, do_plot=True):
             bonus += _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
         else:
             bonus -= _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
-    aribitrary_measure = least_sqr.mean() - bonus
-    return px, py, aribitrary_measure
+    # want a nice circle, in the same direction, with low stdev to center.
+    polar_score = least_sqr.mean() - bonus + rs.std()
+    return polar_score
 
 
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
     phi = np.arctan2(y, x)
     return(rho, phi)
+
 
 def pol2cart(rho, phi):
     x = rho * np.cos(phi)
