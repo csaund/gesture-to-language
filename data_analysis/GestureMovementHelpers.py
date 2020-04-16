@@ -363,7 +363,16 @@ def get_finger_sqrs(fingers, do_plot=True):
     l2 = calculate_cycle_score(fingers[2]['x'], fingers[2]['y'])
     l3 = calculate_cycle_score(fingers[3]['x'], fingers[3]['y'])
     l4 = calculate_cycle_score(fingers[4]['x'], fingers[4]['y'])
-    return np.array([lbase, l0, l1, l2, l3, l4])
+
+    lbase_angles = calculate_angle_score(fingers['base']['x'], fingers['base']['y'])
+    l0_angles = calculate_angle_score(fingers[0]['x'], fingers[0]['y'])
+    l1_angles = calculate_angle_score(fingers[1]['x'], fingers[1]['y'])
+    l2_angles = calculate_angle_score(fingers[2]['x'], fingers[2]['y'])
+    l3_angles = calculate_angle_score(fingers[3]['x'], fingers[3]['y'])
+    l4_angles = calculate_angle_score(fingers[4]['x'], fingers[4]['y'])
+
+    return np.array([lbase_angles, l0_angles, l1_angles, l2_angles, l3_angles, l4_angles])
+    # return np.array([lbase, l0, l1, l2, l3, l4])
 
 
 # need to get least squares circle.
@@ -377,8 +386,27 @@ def calculate_cycle_score(xs, ys):
     xs = np.array(xs)                                # TODO maybe just penalize that there are DIFFERENT angles?
     ys = np.array(ys)
     # fuck it can't convert polar coordinates to new origin, I'll just convert the cartesian coords FIRST.
-    polar_score = calculate_path_direction_score(xs, ys)
-    return polar_score
+    path_direction_score = calculate_path_direction_score(xs, ys)
+    angle_score = calculate_angle_score(xs, ys)
+    return path_direction_score
+
+
+def calculate_angle_score(xs, ys):
+    angles = []
+    for i in range(1, len(xs)-1):
+        a = np.array([xs[i-1], ys[i-1]])
+        b = np.array([xs[i], ys[i]])
+        c = np.array([xs[i+1], ys[i+1]])
+        angle = _calculate_angle(a, b, c)
+        if math.isnan(angle):
+            angle = 0
+        angles.append(angle)
+    print(angles)
+    angles = np.array(angles)
+    print(angles.std())
+    print(angles.mean())
+    # multiply by velocity because if the hand isn't moving these will both be 0
+    return angles.std()
 
 
 def calculate_path_direction_score(xs, ys):
@@ -473,7 +501,10 @@ def _calculate_angle(a, b, c):
     cb = c - b
     cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
     ang_b = np.arccos(cos_b)
-    return np.degrees(ang_b)
+    deg = np.degrees(ang_b)
+    # if math.isnan(deg):
+    #     deg = 0             # this happens when 2 or more of the 3 points are the same.
+    return deg
 
 
 def plot_finger_average_across_frames(handed_keys, finger_i=0):
