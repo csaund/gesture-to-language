@@ -4,9 +4,12 @@ import time
 import numpy as np
 import statistics
 from matplotlib import cm, pyplot as plt
+import math
 from scipy import optimize
 from math import sqrt
-
+from shapely.geometry import Point
+from shapely.ops import cascaded_union
+from itertools import combinations
 
 BASE_KEYPOINT = [0]
 # DO NOT TRUST THESE
@@ -201,11 +204,13 @@ def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10, do_plo
 
     for k in range(starting_frame, starting_frame + n):
         kf = handed_keys[k]
-        for i in range(5):
+        for i in range(6):
             # base_pos = np.array((kf['x'][0], kf['y'][0]))
             # tip_pos = np.array((kf['x'][(i * 4) + 4], kf['y'][(i * 4) + 4]))
-            fingers['base']['x'].append(kf['x'][0])
-            fingers['base']['y'].append(kf['y'][0])
+            if i == 5:
+                fingers['base']['x'].append(kf['x'][0])
+                fingers['base']['y'].append(kf['y'][0])
+                continue
             fingers[i]['x'].append(kf['x'][(i * 4) + 4])
             fingers[i]['y'].append(kf['y'][(i * 4) + 4])
 
@@ -275,6 +280,7 @@ def detect_cycle(handed_keys, cycle_length=15):
 
     # and then see that the best scoring frames are near each other
     scores.sort(key=lambda x: x[1])
+    return scores
     top_scores = compact_and_sort_cycle_scores(scores)
     return top_scores[:3]
 
@@ -356,7 +362,7 @@ def draw_middle_circle(xs, ys, color='gray', alpha=0.3):
 # quick helper 15 4 20
 # will not work to use lstsqr as measure, bc doesn't measure dist to circle EDGE which I think is what we need.
 # but this favors smaller motions, need to adjust for how many pixels the whole thing takes up.
-def get_finger_sqrs(fingers, do_plot=True):
+def get_finger_sqrs(fingers, do_plot=True, verbose=False):
     if do_plot:
         for i in range(0, 6):
             if i == 5:
@@ -364,8 +370,9 @@ def get_finger_sqrs(fingers, do_plot=True):
                 continue
             draw_middle_circle(fingers[i]['x'], fingers[i]['y'], color=fingers[i]['color'])
 
-    path_scores = []
-    angle_scores = []
+    path_scores = []            # how well the circles follow a clockwise/counterclockwise direction
+    angle_scores = []           # how close the angles are to optimal for a circle
+    spread_scores = []          # how spread out the points are over the circular space
     scores = []
     for i in range(0, 6):
         if i == 5:
@@ -376,16 +383,117 @@ def get_finger_sqrs(fingers, do_plot=True):
             ys = np.array(fingers[i]['y'])
         path_score = calculate_path_direction_score(xs, ys)
         angle_score = calculate_angle_score(xs, ys)
+        spread_score = calculate_spread_score(xs, ys)
         path_scores.append(path_score)
         angle_scores.append(angle_score)
+        spread_scores.append(spread_score)
         scores.append(path_score + angle_score)
+
 
     path_scores = np.array(drop_highest_value(path_scores))   # if it's a good cycle, this might help a lot.
     angle_scores = np.array(drop_highest_value(angle_scores))     #  If it's not, it won't change much.
-    # print(path_scores)
-    # print(angle_scores)
+    # see how much each drawn circle overlaps with each other drawn circle.
+    # overlap_score = get_circle_overlaps(fingers)
+    # TODO want points on both halves of circle
 
-    return path_scores + angle_scores
+    if verbose:
+        print("path scores: ", path_scores)
+        print("angle scores: ", angle_scores)
+        print("spread socres: ", spread_scores)
+        # print("overlap score:, ", overlap_score)
+
+    return path_scores + angle_scores # + overlap_score
+
+
+# I think we need to actually draw a the circle, find the worst slice down the middle
+# and look at ratio of points from either side of that line.
+def calculate_spread_score(xs, ys):
+    # define circle
+    r = get_average_distance(xs, ys) / 1.21
+    px = max(xs) - (max(xs) - min(xs)) / 2
+    py = max(ys) - (max(ys) - min(ys)) / 2
+
+    pol_xs = xs - px
+    pol_ys = ys - py
+    pols = [cart2pol(pol_xs[i], pol_ys[i]) for i in range(len(xs))]
+    rs = np.array([p[0] for p in pols])
+    thetas = np.array([p[1] for p in pols])  # check these are continuous, penalize if not.
+    # a bisecting line is now defined by a value of theta
+
+    # check stdev of thetas -- yes, definitely larger for cycles but these numbers are quite small.
+    for i in range(1, len(thetas)):
+        # see if adding a rotation helps
+        theta_dist = abs(thetas[i] - thetas[i-1])
+        add_rotation = abs(thetas[i] + (math.pi*2) - thetas[i-1])
+        subtract_rotation = abs(thetas[i] - (math.pi*2) - thetas[i-1])
+        if add_rotation < theta_dist:
+            thetas[i] += math.pi*2
+        elif subtract_rotation < theta_dist:
+            thetas[i] -= math.pi*2
+
+
+    # get worst line through points, try cutting into 8ths
+    sides = []
+    ratios = []
+    for i in range(0, 15):
+        one_side = 0
+        other_side = 0
+        theta = (math.pi / 15) * i
+        for t in thetas:
+            if t < 0:
+                t += (math.pi * 2)
+            if theta < t < (theta + math.pi):
+                one_side += 1
+            else:
+                other_side += 1
+        sides.append([one_side, other_side])
+        if one_side < other_side:
+            ratios.append(one_side / other_side)
+        else:
+            ratios.append(other_side / one_side)
+
+    # print("sides: ", sides)
+    # print("worst ratio: ", min(ratios))
+    # print("thetas: ", thetas)
+    return (thetas.std(), min(ratios))
+
+
+# using cross product,
+# given points a, b which define a line, check which side of that line c is on
+# if point is on line, returns False as well
+def get_side_of_line(a, b, c):
+    return ((b[0] - a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0])) > 0
+
+
+# add all non-overlapping area.
+# that is, of all circles drawn for each path, add all of the area that belongs only to a single finger.
+# this will be higher if paths are more spread out... I think?
+# and help with sweeps
+def get_circle_overlaps(fingers):
+    circles = []
+    total_area = 0
+    for i in range(0, 6):
+        if i == 5:
+            xs = np.array(fingers['base']['x'])
+            ys = np.array(fingers['base']['y'])
+        else:
+            xs = np.array(fingers[i]['x'])
+            ys = np.array(fingers[i]['y'])
+
+        r = get_average_distance(xs, ys) / 1.21
+        px = max(xs) - (max(xs) - min(xs))/2
+        py = max(ys) - (max(ys) - min(ys))/2
+        total_area += math.pi * (r ** 2)
+        circles.append(Point(px, py).buffer(r))
+
+    intersection = cascaded_union(
+        [a.intersection(b) for a, b in combinations(circles, 2)]
+    )
+    print("total area: ", total_area)
+    print("total intersection: " , intersection.area)
+    print("area ratios:", intersection.area / total_area)
+    return intersection.area / total_area
+
 
 
 # minimize when the pattern has
@@ -405,9 +513,10 @@ def calculate_angle_score(xs, ys):
     optimal_angle = 180 - (360 / len(xs))
     # want things to be closest to the angle that makes a circle -- theoretically 180, but actually will be
     # 180 - (360 / n) where n is number of points in circle
+    # print("angle sum:")
+    # print(sum(angles))
     angles = abs(np.array(angles) - optimal_angle)         # we like things around 180. Angles less are penalized.
-
-    # print(angles)
+    # print(sum(angles))
     # print(angles.std())
     # print(angles.mean())
     return angles.mean()
@@ -436,10 +545,16 @@ def calculate_path_direction_score(xs, ys):
     # get distances between points and outside of circle.
     ri = np.sqrt((np.array(xs) - px) ** 2 + (np.array(ys) - py) ** 2)
     dist_from_circle = ri.mean()      # subtract distance from outside of circle
-
+    # print("lsqm dist:", dist_from_circle)
     # get extent to which path is going in the same direction
     dirs = same_dir_theta(thetas)    # just want them going in same direction, don't really care which way.
     same_direction_score = 0
+    # TODO TEST THIS 17 APRIL 20
+    # print("theta sum:", sum(thetas))
+
+    # TODO END TEST
+
+
     for i in range(1, len(dirs)):
         if (dirs[i] == dirs[i-1]) and dirs[i] != '-':
             same_direction_score += _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
@@ -447,8 +562,9 @@ def calculate_path_direction_score(xs, ys):
             same_direction_score -= _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
 
     # want points on both sides of the circle.
+    # draw line that worst divides points, take ratio of points on both sides.
 
-    polar_score = dist_from_circle.mean() - same_direction_score + rs.std()
+    polar_score = dist_from_circle.mean() - same_direction_score + rs.std() + sum(thetas)
     return polar_score
 
 
@@ -639,3 +755,49 @@ GESTURE_FEATURES = {
     #     'function': _max_wrist_velocity
     # }
 }
+
+
+
+sweep
+angles before adjust [0, 168.69006752597974, 56.309932474020215, 26.565051177077994, 116.56505117707799, 135.0, 85.60129464500447, 171.869897645844, 159.29709664117217, 152.29582908367684, 177.83892051177367, 101.75938585082231]
+angles after adjust:  [154.28571429  14.40435324  97.97578181 127.72066311  37.72066311
+  19.28571429  68.68441964  17.58418336   5.01138236   1.9898852
+  23.55320623  52.52632843]
+angles before adjust [45.00000000000001, 45.00000000000001, 90.0, 45.00000000000001, 108.43494882292201, 135.0, 171.869897645844, 147.52880770915152, 170.83765295427835, 169.0661832142442, 177.8440006003814, 165.36616902843383]
+angles after adjust:  [109.28571429 109.28571429  64.28571429 109.28571429  45.85076546
+  19.28571429  17.58418336   6.75690658  16.55193867  14.78046893
+  23.55828631  11.08045474]
+angles before adjust [45.00000000000001, 90.0, 0, 0, 180.0, 156.80140948635182, 158.19859051364818, 154.98310652189997, 173.01151027001646, 167.79349314644145, 174.9446864819459, 172.94215335011893]
+angles after adjust:  [109.28571429  64.28571429 154.28571429 154.28571429  25.71428571
+   2.5156952    3.91287623   0.69739224  18.72579598  13.50777886
+  20.6589722   18.65643906]
+angles before adjust [0, 0, 135.0, 179.99999879258172, 135.0, 153.434948822922, 172.87498365109823, 145.49147701233161, 166.94475277620344, 174.00259942608454, 155.4541559739704, 163.0907281894592]
+angles after adjust:  [154.28571429 154.28571429  19.28571429  25.71428451  19.28571429
+   0.85076546  18.58926937   8.79423727  12.65903849  19.71688514
+   1.16844169   8.8050139 ]
+angles before adjust [0, 0, 0, 135.0, 161.565051177078, 175.60129464500443, 180.0, 137.66300076606714, 172.0469180285616, 179.28384005452935, 174.20720350496785, 178.78112476486896]
+angles after adjust:  [154.28571429 154.28571429 154.28571429  19.28571429   7.27933689
+  21.31558036  25.71428571  16.62271352  17.76120374  24.99812577
+  19.92148922  24.49541048]
+angles before adjust [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+angles after adjust:  [174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286 174.85714286 174.85714286
+ 174.85714286 174.85714286 174.85714286]
+total area:  10952.12849233594
+total intersection:  2975.8277446463244
+area ratios: 0.2717122746257719
+path scores:  [-2.77991104  8.09609742 10.83785458 69.52203667 -2.91235462]
+angle scores:  [51.72852459 45.63263129 48.87767439 36.95339941 53.35425024]
+overlap score:,  0.2717122746257719
+64.13375285968354
