@@ -197,6 +197,24 @@ def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10, do_plo
         print(starting_frame + n)
         print("Attempting to go outside of keyframe range. Will only go to frame %s" % len(handed_keys))
         n = len(handed_keys) - starting_frame
+    fingers = get_empty_fingers()
+
+    for k in range(starting_frame, starting_frame + n):
+        kf = handed_keys[k]
+        for i in range(5):
+            # base_pos = np.array((kf['x'][0], kf['y'][0]))
+            # tip_pos = np.array((kf['x'][(i * 4) + 4], kf['y'][(i * 4) + 4]))
+            fingers['base']['x'].append(kf['x'][0])
+            fingers['base']['y'].append(kf['y'][0])
+            fingers[i]['x'].append(kf['x'][(i * 4) + 4])
+            fingers[i]['y'].append(kf['y'][(i * 4) + 4])
+
+    if do_plot:
+        plot_finger_path(fingers)
+    return fingers
+
+
+def get_empty_fingers():
     fingers = {
         'base': {
             'x': [],
@@ -229,28 +247,17 @@ def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10, do_plo
             'color': 'purple'
         },
     }
-
-    for k in range(starting_frame, starting_frame + n):
-        kf = handed_keys[k]
-        for i in range(5):
-            # base_pos = np.array((kf['x'][0], kf['y'][0]))
-            # tip_pos = np.array((kf['x'][(i * 4) + 4], kf['y'][(i * 4) + 4]))
-            fingers['base']['x'].append(kf['x'][0])
-            fingers['base']['y'].append(kf['y'][0])
-            fingers[i]['x'].append(kf['x'][(i * 4) + 4])
-            fingers[i]['y'].append(kf['y'][(i * 4) + 4])
-
-    if do_plot:
-        plt.plot(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
-        plt.plot(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
-        plt.plot(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
-        plt.plot(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
-        plt.plot(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
-        plt.plot(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
-
-        plt.show()
-
     return fingers
+
+
+def plot_finger_path(fingers):
+    plt.plot(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
+    plt.plot(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
+    plt.plot(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
+    plt.plot(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
+    plt.plot(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
+    plt.plot(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
+    plt.show()
 
 
 def detect_cycle(handed_keys, cycle_length=15):
@@ -357,77 +364,91 @@ def get_finger_sqrs(fingers, do_plot=True):
                 continue
             draw_middle_circle(fingers[i]['x'], fingers[i]['y'], color=fingers[i]['color'])
 
-    lbase = calculate_cycle_score(fingers['base']['x'], fingers['base']['y'])
-    l0 = calculate_cycle_score(fingers[0]['x'], fingers[0]['y'])
-    l1 = calculate_cycle_score(fingers[1]['x'], fingers[1]['y'])
-    l2 = calculate_cycle_score(fingers[2]['x'], fingers[2]['y'])
-    l3 = calculate_cycle_score(fingers[3]['x'], fingers[3]['y'])
-    l4 = calculate_cycle_score(fingers[4]['x'], fingers[4]['y'])
+    path_scores = []
+    angle_scores = []
+    scores = []
+    for i in range(0, 6):
+        if i == 5:
+            xs = np.array(fingers['base']['x'])
+            ys = np.array(fingers['base']['y'])
+        else:
+            xs = np.array(fingers[i]['x'])
+            ys = np.array(fingers[i]['y'])
+        path_score = calculate_path_direction_score(xs, ys)
+        angle_score = calculate_angle_score(xs, ys)
+        path_scores.append(path_score)
+        angle_scores.append(angle_score)
+        scores.append(path_score + angle_score)
 
-    lbase_angles = calculate_angle_score(fingers['base']['x'], fingers['base']['y'])
-    l0_angles = calculate_angle_score(fingers[0]['x'], fingers[0]['y'])
-    l1_angles = calculate_angle_score(fingers[1]['x'], fingers[1]['y'])
-    l2_angles = calculate_angle_score(fingers[2]['x'], fingers[2]['y'])
-    l3_angles = calculate_angle_score(fingers[3]['x'], fingers[3]['y'])
-    l4_angles = calculate_angle_score(fingers[4]['x'], fingers[4]['y'])
+    path_scores = np.array(drop_highest_value(path_scores))   # if it's a good cycle, this might help a lot.
+    angle_scores = np.array(drop_highest_value(angle_scores))     #  If it's not, it won't change much.
+    # print(path_scores)
+    # print(angle_scores)
 
-    return np.array([lbase_angles, l0_angles, l1_angles, l2_angles, l3_angles, l4_angles])
-    # return np.array([lbase, l0, l1, l2, l3, l4])
-
-
-# need to get least squares circle.
-# TODO make this get distance to EDGE of circle!!
-def calculate_cycle_score(xs, ys):
-    # make a circle that is squiggly but pretty good for true cycles.
-    # TODO maybe this has to be more ovular.
-
-    # penalize paths that don't go in a circle.      # TODO penalize angles < 90? -- yes, specifically the more
-    # we're going polar.                             # TODO bad it is, the more we need to penalize it (lower from 90)
-    xs = np.array(xs)                                # TODO maybe just penalize that there are DIFFERENT angles?
-    ys = np.array(ys)
-    # fuck it can't convert polar coordinates to new origin, I'll just convert the cartesian coords FIRST.
-    path_direction_score = calculate_path_direction_score(xs, ys)
-    angle_score = calculate_angle_score(xs, ys)
-    return path_direction_score
+    return path_scores + angle_scores
 
 
+# minimize when the pattern has
+# low stdev
+# angles all mostly above 90
 def calculate_angle_score(xs, ys):
     angles = []
     for i in range(1, len(xs)-1):
         a = np.array([xs[i-1], ys[i-1]])
         b = np.array([xs[i], ys[i]])
         c = np.array([xs[i+1], ys[i+1]])
-        angle = _calculate_angle(a, b, c)
+        angle = _calculate_angle(a, b, c)       # only returns LESS than 180, and we want to be NEAR 180.
         if math.isnan(angle):
             angle = 0
         angles.append(angle)
-    print(angles)
-    angles = np.array(angles)
-    print(angles.std())
-    print(angles.mean())
-    # multiply by velocity because if the hand isn't moving these will both be 0
-    return angles.std()
+
+    optimal_angle = 180 - (360 / len(xs))
+    # want things to be closest to the angle that makes a circle -- theoretically 180, but actually will be
+    # 180 - (360 / n) where n is number of points in circle
+    angles = abs(np.array(angles) - optimal_angle)         # we like things around 180. Angles less are penalized.
+
+    # print(angles)
+    # print(angles.std())
+    # print(angles.mean())
+    return angles.mean()
 
 
+def drop_highest_value(vals):
+    drop_index = 0
+    max_val = 0
+    for i in range(len(vals)):
+        if vals[i] > max_val:
+            max_val = vals[i]
+            drop_index = i
+    return np.delete(vals, drop_index)
+
+
+# want points on BOTH SIDES of the circle.
 def calculate_path_direction_score(xs, ys):
     px = max(xs) - (max(xs) - min(xs))/2
     py = max(ys) - (max(ys) - min(ys))/2
-    Ri = calc_r(px, py, np.array(xs), np.array(ys))
-    least_sqr = Ri.mean()
     pol_xs = xs - px
     pol_ys = ys - py
     pols = [cart2pol(pol_xs[i], pol_ys[i]) for i in range(len(xs))]
     rs = np.array([p[0] for p in pols])
     thetas = [p[1] for p in pols]       # check these are continuous, penalize if not.
+
+    # get distances between points and outside of circle.
+    ri = np.sqrt((np.array(xs) - px) ** 2 + (np.array(ys) - py) ** 2)
+    dist_from_circle = ri.mean()      # subtract distance from outside of circle
+
+    # get extent to which path is going in the same direction
     dirs = same_dir_theta(thetas)    # just want them going in same direction, don't really care which way.
-    bonus = 0
+    same_direction_score = 0
     for i in range(1, len(dirs)):
         if (dirs[i] == dirs[i-1]) and dirs[i] != '-':
-            bonus += _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
+            same_direction_score += _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
         else:
-            bonus -= _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
-    # want a nice circle, in the same direction, with low stdev to center.
-    polar_score = least_sqr.mean() - bonus + rs.std()
+            same_direction_score -= _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
+
+    # want points on both sides of the circle.
+
+    polar_score = dist_from_circle.mean() - same_direction_score + rs.std()
     return polar_score
 
 
@@ -603,7 +624,7 @@ GESTURE_FEATURES = {
     },
     'cycles': {
         'separate_hands': True,
-        'function': _detect_cycles
+        'function': detect_cycle
     }
     # 'acceleration': {
     #     'separate_hands': True,
@@ -618,31 +639,3 @@ GESTURE_FEATURES = {
     #     'function': _max_wrist_velocity
     # }
 }
-
-
-# get least squares circle
-# https://scipy-cookbook.readthedocs.io/items/Least_Squares_Circle.html
-def calc_r(xc, yc, xs, ys):
-    """ calculate the distance of each 2D points from the center (xc, yc) """
-    return np.sqrt((xs-xc)**2 + (ys-yc)**2)
-
-
-def f_2(cx, cy, xs, ys):
-    """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
-    Ri = calc_r(cx, cy, xs, ys)
-    return Ri - Ri.mean()
-
-
-def get_leastsqr_circle(xs, ys):
-    # coordinates of the barycenter
-    x_m = statistics.mean(xs)
-    y_m = statistics.mean(ys)
-    center_estimate = x_m, y_m
-    center_2, ier = optimize.leastsq(lambda c: f_2(c[0], c[1], xs, ys),
-                                     center_estimate)
-
-    xc_2, yc_2 = center_2
-    Ri_2 = calc_r(xc_2, yc_2, xs, ys)
-    R_2 = Ri_2.mean()
-    least_sqr = sum((Ri_2 - R_2) ** 2)
-    return xc_2, yc_2, least_sqr
