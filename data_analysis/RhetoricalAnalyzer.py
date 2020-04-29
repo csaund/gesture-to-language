@@ -1,5 +1,7 @@
 from subprocess import call
 import re
+import os
+from common_helpers import download_blob
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -25,13 +27,19 @@ KEY_TERMS = {
     "text": "Tx"
 }
 
-"(Ro)(NuSu)(NuSpTx)(SaElTx)(NuSu)(NuSpTx)(SaEl)(SaAtTx)(NuSp)(NuSpTx)(SaElTx)"
-"1 thing"
-"2 thing"
-"3 thing"
-"4 thing"
-"5 thing"
-"6 thing"
+
+CONST_REPLACEMENTS = {
+    " '": "'",
+    " n't": "n't"
+}
+
+# https://stackoverflow.com/questions/15175142/how-can-i-do-multiple-substitutions-using-regex-in-python
+def multi_replace(text, replacement_dict=None):
+    if replacement_dict is None:
+        replacement_dict = CONST_REPLACEMENTS
+    regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
+    # For each match, look-up corresponding value in dictionary
+    return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
 
 
 def get_parse_data(fp):
@@ -53,12 +61,12 @@ def get_line_encoding(line):
 def get_text_splices(line):
     if "_!" in line:
         text = line.split("_!")[-2]
-        return re.sub(r"\s'", "'", text)
+        return multi_replace(text)
     return ""
 
 
-def get_sequence_encoding(rhet_file):
-    content = get_parse_data(rhet_file)
+def get_sequence_encoding(content=None, rhet_file=None):
+    content = content if content else get_parse_data(rhet_file)
     texts = []
     encoding = ""
     for line in content:
@@ -77,13 +85,11 @@ def get_matching_words(transcript, texts):
     word_counter = 0
     text_indexes = []
     i = 0
-    while i < 50:   #len(texts)
+    while i < len(texts):
         if texts[i] == "":
             i += 1
             continue
         while word_counter < target_word_count:
-            print(words[word_counter])
-            print(texts[i])
             if texts[i] == "":
                 i += 1
                 continue
@@ -92,35 +98,48 @@ def get_matching_words(transcript, texts):
                 text_indexes.append(i)
                 if word_counter == target_word_count - 1:
                     return sorted(list(set(text_indexes)))
-                print(words[word_counter])
-                print(text_indexes)
             elif i < len(texts)-1 and (texts[i+1] == "" or words[word_counter] in texts[i+1]):
-                print("next is blank")
                 i += 1
             else:
-                print("NO DICE")
-                print(texts[i])
-                print(words[word_counter])
                 word_counter = 0
                 text_indexes = []
                 i += 1
                 break
         if word_counter == target_word_count - 1:
             break
-    return list(set(text_indexes))
+    return sorted(list(set(text_indexes)))
 
+
+def get_rhetorical_encoding_for_gesture(g):
+    transcript_to_match = g['phase']['transcript']
+    rhetorical_parse_file = g['phase']['video_fn'][:-3] + "rhet_parse"
+    en, texts = get_sequence_encoding(rhetorical_parse_file)
+    text_range = get_matching_words(transcript_to_match, texts)
+    if not text_range:
+        print("No rhetorical encoding found for gesture ", g['id'])
+        return None
+    return en[text_range[0]:text_range[-1]+1]
 
 
 class RhetoricalAnalyzer:
     def __init__(self):
+        self.bucket = "parsed_transcript_bucket"
         return
 
-    def analyze_sentences(self, s_list):
-        scores = []
-        for s in s_list:
-            scores.append(self.analyzer.polarity_scores(s))
-        return scores
+    def get_sequence_for_gesture(self, g):
+        transcript_to_match = g['phase']['transcript']
+        rhetorical_parse_file = g['phase']['video_fn'][:-3] + "json.rhet_parse"
+        # download and delete?
+        f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
+        content = get_parse_data("tmp.rhet")
+        os.remove("tmp.rhet")
+        en, texts = get_sequence_encoding(content=content)
+        text_range = get_matching_words(transcript_to_match, texts)
+        if not text_range:
+            print("No rhetorical encoding found for gesture ", g['id'])
+            return None
+        return en[text_range[0]:text_range[-1] + 1]
 
 
 
-# want this: (NuLeSpTx)(SaLeElTx)(NuSpSu)(NuLeSpTx)(SaSpEl)(SaLeAtTx)(NuSp)(NuLeSpTx)
+
