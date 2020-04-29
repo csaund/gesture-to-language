@@ -2,6 +2,7 @@ from subprocess import call
 import re
 import os
 from common_helpers import download_blob
+from tqdm import tqdm
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -27,8 +28,14 @@ KEY_TERMS = {
     "text": "Tx"
 }
 
+VID_EXTENSION_REPLACEMENTS = {
+    'mkv': 'json.rhet_parse',
+    'webm': 'json.rhet_parse',
+    'mp4': 'json.rhet_parse'
+}
 
-CONST_REPLACEMENTS = {
+
+PUNCTUATION_REPLACEMENTS = {
     " '": "'",
     " n't": "n't"
 }
@@ -36,7 +43,7 @@ CONST_REPLACEMENTS = {
 # https://stackoverflow.com/questions/15175142/how-can-i-do-multiple-substitutions-using-regex-in-python
 def multi_replace(text, replacement_dict=None):
     if replacement_dict is None:
-        replacement_dict = CONST_REPLACEMENTS
+        replacement_dict = PUNCTUATION_REPLACEMENTS
     regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
     # For each match, look-up corresponding value in dictionary
     return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
@@ -112,7 +119,7 @@ def get_matching_words(transcript, texts):
 
 def get_rhetorical_encoding_for_gesture(g):
     transcript_to_match = g['phase']['transcript']
-    rhetorical_parse_file = g['phase']['video_fn'][:-3] + "rhet_parse"
+    rhetorical_parse_file = multi_replace(g['phase']['video_fn'], VID_EXTENSION_REPLACEMENTS)
     en, texts = get_sequence_encoding(rhetorical_parse_file)
     text_range = get_matching_words(transcript_to_match, texts)
     if not text_range:
@@ -121,16 +128,44 @@ def get_rhetorical_encoding_for_gesture(g):
     return en[text_range[0]:text_range[-1]+1]
 
 
-class RhetoricalAnalyzer:
-    def __init__(self):
+class RhetoricalClusterer:
+    def __init__(self, gestures):
         self.bucket = "parsed_transcript_bucket"
+        self.agd = {}
+        files = list(set([g['phase']['video_fn'] for g in gestures]))
+        for f in files:
+            self.get_all_encodings_for_video_fn(f, gestures)
         return
 
-    def get_sequence_for_gesture(self, g):
-        transcript_to_match = g['phase']['transcript']
-        rhetorical_parse_file = g['phase']['video_fn'][:-3] + "json.rhet_parse"
+    def get_all_encodings_for_video_fn(self, video_fn, gestures):
+        gs = [g for g in gestures if g['phase']['video_fn'] == video_fn]
+        rhetorical_parse_file = multi_replace(video_fn, VID_EXTENSION_REPLACEMENTS)
         # download and delete?
-        f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
+        try:
+            f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
+        except:
+            print("couldn't get rhetorical parse for ", rhetorical_parse_file)
+        content = get_parse_data("tmp.rhet")
+        os.remove("tmp.rhet")
+        en, texts = get_sequence_encoding(content=content)
+        for g in tqdm(gs):
+            transcript_to_match = g['phase']['transcript']
+            text_range = get_matching_words(transcript_to_match, texts)
+            if not text_range:
+                print("No rhetorical encoding found for gesture ", g['id'])
+                self.agd[g['id']] = []
+            else:
+                self.agd[g['id']] = en[text_range[0]:text_range[-1] + 1]
+
+
+    def get_encoding_for_gesture(self, g):
+        transcript_to_match = g['phase']['transcript']
+        rhetorical_parse_file = multi_replace(g['phase']['video_fn'], VID_EXTENSION_REPLACEMENTS)
+        # download and delete?
+        try:
+            f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
+        except:
+            print("couldn't get rhetorical parse for ", rhetorical_parse_file)
         content = get_parse_data("tmp.rhet")
         os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)

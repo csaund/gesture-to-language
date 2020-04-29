@@ -17,6 +17,7 @@ from data_analysis.VideoManager import VideoManager
 from data_analysis.GestureClusterer import GestureClusterer
 from data_analysis.GestureMovementHelpers import GESTURE_FEATURES
 from data_analysis.SentenceClusterer import SentenceClusterer
+from data_analysis.RhetoricalClusterer import RhetoricalClusterer
 
 VERBS = ["V", "VB", "VBD", "VBD", "VBZ", "VBP", "VBN"]
 NOUNS = ["NN", "NNP", "NNS"]
@@ -68,6 +69,10 @@ class GestureSentenceManager():
     ################################################
     ##################### SETUP ####################
     ################################################
+    def _initialize_rhetorical_clusterer(self):
+        transcripts = [self.get_gesture_transcript_by_id(g['id']) for g in self.agd]
+        self.RhetoricalClusterer = RhetoricalClusterer(transcripts)
+
 
     def _initialize_sentence_clusterer(self):
         self.SentenceClusterer = SentenceClusterer(self.speaker)
@@ -75,7 +80,6 @@ class GestureSentenceManager():
 
     def load_gestures(self):
         self.agd = {}
-
         ## for testing, so it doesn't take so long to get the file.
         if self.speaker == "test":
             fp = os.path.join(os.getcwd(), "test_agd.json")    # hacky
