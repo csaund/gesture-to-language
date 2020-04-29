@@ -45,9 +45,14 @@ PUNCTUATION_REPLACEMENTS = {
 }
 
 PARSER_REPLACEMENTS = {
-    "doesn't": "does nt",
-    "can't": "ca nt",
-    "couldn't": "could nt"
+    "n't": " nt",
+    "'s": " s",
+    "'m": " m",
+    "'re": " re",
+    "'ve": " ve",
+    "'ll": " ll",
+    "'": " ",
+    ",": " ,"
 }
 
 def flatten(l): return flatten(l[0]) + (flatten(l[1:]) if len(l) > 1 else []) if type(l) is list else [l]
@@ -97,14 +102,15 @@ def get_sequence_encoding(content=None, rhet_file=None):
     return en, texts
 
 
-# TODO get it to appreciate when 's are in the next text splice.
-def get_matching_words(transcript, texts):
+# TODO make it work so that "checks off" words as it goes.
+tdef get_matching_words(transcript, texts):
     words = multi_replace(transcript, PARSER_REPLACEMENTS).split(" ")
     target_word_count = len(words)
     word_counter = 0
     text_indexes = []
     i = 0
     while i < len(texts):
+        print(i)
         if texts[i] == "":
             i += 1
             continue
@@ -113,21 +119,21 @@ def get_matching_words(transcript, texts):
                 i += 1
                 continue
             if words[word_counter] in texts[i]:
-                #print("if")
-                #print(words[word_counter], texts[i])
+                print("if")
+                print(words[word_counter], texts[i])
                 word_counter += 1
                 text_indexes.append(i)
                 if word_counter == target_word_count:
                     return sorted(list(set(text_indexes)))
             elif i < len(texts)-1:
-                #print("elif")
-                #print(words[word_counter], texts[i])
+                print("elif")
+                print(words[word_counter], texts[i])
                 if texts[i+1] == "":
-                    #print("next blank?")
+                    print("next blank?")
                     i += 1
                     continue
                 elif words[word_counter] in texts[i+1]:
-                    #print("it's in the next one, ", texts[i+1])
+                    print("it's in the next one, ", texts[i+1])
                     i += 1
                     continue
                 else:
