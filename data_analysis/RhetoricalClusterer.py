@@ -180,7 +180,7 @@ class RhetoricalClusterer:
             text_range = get_matching_words(transcript_to_match, texts)
             if not text_range:
                 print("No rhetorical encoding found for gesture ", g['id'])
-                self.agd[g['id']] = []
+                #self.agd[g['id']] = []
             else:
                 self.agd[g['id']] = en[text_range[0]:text_range[-1] + 1]
 
