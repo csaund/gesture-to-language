@@ -2,7 +2,7 @@ from subprocess import call
 import re
 import os
 from common_helpers import download_blob
-from tqdm import tqdm
+import sys
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -37,8 +37,20 @@ VID_EXTENSION_REPLACEMENTS = {
 
 PUNCTUATION_REPLACEMENTS = {
     " '": "'",
-    " n't": "n't"
+    " n't": "n't",
+    " .": ".",
+    " %": "%",
+    "$ ": "$",
+    ". * ": " * "
 }
+
+PARSER_REPLACEMENTS = {
+    "doesn't": "does nt",
+    "can't": "ca nt",
+    "couldn't": "could nt"
+}
+
+def flatten(l): return flatten(l[0]) + (flatten(l[1:]) if len(l) > 1 else []) if type(l) is list else [l]
 
 # https://stackoverflow.com/questions/15175142/how-can-i-do-multiple-substitutions-using-regex-in-python
 def multi_replace(text, replacement_dict=None):
@@ -67,7 +79,7 @@ def get_line_encoding(line):
 
 def get_text_splices(line):
     if "_!" in line:
-        text = line.split("_!")[-2]
+        text = "".join(line.split("_!")[-2].split("'"))
         return multi_replace(text)
     return ""
 
@@ -85,9 +97,9 @@ def get_sequence_encoding(content=None, rhet_file=None):
     return en, texts
 
 
-# doesn't work perfectly but works well enough for now lol fml.
+# TODO get it to appreciate when 's are in the next text splice.
 def get_matching_words(transcript, texts):
-    words = transcript.split(" ")
+    words = multi_replace(transcript, PARSER_REPLACEMENTS).split(" ")
     target_word_count = len(words)
     word_counter = 0
     text_indexes = []
@@ -101,12 +113,28 @@ def get_matching_words(transcript, texts):
                 i += 1
                 continue
             if words[word_counter] in texts[i]:
+                #print("if")
+                #print(words[word_counter], texts[i])
                 word_counter += 1
                 text_indexes.append(i)
-                if word_counter == target_word_count - 1:
+                if word_counter == target_word_count:
                     return sorted(list(set(text_indexes)))
-            elif i < len(texts)-1 and (texts[i+1] == "" or words[word_counter] in texts[i+1]):
-                i += 1
+            elif i < len(texts)-1:
+                #print("elif")
+                #print(words[word_counter], texts[i])
+                if texts[i+1] == "":
+                    #print("next blank?")
+                    i += 1
+                    continue
+                elif words[word_counter] in texts[i+1]:
+                    #print("it's in the next one, ", texts[i+1])
+                    i += 1
+                    continue
+                else:
+                    word_counter = 0
+                    text_indexes = []
+                    i += 1
+                    break
             else:
                 word_counter = 0
                 text_indexes = []
@@ -120,7 +148,7 @@ def get_matching_words(transcript, texts):
 def get_rhetorical_encoding_for_gesture(g):
     transcript_to_match = g['phase']['transcript']
     rhetorical_parse_file = multi_replace(g['phase']['video_fn'], VID_EXTENSION_REPLACEMENTS)
-    en, texts = get_sequence_encoding(rhetorical_parse_file)
+    en, texts = get_sequence_encoding(rhet_file=rhetorical_parse_file)
     text_range = get_matching_words(transcript_to_match, texts)
     if not text_range:
         print("No rhetorical encoding found for gesture ", g['id'])
@@ -148,7 +176,10 @@ class RhetoricalClusterer:
         content = get_parse_data("tmp.rhet")
         os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)
-        for g in tqdm(gs):
+        i = 0
+        for g in gs:
+            print(i, "/", len(gs), "\r", end="")
+            i += 1
             transcript_to_match = g['phase']['transcript']
             text_range = get_matching_words(transcript_to_match, texts)
             if not text_range:
