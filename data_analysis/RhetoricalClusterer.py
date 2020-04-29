@@ -2,7 +2,7 @@ from subprocess import call
 import re
 import os
 from common_helpers import download_blob
-import sys
+import string
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -56,6 +56,7 @@ PARSER_REPLACEMENTS = {
 }
 
 def flatten(l): return flatten(l[0]) + (flatten(l[1:]) if len(l) > 1 else []) if type(l) is list else [l]
+def multi_index(l, val): return [i for i in range(len(l)) if l[i] == val]
 
 # https://stackoverflow.com/questions/15175142/how-can-i-do-multiple-substitutions-using-regex-in-python
 def multi_replace(text, replacement_dict=None):
@@ -102,52 +103,40 @@ def get_sequence_encoding(content=None, rhet_file=None):
     return en, texts
 
 
-# TODO make it work so that "checks off" words as it goes.
-tdef get_matching_words(transcript, texts):
+def get_matching_words(transcript, texts):
     words = multi_replace(transcript, PARSER_REPLACEMENTS).split(" ")
-    target_word_count = len(words)
     word_counter = 0
     text_indexes = []
-    i = 0
-    while i < len(texts):
-        print(i)
-        if texts[i] == "":
-            i += 1
+    for t_index in range(len(texts)):
+        t = texts[t_index]
+        if t == "":     # skip all blank ones.
             continue
-        while word_counter < target_word_count:
-            if texts[i] == "":
-                i += 1
-                continue
-            if words[word_counter] in texts[i]:
-                print("if")
-                print(words[word_counter], texts[i])
-                word_counter += 1
-                text_indexes.append(i)
-                if word_counter == target_word_count:
+
+        chunk = t.split(" ")
+        cs = []
+        for c in chunk:
+            cs.append(c.translate(str.maketrans('', '', string.punctuation)))
+        if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:    # our word isn't in this chunk.
+            word_counter = 0
+            text_indexes = []
+        else:       # our word IS in this chunk!
+            #print("chunk:", cs)
+            c_index = 0
+            while words[word_counter].translate(str.maketrans('', '', string.punctuation)) in cs:
+                #print("current word:", words[word_counter])
+                #print("len words:", len(words))
+                if word_counter == len(words)-1:
                     return sorted(list(set(text_indexes)))
-            elif i < len(texts)-1:
-                print("elif")
-                print(words[word_counter], texts[i])
-                if texts[i+1] == "":
-                    print("next blank?")
-                    i += 1
-                    continue
-                elif words[word_counter] in texts[i+1]:
-                    print("it's in the next one, ", texts[i+1])
-                    i += 1
-                    continue
-                else:
-                    word_counter = 0
-                    text_indexes = []
-                    i += 1
+                word_counter += 1
+                c_index += 1
+                if word_counter < len(words)-1:
+                    #print("next word:", words[word_counter].translate(str.maketrans('', '', string.punctuation)))
+                text_indexes.append(t_index)
+                # we need to advance to the next chunk once we've seen all the words in this one.
+                if c_index > len(cs):
+                    #print("got to the end of the chunk")
                     break
-            else:
-                word_counter = 0
-                text_indexes = []
-                i += 1
-                break
-        if word_counter == target_word_count - 1:
-            break
+
     return sorted(list(set(text_indexes)))
 
 
