@@ -5,8 +5,9 @@ import nltk
 import numpy as np
 
 # need these as environment variables
-# devKey = str(open("%s" % os.getenv("devKey"), "r").read()).strip()
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
+devKey = str(open("%s" % os.getenv("devKey"), "r").read()).strip()
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "%s/google-creds.json" % os.getenv("HOME")
 
 from google.cloud import storage
 

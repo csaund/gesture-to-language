@@ -16,6 +16,7 @@ TEST_GESTURE_IDS = [
     374,     # very long. 1:16          # 21._Other_bad_aspects_of_death_Part_II-0qrx6x3izQw_2300.633967_2390.19019
     4001,    # super big quick open at the end # 5._Arguments_for_the_existence_of_the_soul_Part_III_-_Free_will_and_near-death_experiences-CWVlorPM3rA_819.953287_835.502169
     4505,    # small, hold frame, slight shake  # 12._Personal_identity_Part_III_-_Objections_to_the_personality_theory-rzbJ5nkAVfE_1680.38038_1686.119453
+    2937,    # only beats, no hand shape change but hand is in a weird shape     23._How_to_live_given_the_certainty_of_death-O8Hu465KL1w_2635.435435_2659.459459.mp4
 ]
 
 GSM = GestureSentenceManager("test")
