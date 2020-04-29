@@ -52,7 +52,6 @@ PARSER_REPLACEMENTS = {
     "'ve": " ve",
     "'ll": " ll",
     "'": " ",
-    ",": " ,"
 }
 
 def flatten(l): return flatten(l[0]) + (flatten(l[1:]) if len(l) > 1 else []) if type(l) is list else [l]
@@ -125,15 +124,16 @@ def get_matching_words(transcript, texts):
             while words[word_counter].translate(str.maketrans('', '', string.punctuation)) in cs:
                 #print("current word:", words[word_counter])
                 #print("len words:", len(words))
-                if word_counter == len(words)-1:
-                    return sorted(list(set(text_indexes)))
+                #print("word counter:", word_counter)
                 word_counter += 1
                 c_index += 1
-                if word_counter < len(words)-1:
+                if word_counter >= len(words)-1:
+                    return sorted(list(set(text_indexes)))
+                #if word_counter < len(words)-1:
                     #print("next word:", words[word_counter].translate(str.maketrans('', '', string.punctuation)))
                 text_indexes.append(t_index)
                 # we need to advance to the next chunk once we've seen all the words in this one.
-                if c_index > len(cs):
+                if c_index >= len(cs):
                     #print("got to the end of the chunk")
                     break
 
@@ -158,6 +158,7 @@ class RhetoricalClusterer:
         files = list(set([g['phase']['video_fn'] for g in gestures]))
         for f in files:
             self.get_all_encodings_for_video_fn(f, gestures)
+        print("got", len(self.agd), "out of ", len(gestures), "gestures")
         return
 
     def get_all_encodings_for_video_fn(self, video_fn, gestures):
