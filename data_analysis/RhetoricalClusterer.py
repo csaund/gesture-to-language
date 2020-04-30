@@ -41,8 +41,7 @@ PUNCTUATION_REPLACEMENTS = {
     " .": ".",
     " %": "%",
     "$ ": "$",
-    ". * ": " * ",
-    "s'p": "s p"
+    ". * ": " * "
 }
 
 PARSER_REPLACEMENTS = {
@@ -55,9 +54,12 @@ PARSER_REPLACEMENTS = {
     "'": " ",
 }
 
-def flatten(l): return flatten(l[0]) + (flatten(l[1:]) if len(l) > 1 else []) if type(l) is list else [l]
 
-def multi_index(l, val): return [i for i in range(len(l)) if l[i] == val]
+def flatten(li): return flatten(li[0]) + (flatten(li[1:]) if len(li) > 1 else []) if type(li) is list else [li]
+
+
+def multi_index(li, val): return [i for i in range(len(li)) if li[i] == val]
+
 
 # https://stackoverflow.com/questions/15175142/how-can-i-do-multiple-substitutions-using-regex-in-python
 def multi_replace(text, replacement_dict=None):
@@ -86,7 +88,7 @@ def get_line_encoding(line):
 
 def get_text_splices(line):
     if "_!" in line:
-        text = " ".join(line.split("_!")[-2].split("'"))
+        text = "".join(line.split("_!")[-2].split("'"))
         return multi_replace(text)
     return ""
 
@@ -107,49 +109,36 @@ def get_sequence_encoding(content=None, rhet_file=None):
 def get_matching_words(transcript, texts):
     words = multi_replace(transcript, PARSER_REPLACEMENTS).split(" ")
     words = [w.translate(str.maketrans('', '', string.punctuation)) for w in words]
-    words = [w for w in words if w != ""]       # so much formatting
     word_counter = 0
     text_indexes = []
     for t_index in range(len(texts)):
         t = texts[t_index]
         if t == "":     # skip all blank ones.
             continue
-
         chunk = t.split(" ")
         cs = []
         for c in chunk:
-            el = c.translate(str.maketrans('', '', string.punctuation))
-            if el:
-                cs.append(el)
-        #print("matching", words[word_counter], "to:", cs)
-        if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:    # our word isn't in this chunk.
+            cs.append(c.translate(str.maketrans('', '', string.punctuation)))
+        # our word isn't in this chunk, start over
+        if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:
             word_counter = 0
             text_indexes = []
 
-        if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:    # rare case where next one is correct
+        # check that this one isn't the start of the correct block
+        if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:
             continue
         else:       # our word IS in this chunk!
-            #print("chunk:", cs)
-            #print("word counter", word_counter)
-            #print("word match:", words[word_counter])
             word_indexes = multi_index(cs, words[word_counter])
-            #print("word indexes:", word_indexes)
             successful_chunk_found = False
             for wi in word_indexes:
-                #print("trying wi: ", wi)
-                if try_index(words, word_counter, cs, wi):
+                if try_index(words, word_counter, chunk, wi):
                     text_indexes.append(t_index)
-                    #print("got successful chunk")
                     successful_chunk_found = True
-                    word_counter += len(cs) - wi      # move up to the next place in line
-                    #print("word counter now at:", word_counter)
+                    word_counter += len(chunk) - wi      # move up to the next place in line
                     if word_counter >= len(words)-1:
                         return sorted(list(set(text_indexes)))
                     break
-            #if successful_chunk_found:
-                #print("BREAKING FREEEEEE")
             if not successful_chunk_found:
-                #print("resetting word counter")
                 word_counter = 0
                 text_indexes = []
 
@@ -158,9 +147,6 @@ def get_matching_words(transcript, texts):
 
 # see if words come in order in a chunk starting from chunk_index
 def try_index(words, word_index, chunk, chunk_index):
-    #print("word index, words", word_index, words)
-    #print("chunk index, chunk", chunk_index, chunk)
-
     if chunk_index >= len(chunk):
         return False
     while chunk_index < len(chunk) and word_index < len(words):
@@ -200,7 +186,7 @@ class RhetoricalClusterer:
         try:
             f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
         except:
-            print("couldn't get rhetorical parse for ", rhetorical_parse_file)
+            print("couldn't get rhetorical parse file for ", rhetorical_parse_file)
         content = get_parse_data("tmp.rhet")
         os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)
@@ -210,12 +196,8 @@ class RhetoricalClusterer:
             i += 1
             transcript_to_match = g['phase']['transcript']
             text_range = get_matching_words(transcript_to_match, texts)
-            if not text_range:
-                print("No rhetorical encoding found for gesture ", g['id'])
-                #self.agd[g['id']] = []
-            else:
+            if text_range:
                 self.agd[g['id']] = en[text_range[0]:text_range[-1] + 1]
-
 
     def get_encoding_for_gesture(self, g):
         transcript_to_match = g['phase']['transcript']
