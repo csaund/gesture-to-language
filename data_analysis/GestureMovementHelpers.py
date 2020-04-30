@@ -3,6 +3,13 @@ from common_helpers import *
 import time
 import numpy as np
 import statistics
+from matplotlib import cm, pyplot as plt
+import math
+from scipy import optimize
+from math import sqrt
+from shapely.geometry import Point
+from shapely.ops import cascaded_union
+from itertools import combinations
 
 BASE_KEYPOINT = [0]
 # DO NOT TRUST THESE
@@ -185,6 +192,415 @@ def _get_back_and_forth(keys):
     return switches
 
 
+# draw the path of wrist and each fingertip across n frames.
+# used to visualize cycles.
+def draw_finger_tip_path_across_frames(handed_keys, starting_frame, n=10, do_plot=True):
+    # across all frames
+    if len(handed_keys) < (starting_frame + n):
+        print(starting_frame + n)
+        print("Attempting to go outside of keyframe range. Will only go to frame %s" % len(handed_keys))
+        n = len(handed_keys) - starting_frame
+    fingers = get_empty_fingers()
+
+    for k in range(starting_frame, starting_frame + n):
+        kf = handed_keys[k]
+        for i in range(6):
+            # base_pos = np.array((kf['x'][0], kf['y'][0]))
+            # tip_pos = np.array((kf['x'][(i * 4) + 4], kf['y'][(i * 4) + 4]))
+            if i == 5:
+                fingers['base']['x'].append(kf['x'][0])
+                fingers['base']['y'].append(kf['y'][0])
+                continue
+            fingers[i]['x'].append(kf['x'][(i * 4) + 4])
+            fingers[i]['y'].append(kf['y'][(i * 4) + 4])
+
+    if do_plot:
+        plot_finger_path(fingers)
+    return fingers
+
+
+def get_empty_fingers():
+    fingers = {
+        'base': {
+            'x': [],
+            'y': [],
+            'color': 'gray'
+        },
+        0: {
+            'x': [],
+            'y': [],
+            'color': 'red'
+        },
+        1: {
+            'x': [],
+            'y': [],
+            'color': 'blue'
+        },
+        2: {
+            'x': [],
+            'y': [],
+            'color': 'green'
+        },
+        3: {
+            'x': [],
+            'y': [],
+            'color': 'orange'
+        },
+        4: {
+            'x': [],
+            'y': [],
+            'color': 'purple'
+        },
+    }
+    return fingers
+
+
+def plot_finger_path(fingers):
+    plt.plot(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
+    plt.plot(fingers[0]['x'], fingers[0]['y'], color=fingers[0]['color'])
+    plt.plot(fingers[1]['x'], fingers[1]['y'], color=fingers[1]['color'])
+    plt.plot(fingers[2]['x'], fingers[2]['y'], color=fingers[2]['color'])
+    plt.plot(fingers[3]['x'], fingers[3]['y'], color=fingers[3]['color'])
+    plt.plot(fingers[4]['x'], fingers[4]['y'], color=fingers[4]['color'])
+    plt.show()
+
+
+def detect_cycle(handed_keys, cycle_length=15):
+    scores = []
+    min_score = 100000
+    min_frame = 0
+    for i in range(len(handed_keys)-cycle_length):
+        score = evaluate_cycle(handed_keys, i, cycle_length=cycle_length, do_plot=False)
+        scores.append((i, score))
+        if score < min_score:
+            min_frame = i
+            min_score = score
+    print("best cycle start: ", min_frame)
+    print("best cycle score: ", min_score)
+
+    # and then see that the best scoring frames are near each other
+    scores.sort(key=lambda x: x[1])
+    return scores
+    top_scores = compact_and_sort_cycle_scores(scores)
+    return top_scores[:3]
+
+
+# check how many of the numbers within n of x are in top 25%
+def compact_and_sort_cycle_scores(scores, n=8):
+    cutoff = int(len(scores) / 4)
+    top_tier = scores[:cutoff]
+    top_scores = []
+    exclude = []
+    for e in top_tier:
+        if e[0] in exclude:
+            continue
+        incl = 0
+        for i in range(-n, n):
+            if e[0] + i in [e[0] for e in top_tier]:
+                exclude.append(e[0]+i)
+                incl += 1
+        top_scores.append((e[0], incl / (n * 2), e[1]))
+        top_scores.sort(key=lambda x: x[1], reverse=True)
+    return top_scores
+
+
+def detect_worst_cycle(handed_keys, cycle_length=15):
+    max_score = 0
+    max_frame = 0
+    for i in range(len(handed_keys)):
+        score = evaluate_cycle(handed_keys, i, cycle_length=cycle_length, do_plot=False)
+        if score > max_score:
+            max_frame = i
+            max_score = score
+    print("best cycle start: ", max_frame)
+    print("best cycle score: ", max_score)
+
+
+def evaluate_cycle(handed_keys, starting_frame, cycle_length=15, do_plot=True):
+    # see that start and end point are within some margin of error
+    # that probably depends on the width of the cycle -- say 20% of largest distance?
+    fingers = draw_finger_tip_path_across_frames(handed_keys, starting_frame, cycle_length, do_plot=do_plot)
+    scores = get_finger_sqrs(fingers, do_plot=do_plot)
+    return scores.mean()
+    # draw a circle defined by starting and furthest point
+    # calculate distance of all points from that circle (for JUST that finger)
+
+
+# for all points (x,y) in xs, ys, return maximum distance between any two.
+def get_furthest_distance(xs, ys):
+    if len(xs) != len(ys):
+        print("unequal length of xs and ys. Unable to calculate max distance")
+        return None
+    ps = [(xs[i], ys[i]) for i in range(len(xs))]
+    max_dist = 0
+    for i in range(len(ps)):
+        for j in range(i, len(ps)):
+            max_dist = max(max_dist, _get_point_dist(ps[i][0], ps[i][1], ps[j][0], ps[j][1]))
+    return max_dist
+
+
+def get_average_distance(xs, ys):
+    if len(xs) != len(ys):
+        print("unequal length of xs and ys. Unable to calculate max distance")
+        return None
+    ps = [(xs[i], ys[i]) for i in range(len(xs))]
+    dists = []
+    for i in range(len(ps)):
+        for j in range(i, len(ps)):
+            dists.append(_get_point_dist(ps[i][0], ps[i][1], ps[j][0], ps[j][1]))
+    return statistics.mean(dists)
+
+
+def draw_middle_circle(xs, ys, color='gray', alpha=0.3):
+    r = get_average_distance(xs, ys) / 1.21 # this is dumb circle math.
+    px = max(xs) - (max(xs) - min(xs))/2
+    py = max(ys) - (max(ys) - min(ys))/2
+    c = plt.Circle((px, py), r, color=color, alpha=alpha)
+    plt.gcf().gca().add_artist(c)
+
+
+# quick helper 15 4 20
+# will not work to use lstsqr as measure, bc doesn't measure dist to circle EDGE which I think is what we need.
+# but this favors smaller motions, need to adjust for how many pixels the whole thing takes up.
+def get_finger_sqrs(fingers, do_plot=True, verbose=False):
+    if do_plot:
+        for i in range(0, 6):
+            if i == 5:
+                draw_middle_circle(fingers['base']['x'], fingers['base']['y'], color=fingers['base']['color'])
+                continue
+            draw_middle_circle(fingers[i]['x'], fingers[i]['y'], color=fingers[i]['color'])
+
+    path_scores = []            # how well the circles follow a clockwise/counterclockwise direction
+    angle_scores = []           # how close the angles are to optimal for a circle
+    spread_scores = []          # how spread out the points are over the circular space
+    scores = []
+    for i in range(0, 6):
+        if i == 5:
+            xs = np.array(fingers['base']['x'])
+            ys = np.array(fingers['base']['y'])
+        else:
+            xs = np.array(fingers[i]['x'])
+            ys = np.array(fingers[i]['y'])
+        path_score = calculate_path_direction_score(xs, ys)
+        angle_score = calculate_angle_score(xs, ys)
+        spread_score = calculate_spread_score(xs, ys)
+        path_scores.append(path_score)
+        angle_scores.append(angle_score)
+        spread_scores.append(spread_score)
+        scores.append(path_score + angle_score)
+
+
+    path_scores = np.array(drop_highest_value(path_scores))   # if it's a good cycle, this might help a lot.
+    angle_scores = np.array(drop_highest_value(angle_scores))     #  If it's not, it won't change much.
+    # see how much each drawn circle overlaps with each other drawn circle.
+    # overlap_score = get_circle_overlaps(fingers)
+    # TODO want points on both halves of circle
+
+    if verbose:
+        print("path scores: ", path_scores)
+        print("angle scores: ", angle_scores)
+        print("spread socres: ", spread_scores)
+        # print("overlap score:, ", overlap_score)
+
+    return path_scores + angle_scores # + overlap_score
+
+
+# I think we need to actually draw a the circle, find the worst slice down the middle
+# and look at ratio of points from either side of that line.
+def calculate_spread_score(xs, ys):
+    # define circle
+    r = get_average_distance(xs, ys) / 1.21
+    px = max(xs) - (max(xs) - min(xs)) / 2
+    py = max(ys) - (max(ys) - min(ys)) / 2
+
+    pol_xs = xs - px
+    pol_ys = ys - py
+    pols = [cart2pol(pol_xs[i], pol_ys[i]) for i in range(len(xs))]
+    rs = np.array([p[0] for p in pols])
+    thetas = np.array([p[1] for p in pols])  # check these are continuous, penalize if not.
+    # a bisecting line is now defined by a value of theta
+
+    # check stdev of thetas -- yes, definitely larger for cycles but these numbers are quite small.
+    for i in range(1, len(thetas)):
+        # see if adding a rotation helps
+        theta_dist = abs(thetas[i] - thetas[i-1])
+        add_rotation = abs(thetas[i] + (math.pi*2) - thetas[i-1])
+        subtract_rotation = abs(thetas[i] - (math.pi*2) - thetas[i-1])
+        if add_rotation < theta_dist:
+            thetas[i] += math.pi*2
+        elif subtract_rotation < theta_dist:
+            thetas[i] -= math.pi*2
+
+
+    # get worst line through points, try cutting into 8ths
+    sides = []
+    ratios = []
+    for i in range(0, 15):
+        one_side = 0
+        other_side = 0
+        theta = (math.pi / 15) * i
+        for t in thetas:
+            if t < 0:
+                t += (math.pi * 2)
+            if theta < t < (theta + math.pi):
+                one_side += 1
+            else:
+                other_side += 1
+        sides.append([one_side, other_side])
+        if one_side < other_side:
+            ratios.append(one_side / other_side)
+        else:
+            ratios.append(other_side / one_side)
+
+    # print("sides: ", sides)
+    # print("worst ratio: ", min(ratios))
+    # print("thetas: ", thetas)
+    return (thetas.std(), min(ratios))
+
+
+# using cross product,
+# given points a, b which define a line, check which side of that line c is on
+# if point is on line, returns False as well
+def get_side_of_line(a, b, c):
+    return ((b[0] - a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0])) > 0
+
+
+# add all non-overlapping area.
+# that is, of all circles drawn for each path, add all of the area that belongs only to a single finger.
+# this will be higher if paths are more spread out... I think?
+# and help with sweeps
+def get_circle_overlaps(fingers):
+    circles = []
+    total_area = 0
+    for i in range(0, 6):
+        if i == 5:
+            xs = np.array(fingers['base']['x'])
+            ys = np.array(fingers['base']['y'])
+        else:
+            xs = np.array(fingers[i]['x'])
+            ys = np.array(fingers[i]['y'])
+
+        r = get_average_distance(xs, ys) / 1.21
+        px = max(xs) - (max(xs) - min(xs))/2
+        py = max(ys) - (max(ys) - min(ys))/2
+        total_area += math.pi * (r ** 2)
+        circles.append(Point(px, py).buffer(r))
+
+    intersection = cascaded_union(
+        [a.intersection(b) for a, b in combinations(circles, 2)]
+    )
+    print("total area: ", total_area)
+    print("total intersection: " , intersection.area)
+    print("area ratios:", intersection.area / total_area)
+    return intersection.area / total_area
+
+
+
+# minimize when the pattern has
+# low stdev
+# angles all mostly above 90
+def calculate_angle_score(xs, ys):
+    angles = []
+    for i in range(1, len(xs)-1):
+        a = np.array([xs[i-1], ys[i-1]])
+        b = np.array([xs[i], ys[i]])
+        c = np.array([xs[i+1], ys[i+1]])
+        angle = _calculate_angle(a, b, c)       # only returns LESS than 180, and we want to be NEAR 180.
+        if math.isnan(angle):
+            angle = 0
+        angles.append(angle)
+
+    optimal_angle = 180 - (360 / len(xs))
+    # want things to be closest to the angle that makes a circle -- theoretically 180, but actually will be
+    # 180 - (360 / n) where n is number of points in circle
+    # print("angle sum:")
+    # print(sum(angles))
+    angles = abs(np.array(angles) - optimal_angle)         # we like things around 180. Angles less are penalized.
+    # print(sum(angles))
+    # print(angles.std())
+    # print(angles.mean())
+    return angles.mean()
+
+
+def drop_highest_value(vals):
+    drop_index = 0
+    max_val = 0
+    for i in range(len(vals)):
+        if vals[i] > max_val:
+            max_val = vals[i]
+            drop_index = i
+    return np.delete(vals, drop_index)
+
+
+# want points on BOTH SIDES of the circle.
+def calculate_path_direction_score(xs, ys):
+    px = max(xs) - (max(xs) - min(xs))/2
+    py = max(ys) - (max(ys) - min(ys))/2
+    pol_xs = xs - px
+    pol_ys = ys - py
+    pols = [cart2pol(pol_xs[i], pol_ys[i]) for i in range(len(xs))]
+    rs = np.array([p[0] for p in pols])
+    thetas = [p[1] for p in pols]       # check these are continuous, penalize if not.
+
+    # get distances between points and outside of circle.
+    ri = np.sqrt((np.array(xs) - px) ** 2 + (np.array(ys) - py) ** 2)
+    dist_from_circle = ri.mean()      # subtract distance from outside of circle
+    # print("lsqm dist:", dist_from_circle)
+    # get extent to which path is going in the same direction
+    dirs = same_dir_theta(thetas)    # just want them going in same direction, don't really care which way.
+    same_direction_score = 0
+    # TODO TEST THIS 17 APRIL 20
+    # print("theta sum:", sum(thetas))
+
+    # TODO END TEST
+
+
+    for i in range(1, len(dirs)):
+        if (dirs[i] == dirs[i-1]) and dirs[i] != '-':
+            same_direction_score += _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
+        else:
+            same_direction_score -= _get_point_dist(xs[i], ys[i], xs[i-1], ys[i-1])
+
+    # want points on both sides of the circle.
+    # draw line that worst divides points, take ratio of points on both sides.
+
+    polar_score = dist_from_circle.mean() - same_direction_score + rs.std() + sum(thetas)
+    return polar_score
+
+
+def cart2pol(x, y):
+    rho = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y, x)
+    return(rho, phi)
+
+
+def pol2cart(rho, phi):
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return(x, y)
+
+
+# WE'E ONTO SOMETHING HERE.
+# can tell if something IS a cycle
+# can also be used to detect cycles (when you get lots of the same direction in a row)
+# problem with that is centering the coordinates around wherever the center circle is
+def same_dir_theta(ts):
+    same_dir = []
+    for i in range(1, len(ts)-1):
+        if ts[i-1] < ts[i] < ts[i+1]:
+            same_dir.append('d')
+        elif ts[i-1] > ts[i] > ts[i+1]:
+            same_dir.append('u')
+        else:
+            same_dir.append('-')
+    return same_dir
+
+
+# https://www.geeksforgeeks.org/shortest-distance-between-a-point-and-a-circle/
+def dist_btw_point_and_circle(cx, cy, r, px, py):
+    return abs(((((px - cx) ** 2) + ((py - cy) ** 2)) ** (1 / 2)) - r)
+
+
 # TODO check this in MotionAnalyzerTests and visually.
 # actually right now seems to detect smooth gestures???
 # definitely not right.
@@ -214,7 +630,6 @@ def _plot_hand_angles_across_frame(handed_keys, angle_i=None, smoothing=0):
             if abs(ys[i] - ys[i-1]) > smoothing:
                 ys[i] = ys[i-1]
 
-    #plt.show()
     plt.plot(xs, ys)
 
 
@@ -223,7 +638,10 @@ def _calculate_angle(a, b, c):
     cb = c - b
     cos_b = np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb))
     ang_b = np.arccos(cos_b)
-    return np.degrees(ang_b)
+    deg = np.degrees(ang_b)
+    # if math.isnan(deg):
+    #     deg = 0             # this happens when 2 or more of the 3 points are the same.
+    return deg
 
 
 def plot_finger_average_across_frames(handed_keys, finger_i=0):
@@ -233,7 +651,7 @@ def plot_finger_average_across_frames(handed_keys, finger_i=0):
         angles = _get_average_finger_angles(handed_keys, i)
         ys.append(angles[finger_i])
         xs.append(i)
-    #plt.show()
+    # plt.show()
     print(xs)
     print(ys)
     plt.plot(xs, ys)
@@ -319,6 +737,10 @@ GESTURE_FEATURES = {
     'max_wrist_velocity': {
         'separate_hands': True,
         'function': _max_wrist_velocity
+    },
+    'cycles': {
+        'separate_hands': True,
+        'function': detect_cycle
     }
     # 'acceleration': {
     #     'separate_hands': True,
