@@ -121,6 +121,9 @@ def get_matching_words(transcript, texts):
         if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:    # our word isn't in this chunk.
             word_counter = 0
             text_indexes = []
+
+        if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:    # rare case where next one is correct
+            continue
         else:       # our word IS in this chunk!
             #print("chunk:", cs)
             #print("word counter", word_counter)
@@ -139,7 +142,7 @@ def get_matching_words(transcript, texts):
                         return sorted(list(set(text_indexes)))
                     break
             #if successful_chunk_found:
-                #print("BREAKING FREEEEEE")
+            #    print("BREAKING FREEEEEE")
             if not successful_chunk_found:
                 #print("resetting word counter")
                 word_counter = 0
