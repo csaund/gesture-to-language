@@ -55,6 +55,7 @@ PARSER_REPLACEMENTS = {
 }
 
 def flatten(l): return flatten(l[0]) + (flatten(l[1:]) if len(l) > 1 else []) if type(l) is list else [l]
+
 def multi_index(l, val): return [i for i in range(len(l)) if l[i] == val]
 
 # https://stackoverflow.com/questions/15175142/how-can-i-do-multiple-substitutions-using-regex-in-python
@@ -104,6 +105,7 @@ def get_sequence_encoding(content=None, rhet_file=None):
 
 def get_matching_words(transcript, texts):
     words = multi_replace(transcript, PARSER_REPLACEMENTS).split(" ")
+    words = [w.translate(str.maketrans('', '', string.punctuation)) for w in words]
     word_counter = 0
     text_indexes = []
     for t_index in range(len(texts)):
@@ -115,29 +117,67 @@ def get_matching_words(transcript, texts):
         cs = []
         for c in chunk:
             cs.append(c.translate(str.maketrans('', '', string.punctuation)))
+        #print("matching", words[word_counter], "to:", cs)
         if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:    # our word isn't in this chunk.
             word_counter = 0
             text_indexes = []
         else:       # our word IS in this chunk!
             #print("chunk:", cs)
-            c_index = 0
-            while words[word_counter].translate(str.maketrans('', '', string.punctuation)) in cs:
-                #print("current word:", words[word_counter])
-                #print("len words:", len(words))
-                #print("word counter:", word_counter)
-                word_counter += 1
-                c_index += 1
-                if word_counter >= len(words)-1:
-                    return sorted(list(set(text_indexes)))
-                #if word_counter < len(words)-1:
-                    #print("next word:", words[word_counter].translate(str.maketrans('', '', string.punctuation)))
-                text_indexes.append(t_index)
-                # we need to advance to the next chunk once we've seen all the words in this one.
-                if c_index >= len(cs):
-                    #print("got to the end of the chunk")
+            #print("word counter", word_counter)
+            #print("word match:", words[word_counter])
+            word_indexes = multi_index(cs, words[word_counter])
+            #print("word indexes:", word_indexes)
+            successful_chunk_found = False
+            for wi in word_indexes:
+                if try_index(words, word_counter, chunk, wi):
+                    text_indexes.append(t_index)
+                    #print("got successful chunk")
+                    successful_chunk_found = True
+                    word_counter += len(chunk) - wi      # move up to the next place in line
+                    #print("word counter now at:", word_counter)
+                    if word_counter >= len(words)-1:
+                        return sorted(list(set(text_indexes)))
                     break
+            #if successful_chunk_found:
+                #print("BREAKING FREEEEEE")
+            if not successful_chunk_found:
+                #print("resetting word counter")
+                word_counter = 0
+                text_indexes = []
+
+
+
+            #c_index = 0
+            #while words[word_counter].translate(str.maketrans('', '', string.punctuation)) in cs:
+            #    print("current word:", words[word_counter])
+            #    print("len words:", len(words))
+            #    print("word counter:", word_counter)
+            #    word_counter += 1
+            #    c_index += 1
+            #    if word_counter >= len(words)-1:
+            #        return sorted(list(set(text_indexes)))
+            #    if word_counter < len(words)-1:
+            #        print("next word:", words[word_counter].translate(str.maketrans('', '', string.punctuation)))
+            #    text_indexes.append(t_index)
+            #    # we need to advance to the next chunk once we've seen all the words in this one.
+            #    if c_index >= len(cs):
+            #        print("got to the end of the chunk")
+            #        break
 
     return sorted(list(set(text_indexes)))
+
+
+# see if words come in order in a chunk starting from chunk_index
+def try_index(words, word_index, chunk, chunk_index):
+    if chunk_index >= len(chunk):
+        return False
+    while chunk_index < len(chunk) and word_index < len(words):
+        if words[word_index].translate(str.maketrans('', '', string.punctuation)) == chunk[chunk_index].translate(str.maketrans('', '', string.punctuation)):
+            word_index += 1
+            chunk_index += 1
+        else:
+            return False
+    return True
 
 
 def get_rhetorical_encoding_for_gesture(g):
