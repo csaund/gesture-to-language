@@ -8,6 +8,7 @@ import string
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
 import distance
+import edlib
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -205,7 +206,14 @@ class RhetoricalClusterer:
             transcript_to_match = g['phase']['transcript']
             text_range = get_matching_words(transcript_to_match, texts)
             if text_range:
-                self.agd[g['id']] = {'id': g['id'], 'sequence': en[text_range[0]:text_range[-1] + 1]}
+                k = g['id']
+                transcript = g['phase']['transcript']
+                sequence = en[text_range[0]:text_range[-1]+1]
+                self.agd[k] = {
+                                'id': k,
+                                'transcript': transcript,
+                                'sequence': sequence
+                               }
 
     def get_encoding_for_gesture(self, g):
         transcript_to_match = g['phase']['transcript']
@@ -227,20 +235,33 @@ class RhetoricalClusterer:
     def cluster_sequences(self):
         # https://gist.github.com/codehacken/8b9316e025beeabb082dda4d0654a6fa
         words = []
-        for k, v in self.agd.iteritems():
+        for k, v in sorted(self.agd.items()):
             words.append(" ".join(v['sequence']))
 
         lev_similarity = []
+        print("getting edit distances")
         for i in range(len(words)):
-            print(i)
+            print('\r', i, end='                 ')
             w = words[i]
-            lev_similarity.append([distance.levenshtein(w, w2) for w2 in words])
-        lev_sim = np.array(lev_similarity)
+            lev_similarity.append([edlib.align(w, w2)['editDistance'] for w2 in words])
 
-        agg = AgglomerativeClustering(n_clusters=250, affinity='precomputed', linkage='complete')
-        u = agg.fit_predict(lev_sim)
+        lev_similarity = np.array(lev_similarity)
+
+        print("getting agglomerative clustering")
+        agg = AgglomerativeClustering(n_clusters=100, affinity='precomputed', linkage='complete')
+        u = agg.fit_predict(lev_similarity)
 
         i = 0
-        for k, v in self.agd.iteritems():
+        for k, v in sorted(self.agd.items()):
             self.agd[k]['cluster_id'] = u[i]
             i += 1
+
+        return(agg, u, lev_similarity)
+
+
+def get_sentences_for_rhetorical_cluster(GSM, c_id):
+    Rh = GSM.RhetoricalClusterer
+    t_ids = [Rh.agd[k]['id'] for k in Rh.agd.keys() if Rh.agd[k]['cluster_id'] == c_id]
+    transcripts = [GSM.get_gesture_transcript_by_id(i) for i in t_ids]
+    for t in transcripts:
+        print(t['phase']['transcript'])
