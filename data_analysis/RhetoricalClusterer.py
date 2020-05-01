@@ -2,7 +2,13 @@ from subprocess import call
 import re
 import os
 from common_helpers import download_blob
+from tqdm import tqdm
 import string
+
+import numpy as np
+from sklearn.cluster import AgglomerativeClustering
+import distance
+import edlib
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -173,6 +179,9 @@ class RhetoricalClusterer:
     def __init__(self, gestures):
         self.bucket = "parsed_transcript_bucket"
         self.agd = {}
+        self.clusters = {}
+        self.c_id = 0
+        self.total_clusters_created = 0
         files = list(set([g['phase']['video_fn'] for g in gestures]))
         for f in files:
             self.get_all_encodings_for_video_fn(f, gestures)
@@ -197,7 +206,14 @@ class RhetoricalClusterer:
             transcript_to_match = g['phase']['transcript']
             text_range = get_matching_words(transcript_to_match, texts)
             if text_range:
-                self.agd[g['id']] = en[text_range[0]:text_range[-1] + 1]
+                k = g['id']
+                transcript = g['phase']['transcript']
+                sequence = en[text_range[0]:text_range[-1]+1]
+                self.agd[k] = {
+                                'id': k,
+                                'transcript': transcript,
+                                'sequence': sequence
+                               }
 
     def get_encoding_for_gesture(self, g):
         transcript_to_match = g['phase']['transcript']
@@ -216,6 +232,36 @@ class RhetoricalClusterer:
             return None
         return en[text_range[0]:text_range[-1] + 1]
 
+    def cluster_sequences(self):
+        # https://gist.github.com/codehacken/8b9316e025beeabb082dda4d0654a6fa
+        words = []
+        for k, v in sorted(self.agd.items()):
+            words.append(" ".join(v['sequence']))
+
+        lev_similarity = []
+        print("getting edit distances")
+        for i in range(len(words)):
+            print('\r', i, end='                 ')
+            w = words[i]
+            lev_similarity.append([edlib.align(w, w2)['editDistance'] for w2 in words])
+
+        lev_similarity = np.array(lev_similarity)
+
+        print("getting agglomerative clustering")
+        agg = AgglomerativeClustering(n_clusters=100, affinity='precomputed', linkage='complete')
+        u = agg.fit_predict(lev_similarity)
+
+        i = 0
+        for k, v in sorted(self.agd.items()):
+            self.agd[k]['cluster_id'] = u[i]
+            i += 1
+
+        return(agg, u, lev_similarity)
 
 
-
+def get_sentences_for_rhetorical_cluster(GSM, c_id):
+    Rh = GSM.RhetoricalClusterer
+    t_ids = [Rh.agd[k]['id'] for k in Rh.agd.keys() if Rh.agd[k]['cluster_id'] == c_id]
+    transcripts = [GSM.get_gesture_transcript_by_id(i) for i in t_ids]
+    for t in transcripts:
+        print(t['phase']['transcript'])
