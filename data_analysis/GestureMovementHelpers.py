@@ -49,12 +49,20 @@ def timeit(method):
 ##########################################################################
 # STATIC MOTION FUNCTIONS ################################################
 ##########################################################################
-def get_low_motion_frame(keyframes, n=20, max_vel=20):
+def get_first_low_motion_frame(keyframes, n=5, max_vel=14):
     # hands haven't moved more than x apart from each other for N frames
     # hands haven't moved more than y up and down for N frames
     # velocity has stayed under z for N frames... for ALL keypoints.
-
-    return 0
+    for i in range(len(keyframes)):
+        vels = []
+        for j in range(n):
+            vels.append(_get_all_velocities_at_frame(keyframes, i+j))
+        vels = flatten(vels)
+        vals = [v for v in vels if v > max_vel]
+        if vals:
+            continue
+        return i
+    return None
 
 
 # get maximum "verticalness" aka minimum horizontalness of hands

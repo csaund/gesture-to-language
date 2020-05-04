@@ -52,8 +52,8 @@ import copy
 
 
 def get_time_split_by_frame(g, f):
-    end = g['phase']['transcript']['end_seconds']
-    start = g['phase']['transcript']['start_seconds']
+    end = g['phase']['end_seconds']
+    start = g['phase']['start_seconds']
     frame_second = start + f * ((end-start) / len(g['keyframes']))
     return frame_second
 
@@ -61,8 +61,8 @@ def get_time_split_by_frame(g, f):
 # only going to be rough approximation because we only have the gesture start
 # and end time, and start and end
 def get_words_split_by_time(g, t):
-    g1_words = [w['word'] for w in g['words'] if w['word_start'] < t]
-    g2_words = [w['word'] for w in g['words'] if w['word_start'] >= t]
+    g1_words = [w for w in g['words'] if w['word_start'] < t]
+    g2_words = [w for w in g['words'] if w['word_start'] >= t]
     return g1_words ,g2_words
 
 
@@ -92,26 +92,23 @@ def splice_gesture_at_frame(gesture, frame):
     g1 = copy.deepcopy(template)
     g2 = copy.deepcopy(template)
     time_split = get_time_split_by_frame(gesture, frame)
-    g1['words'], g2['words'] = get_words_split_by_time(gesture, time_split)
+    print("timesplit: ", time_split)
+    g1w, g2w = get_words_split_by_time(gesture, time_split)
+    print("g1w", g1w)
+    g1['words'] = g1w
+    g2['words'] = g2w
     g1['phase']['transcript'] = [w['word'] for w in g1['words']]
     g2['phase']['transcript'] = [w['word'] for w in g2['words']]
-    g1['keyframes'], g2['keyframes'] = get_motion_split_by_frame(gesture, frame)
+    g1k, g2k = get_motion_split_by_frame(gesture, frame)
+    print(g1k)
+    g1['keyframes'] = g1k
+    g2['keyframes'] = g2k
     g1['phase']['start_seconds'] = gesture['phase']['start_seconds']
     g1['phase']['end_seconds'] = gesture['phase']['start_seconds'] + time_split
     g2['phase']['start_seconds'] = gesture['phase']['start_seconds'] + time_split
     g1['phase']['end_seconds'] = gesture['phase']['end_seconds']
     g2['id'] = str(gesture['id']) + "-" + str(frame)
     return g1, g2
-
-
-# detect lack of movement
-# return the frame at which we should splice the gesture if there is one
-# is there isn't one, return None
-def detect_splice_frame(gesture):
-    f = get_low_motion_frame(gesture['keyframes'])
-    if gesture['id']:
-        return 0
-    return None
 
 
 class GestureSplicer():
@@ -127,17 +124,18 @@ class GestureSplicer():
             new_gesture_data.append(self.splice_gesture(g))
         return
 
-    def splice_gesture(self, gesture):
+    def splice_gesture(self, gesture, gestures=[]):
         # detect lack of movement by finding period of high movement,
         # then period of low movement
         # splice right when high movement ends?
-        frame = detect_splice_frame(gesture)
+        frame = get_first_low_motion_frame(gesture['keyframes'])
         if frame:
             g1, g2 = splice_gesture_at_frame(gesture, frame)
-            self.splice_gesture(g2)
-            return g1
+            gestures.append(g1)
+            return self.splice_gesture(g2, gestures)
         else:
-            return gesture
+            gestures.append(gesture)
+            return gestures
 
     # from motion, detect where is a good place to splice the gesture, if any.
     # importantly, only returns FIRST place this should happen.
