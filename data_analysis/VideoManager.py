@@ -8,6 +8,7 @@ import numpy as np
 import os
 import pandas as pd
 from moviepy.video.io.VideoFileClip import VideoFileClip
+import parselmouth
 
 
 class VideoManager():
@@ -28,7 +29,17 @@ class VideoManager():
         with VideoFileClip(output_path) as video:
             new = video.subclip(start_seconds, end_seconds)
             new.write_videofile(target, audio_codec='aac')
-        return
+        return target
+
+    def get_audio_features(self, video_fn, start_seconds, end_seconds):
+        target = self.get_video_clip(self, video_fn, start_seconds, end_seconds)
+        #print("target: ", target)
+        command = "ffmpeg -i %s -ab 160k -ac 2 -ar 44100 -vn temp_audio.wav" % target
+        #print("command: ", command)
+        subprocess.call(command, shell=True)
+        snd = parselmouth.Sound("temp_audio.wav")
+        os.remove("temp_audio.wav")
+        return snd
 
     def download_video(self, video_fn, output_path):
         if os.path.exists(output_path):
