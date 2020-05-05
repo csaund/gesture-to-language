@@ -49,6 +49,7 @@ def timeit(method):
 ##########################################################################
 # STATIC MOTION FUNCTIONS ################################################
 ##########################################################################
+@timeit
 def get_first_low_motion_frame(keyframes, n=5, max_vel=14):
     # hands haven't moved more than x apart from each other for N frames
     # hands haven't moved more than y up and down for N frames
@@ -201,15 +202,24 @@ def _get_velocity_at_frame(keys, k):
     (wx1, wy1) = (keys[k + 1]['x'][0], keys[k + 1]['y'][0])
     return _get_point_dist(wx0, wy0, wx1, wy1)
 
+
 def _get_all_velocities_at_frame(keys, k):
     if k >= len(keys)-1:
         k = len(keys) - 2
     vels = []
-    for i in range(len(keys[0]['y'])):
-        (wx0, wy0) = (keys[k]['x'][i], keys[k]['y'][i])
-        (wx1, wy1) = (keys[k + 1]['x'][i], keys[k + 1]['y'][i])
-        vels.append(_get_point_dist(wx0, wy0, wx1, wy1))
-    return vels
+
+    if not keys:
+        return []
+
+    try:
+        for i in range(len(keys[0]['y'])):
+            (wx0, wy0) = (keys[k]['x'][i], keys[k]['y'][i])
+            (wx1, wy1) = (keys[k + 1]['x'][i], keys[k + 1]['y'][i])
+            vels.append(_get_point_dist(wx0, wy0, wx1, wy1))
+        return vels
+
+    except:
+        return []
 
 
 # measures the number of times wrist changes direction as measured by the angle

@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.cluster import AgglomerativeClustering
 import distance
 import edlib
+import sklearn
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -71,9 +72,14 @@ def multi_index(li, val): return [i for i in range(len(li)) if li[i] == val]
 def multi_replace(text, replacement_dict=None):
     if replacement_dict is None:
         replacement_dict = PUNCTUATION_REPLACEMENTS
-    regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
-    # For each match, look-up corresponding value in dictionary
-    return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
+        try:
+            regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
+            # For each match, look-up corresponding value in dictionary
+            return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
+        except:
+            print("could not multi replace text with dict")
+            print(text)
+            print(replacement_dict)
 
 
 def get_parse_data(fp):
@@ -235,7 +241,8 @@ class RhetoricalClusterer:
     def cluster_sequences(self):
         # https://gist.github.com/codehacken/8b9316e025beeabb082dda4d0654a6fa
         words = []
-        for k, v in sorted(self.agd.items()):
+        # keep dict in order to sort and assign proper distances to it.
+        for k, v in sorted(self.agd.items(), key=lambda x: float(str(x[0]).replace("-", "."))):
             words.append(" ".join(v['sequence']))
 
         lev_similarity = []
@@ -252,11 +259,25 @@ class RhetoricalClusterer:
         u = agg.fit_predict(lev_similarity)
 
         i = 0
-        for k, v in sorted(self.agd.items()):
+        for k, v in sorted(self.agd.items(), key=lambda x: float(str(x[0]).replace("-", "."))):
             self.agd[k]['cluster_id'] = u[i]
             i += 1
 
         return(agg, u, lev_similarity)
+
+    def get_sentences_for_cluster(self, cluster_id):
+        transcripts = []
+        for k,v in self.agd:
+            if v['cluster_id'] == cluster_id:
+                transcripts.append(v['transcript'])
+        return transcripts
+
+    def get_ids_for_cluster(self, cluster_id):
+        ids = []
+        for k,v in self.agd:
+            if v['cluster_id'] == cluster_id:
+                ids.append(v['id'])
+        return ids
 
 
 def get_sentences_for_rhetorical_cluster(GSM, c_id):
@@ -265,3 +286,18 @@ def get_sentences_for_rhetorical_cluster(GSM, c_id):
     transcripts = [GSM.get_gesture_transcript_by_id(i) for i in t_ids]
     for t in transcripts:
         print(t['phase']['transcript'])
+
+
+def try_silhouette_scores(similarities, n_clusters=[15, 40, 60, 80, 100, 150, 200]):
+    for n in n_clusters:
+        print("trying ", n)
+        clusters = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
+        # similarities is nxn matrix (lev_sim)
+        u_short = clusters.fit_predict(similarities)
+        print(sklearn.metrics.silhouette_score(similarities, clusters.labels_))
+        singletons = []
+        for lab in list(set(clusters.labels_)):
+            l = len([i for i in clusters.labels_ if i == lab])
+            if l <= 1:
+                singletons.append(lab)
+        print("singletons: ", len(singletons))

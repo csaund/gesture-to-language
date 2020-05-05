@@ -6,9 +6,11 @@ import random
 import time
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
-from GestureMovementHelpers import *
+from GestureMovementHelpers import get_first_low_motion_frame
 from common_helpers import *
+from data_analysis.VideoManager import VideoManager
 import copy
+from tqdm import tqdm
 
 # g returned must look like
 # {
@@ -92,15 +94,12 @@ def splice_gesture_at_frame(gesture, frame):
     g1 = copy.deepcopy(template)
     g2 = copy.deepcopy(template)
     time_split = get_time_split_by_frame(gesture, frame)
-    print("timesplit: ", time_split)
     g1w, g2w = get_words_split_by_time(gesture, time_split)
-    print("g1w", g1w)
     g1['words'] = g1w
     g2['words'] = g2w
-    g1['phase']['transcript'] = [w['word'] for w in g1['words']]
-    g2['phase']['transcript'] = [w['word'] for w in g2['words']]
+    g1['phase']['transcript'] = [w['word'] for w in g1['words']].join(" ")
+    g2['phase']['transcript'] = [w['word'] for w in g2['words']].join(" ")
     g1k, g2k = get_motion_split_by_frame(gesture, frame)
-    print(g1k)
     g1['keyframes'] = g1k
     g2['keyframes'] = g2k
     g1['phase']['start_seconds'] = gesture['phase']['start_seconds']
@@ -117,25 +116,38 @@ class GestureSplicer():
         # need to update GSM to have agd be ALL data, including transcript.
         # time to convert to dfs.
         self.agd = agd
+        self.VidMan = VideoManager()
 
     def splice_gestures(self):
         new_gesture_data = []
-        for g in self.agd:
-            new_gesture_data.append(self.splice_gesture(g))
-        return
+        for g in tqdm(self.agd):
+            #print("getting it for ID", g['id'])
+            #af = self.get_audio_features_by_gesture(g)
+            new_gesture_data += self.splice_gesture(g)
+            #print(len(new_gesture_data))
+        self.agd = new_gesture_data
+        return self.agd
 
-    def splice_gesture(self, gesture, gestures=[]):
+    def splice_gesture(self, gesture, gestures=None):
         # detect lack of movement by finding period of high movement,
         # then period of low movement
         # splice right when high movement ends?
+        if gestures is None:
+            gestures = []
         frame = get_first_low_motion_frame(gesture['keyframes'])
+        #if audio_features and relative_audio_intensity
         if frame:
             g1, g2 = splice_gesture_at_frame(gesture, frame)
             gestures.append(g1)
-            return self.splice_gesture(g2, gestures)
+            return self.splice_gesture(g2, gestures=gestures)
         else:
             gestures.append(gesture)
             return gestures
+
+    def get_audio_features_by_gesture(self, g):
+        p = g['phase']
+        af = self.VideoManager.get_audio_features(p['video_fn'], p['start_seconds'], p['end_seconds'])
+        return af
 
     # from motion, detect where is a good place to splice the gesture, if any.
     # importantly, only returns FIRST place this should happen.
