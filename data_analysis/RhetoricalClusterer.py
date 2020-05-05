@@ -267,17 +267,29 @@ class RhetoricalClusterer:
 
     def get_sentences_for_cluster(self, cluster_id):
         transcripts = []
-        for k,v in self.agd:
+        for k in self.agd:
+            v = self.agd[k]
             if v['cluster_id'] == cluster_id:
                 transcripts.append(v['transcript'])
         return transcripts
 
     def get_ids_for_cluster(self, cluster_id):
         ids = []
-        for k,v in self.agd:
+        for k in self.agd:
+            v = self.agd[k]
             if v['cluster_id'] == cluster_id:
                 ids.append(v['id'])
         return ids
+
+    def get_clusters_with_sizes(self):
+        ret = {}
+        for k in self.agd:
+            v = self.agd[k]
+            if v['cluster_id'] not in ret.keys():
+                ret[v['cluster_id']] = 1
+            else:
+                ret[v['cluster_id']] = ret[v['cluster_id']] + 1
+        return ret
 
 
 def get_sentences_for_rhetorical_cluster(GSM, c_id):

@@ -19,12 +19,12 @@ class VideoManager():
         self.temp_output_path = os.path.join(self.base_path, 'tmp', 'temp_video.mp4')
         self.df = pd.read_csv(os.path.join(self.base_path, "intervals_df.csv"))
 
-    def get_video_clip(self, video_fn, start_seconds, end_seconds):
+    def get_video_clip(self, video_fn, start_seconds, end_seconds, folder=""):
         output_path = os.path.join(self.base_path, "videos_clips", video_fn.replace(".mkv", ".mp4").replace(".webm", ".mp4"))
         self.download_video(video_fn, output_path)
         video_fn = video_fn.replace(".mkv", ".mp4").replace(".webm", ".mp4")
         clip_output = video_fn.rsplit('.', 1)[0] + "_" + str(start_seconds) + "_" + str(end_seconds)
-        target = clip_output + '.' + video_fn.split('.')[-1]
+        target = folder + clip_output + '.' + video_fn.split('.')[-1]
         print("extracting clip to target: %s" % target)
         with VideoFileClip(output_path) as video:
             new = video.subclip(start_seconds, end_seconds)

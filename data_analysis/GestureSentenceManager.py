@@ -376,10 +376,10 @@ class GestureSentenceManager():
         start = g['phase']['start_seconds']
         end = g['phase']['end_seconds']
 
-    def get_gesture_video_clip_by_gesture_id(self, g_id):
+    def get_gesture_video_clip_by_gesture_id(self, g_id, folder=""):
         g = self.get_gesture_by_id(g_id)
         p = g['phase']
-        self.VideoManager.get_video_clip(p['video_fn'], p['start_seconds'], p['end_seconds'])
+        self.VideoManager.get_video_clip(p['video_fn'], p['start_seconds'], p['end_seconds'], folder="")
 
     def get_gesture_audio_properties_by_gesture_id(self, g_id):
         g = self.get_gesture_by_id(g_id)
