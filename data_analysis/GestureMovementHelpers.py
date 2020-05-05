@@ -49,6 +49,23 @@ def timeit(method):
 ##########################################################################
 # STATIC MOTION FUNCTIONS ################################################
 ##########################################################################
+@timeit
+def get_first_low_motion_frame(keyframes, n=5, max_vel=14):
+    # hands haven't moved more than x apart from each other for N frames
+    # hands haven't moved more than y up and down for N frames
+    # velocity has stayed under z for N frames... for ALL keypoints.
+    for i in range(len(keyframes)):
+        vels = []
+        for j in range(n):
+            vels.append(_get_all_velocities_at_frame(keyframes, i+j))
+        vels = flatten(vels)
+        vals = [v for v in vels if v > max_vel]
+        if vals:
+            continue
+        return i
+    return None
+
+
 # get maximum "verticalness" aka minimum horizontalness of hands
 def _palm_vert(keyframes):
     return _palm_angle_axis(keyframes, 'x')
@@ -57,6 +74,15 @@ def _palm_vert(keyframes):
 # get maximum "horizontalness" aka minimum verticalness of hands
 def _palm_horiz(keyframes):
     return _palm_angle_axis(keyframes, 'y')
+
+
+def plot_vel_for_gest(keyframes):
+    xs = range(len(keyframes))
+    ys = []
+    for i in range(len(keyframes)):
+        ys.append(_get_all_velocities_at_frame(keyframes, i))
+    plt.plot(xs, ys)
+
 
 
 @timeit
@@ -167,10 +193,33 @@ def _max_wrist_velocity(keys):
     max_dist = 0
     for i in range(len(keys)-1):
         # wrist is 0th keypoint for each hand
-        (wx0, wy0) = (keys[i]['x'][0], keys[i]['y'][0])
-        (wx1, wy1) = (keys[i+1]['x'][0], keys[i+1]['y'][0])
-        max_dist = max(max_dist, _get_point_dist(wx0, wy0, wx1, wy1))
+        max_dist = max(max_dist, _get_velocity_at_frame(keys, i))
     return max_dist
+
+
+def _get_velocity_at_frame(keys, k):
+    (wx0, wy0) = (keys[k]['x'][0], keys[k]['y'][0])
+    (wx1, wy1) = (keys[k + 1]['x'][0], keys[k + 1]['y'][0])
+    return _get_point_dist(wx0, wy0, wx1, wy1)
+
+
+def _get_all_velocities_at_frame(keys, k):
+    if k >= len(keys)-1:
+        k = len(keys) - 2
+    vels = []
+
+    if not keys:
+        return []
+
+    try:
+        for i in range(len(keys[0]['y'])):
+            (wx0, wy0) = (keys[k]['x'][i], keys[k]['y'][i])
+            (wx1, wy1) = (keys[k + 1]['x'][i], keys[k + 1]['y'][i])
+            vels.append(_get_point_dist(wx0, wy0, wx1, wy1))
+        return vels
+
+    except:
+        return []
 
 
 # measures the number of times wrist changes direction as measured by the angle
