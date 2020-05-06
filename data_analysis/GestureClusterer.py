@@ -121,18 +121,18 @@ class GestureClusterer:
 
         gs = list(zip(df.id, df.motion_feature_vec))
 
-        for id, feature_vec in tqdm(gs):
+        for gesture_id, feature_vec in tqdm(gs):
             # if we've already seeded a cluster with this gesture, don't cluster it.
-            if id in seed_ids:
+            if gesture_id in seed_ids:
                 continue
             (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(feature_vec)
             if max_number_clusters and len(self.clusters) > max_number_clusters:
-                self._add_gesture_to_cluster(id, nearest_cluster_id)
+                self._add_gesture_to_cluster(gesture_id, nearest_cluster_id)
             # we're further away than we're allowed to be, OR this is the first cluster.
             elif (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
-                self._create_new_cluster(id, feature_vec)
+                self._create_new_cluster(gesture_id, feature_vec)
             else:
-                self._add_gesture_to_cluster(id, nearest_cluster_id)
+                self._add_gesture_to_cluster(gesture_id, nearest_cluster_id)
         # self._recluster_singletons()
 
         # now recluster based on where the new centroids are
@@ -150,12 +150,12 @@ class GestureClusterer:
                 del self.clusters[k]
 
     @timeit
-    def _add_gesture_to_cluster(self, id, cluster_id):
+    def _add_gesture_to_cluster(self, gesture_id, cluster_id):
         try:
-            self.clusters[cluster_id]['gesture_ids'].append(id)
+            self.clusters[cluster_id]['gesture_ids'].append(gesture_id)
             self._update_cluster_centroid(cluster_id)
         except RuntimeError as e:
-            print('could not add gesture %s to cluster %s' % (id, cluster_id))
+            print('could not add gesture %s to cluster %s' % (gesture_id, cluster_id))
             print('cluster keys:')
             print(e)
             print(self.clusters[cluster_id].keys())
@@ -192,7 +192,7 @@ class GestureClusterer:
             'cluster_id': new_cluster_id,
              'centroid': feature_vec,
              'seed_id': seed_gesture_id,
-             'gestures': [seed_gesture_id]
+             'gesture_ids': [seed_gesture_id]
         }
         self.clusters[new_cluster_id] = c
         self.total_clusters_created += 1
@@ -220,16 +220,13 @@ class GestureClusterer:
 
     def get_sentences_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
-        sentences = [g['phase']['transcript'] for g in c['gestures']]
-        return sentences
+        gestures_in_cluster = self.df.loc[self.df['id'].isin(c['gesture_ids'])]
+        transcripts = list(gestures_in_cluster['transcripts'])
+        return transcripts
 
     def get_gesture_ids_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
-        ids = [g['id'] for g in c['gestures']]
-        # ids = []
-        # for g in c['gestures']:
-        #     ids.append(g['id'])
-        return ids
+        return c['gesture_ids']
 
     def report_clusters(self):
         print(("Number of clusters: %s" % len(self.clusters)))
@@ -253,7 +250,9 @@ class GestureClusterer:
     def get_cluster_sparsity(self, cluster_id):
         c = self.clusters[cluster_id]
         cent = c['centroid']
-        dists = [self._calculate_distance_between_vectors(g['feature_vec'], cent) for g in c['gestures']]
+        gestures_in_cluster = self.df.loc[self.df['id'].isin(c['gesture_ids'])]
+        feat_vecs = list(gestures_in_cluster['motion_feature_vecs'])
+        dists = [self._calculate_distance_between_vectors(f, cent) for f in feat_vecs]
         return np.average(dists)
 
     # instead of this need to use centroid.
