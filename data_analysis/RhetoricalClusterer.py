@@ -72,14 +72,14 @@ def multi_index(li, val): return [i for i in range(len(li)) if li[i] == val]
 def multi_replace(text, replacement_dict=None):
     if replacement_dict is None:
         replacement_dict = PUNCTUATION_REPLACEMENTS
-        try:
-            regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
-            # For each match, look-up corresponding value in dictionary
-            return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
-        except:
-            print("could not multi replace text with dict")
-            print(text)
-            print(replacement_dict)
+    try:
+        regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
+        # For each match, look-up corresponding value in dictionary
+        return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
+    except:
+        print("could not multi replace text with dict")
+        print(text)
+        print(replacement_dict)
 
 
 def get_parse_data(fp):
@@ -182,20 +182,21 @@ def get_rhetorical_encoding_for_gesture(g):
 
 
 class RhetoricalClusterer:
-    def __init__(self, gestures):
+    def __init__(self, df):
         self.bucket = "parsed_transcript_bucket"
-        self.agd = {}
+        self.df = df
+        self.df['rhetorical_sequence'] = ''
         self.clusters = {}
         self.c_id = 0
         self.total_clusters_created = 0
-        files = list(set([g['phase']['video_fn'] for g in gestures]))
+        files = list(set(list(df['video_fn'])))
         for f in files:
-            self.get_all_encodings_for_video_fn(f, gestures)
-        print("got", len(self.agd), "out of ", len(gestures), "gestures")
+            gesture_indexes = self.df.index[self.df['video_fn'] == f].tolist()
+            self.get_all_encodings_for_video_fn(f, gesture_indexes)
+        print("got", len(self.df[self.df['rhetorical_sequence'] == '']), "out of ", len(self.df), "gestures")
         return
 
-    def get_all_encodings_for_video_fn(self, video_fn, gestures):
-        gs = [g for g in gestures if g['phase']['video_fn'] == video_fn]
+    def get_all_encodings_for_video_fn(self, video_fn, gesture_indexes):
         rhetorical_parse_file = multi_replace(video_fn, VID_EXTENSION_REPLACEMENTS)
         # download and delete?
         try:
@@ -205,44 +206,21 @@ class RhetoricalClusterer:
         content = get_parse_data("tmp.rhet")
         os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)
-        i = 0
-        for g in gs:
-            print(i, "/", len(gs), "\r", end="")
-            i += 1
-            transcript_to_match = g['phase']['transcript']
+
+        for g_i in tqdm(gesture_indexes):
+            transcript_to_match = self.df.iloc[g_i]['transcript']
             text_range = get_matching_words(transcript_to_match, texts)
             if text_range:
-                k = g['id']
-                transcript = g['phase']['transcript']
                 sequence = en[text_range[0]:text_range[-1]+1]
-                self.agd[k] = {
-                                'id': k,
-                                'transcript': transcript,
-                                'sequence': sequence
-                               }
-
-    def get_encoding_for_gesture(self, g):
-        transcript_to_match = g['phase']['transcript']
-        rhetorical_parse_file = multi_replace(g['phase']['video_fn'], VID_EXTENSION_REPLACEMENTS)
-        # download and delete?
-        try:
-            f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
-        except:
-            print("couldn't get rhetorical parse for ", rhetorical_parse_file)
-        content = get_parse_data("tmp.rhet")
-        os.remove("tmp.rhet")
-        en, texts = get_sequence_encoding(content=content)
-        text_range = get_matching_words(transcript_to_match, texts)
-        if not text_range:
-            print("No rhetorical encoding found for gesture ", g['id'])
-            return None
-        return en[text_range[0]:text_range[-1] + 1]
+                self.df.at[g_i, 'rhetorical_sequence'] = sequence
 
     def cluster_sequences(self):
         # https://gist.github.com/codehacken/8b9316e025beeabb082dda4d0654a6fa
         words = []
         # keep dict in order to sort and assign proper distances to it.
-        for k, v in sorted(self.agd.items(), key=lambda x: float(str(x[0]).replace("-", "."))):
+        order = list(zip(self.df.id, self.df.rhetorical_sequence))
+
+        for k, v in sorted(order):
             words.append(" ".join(v['sequence']))
 
         lev_similarity = []
@@ -258,12 +236,19 @@ class RhetoricalClusterer:
         agg = AgglomerativeClustering(n_clusters=100, affinity='precomputed', linkage='complete')
         u = agg.fit_predict(lev_similarity)
 
-        i = 0
-        for k, v in sorted(self.agd.items(), key=lambda x: float(str(x[0]).replace("-", "."))):
-            self.agd[k]['cluster_id'] = u[i]
-            i += 1
+        #self.make_clusters_from_labels(agg)
+
+        #i = 0
+        #for k, v in sorted(order):
+
+        #    self.agd[k]['cluster_id'] = u[i]
+        #    i += 1
 
         return(agg, u, lev_similarity)
+
+    #def make_clusters_from_labels(self, clustering):
+    #    for c in clustering.labels_:
+
 
     def get_sentences_for_cluster(self, cluster_id):
         transcripts = []

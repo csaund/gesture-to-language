@@ -77,8 +77,7 @@ class GestureSentenceManager():
         return new_agd_maybe
 
     def _initialize_rhetorical_clusterer(self):
-        gestures_with_transcripts = [self.get_gesture_transcript_by_id(g['id']) for g in self.agd]
-        return RhetoricalClusterer(gestures_with_transcripts)
+        return RhetoricalClusterer(self.df)
 
     def load_gestures(self):
         ## for testing, so it doesn't take so long to get the file.
@@ -153,13 +152,13 @@ class GestureSentenceManager():
 
         return pd.DataFrame.from_dict(data).T.reset_index()
 
-    def add_feature_motion_features(self):
-        self.df['motion_feature_vec'] = get_motion_features()
-
     def get_motion_features(self):
         print("adding motion feature vector to gestures")
-        feats = self.df.apply(self.GestureClusterer._get_gesture_features, axis=1)
-        return feats
+        try:
+            motion_feature_vecs = self.GestureClusterer.df['motion_feature_vec']
+            return motion_feature_vecs
+        except KeyError:
+            print("No motion feature vectors found. Try running GestureClusterer._assign_feature_vectors()")
 
     def get_index_by_gesture_id(self, gid):
         l = self.df.index[self.df['id'] == gid].tolist()
