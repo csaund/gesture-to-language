@@ -63,7 +63,6 @@ def _get_rl_hand_keypoints(gesture, hand):
     for t in gesture['keyframes']:
         if not isinstance(t, dict):
             print("found empty keyframes for gesture %s" % gesture['id'])
-            print(gesture)
             # TODO fix this, known temporary fix
             return [{'y': [0], 'x': [0]}]
         y = [t['y'][i] for i in keypoint_range]
@@ -82,10 +81,8 @@ class GestureClusterer:
         self.df = gesture_df
         self.clusters = {}
         self.clf = NearestCentroid()
-        self.logs = []
         # todo make this variable
         homePath = os.getenv("HOME")
-        self.logfile = os.path.join(homePath, "GestureData", "cluster_logs.txt")
         self.cluster_file = os.path.join(homePath, "GestureData", "cluster_tmp.json")
         self.has_assigned_feature_vecs = False
         self.total_clusters_created = 0
@@ -96,20 +93,25 @@ class GestureClusterer:
         self.c_id = 0
 
     @timeit
-    def cluster_gestures(self, df=None, gesture_features=GESTURE_FEATURES, max_cluster_distance=0.10,
+    def cluster_gestures(self, gesture_features=GESTURE_FEATURES, max_cluster_distance=0.10,
                          max_number_clusters=0, seed_ids=None):
         if seed_ids is None:
             seed_ids = []
-        df = df if df else self.df
-        if 'feature_vec' in list(df):
+
+        if 'feature_vec' in list(self.df):
             print("already have feature vectors in our gesture data")
-        if not self.has_assigned_feature_vecs and 'feature_vec' not in list(gd[0].keys()):
-            self._assign_feature_vectors(gesture_features=gesture_features)
+        else:
+            print("trying to assign feature vectors")
+            self.df = self._assign_feature_vectors(gesture_features)
+
         # if we're seeding our clusters with specific gestures
         if len(seed_ids):
-            gs = [gesture for gesture in gd if gesture['id'] in seed_ids]
-            for g in gs:
-                self._create_new_cluster(g)
+            for s_id in seed_ids:
+                row_id = self.df.index[self.df['id'] == s_id].tolist()
+                if not row_id:
+                    print("could not locate gesture ", s_id)
+                fv = self.df.iloc[row_id]['motion_feature_vec']
+                self._create_new_cluster(s_id, fv)
 
         self._cluster_gestures(gd, max_cluster_distance, max_number_clusters, seed_ids)
 
@@ -133,21 +135,11 @@ class GestureClusterer:
                 self._create_new_cluster(gesture_id, feature_vec)
             else:
                 self._add_gesture_to_cluster(gesture_id, nearest_cluster_id)
-        # self._recluster_singletons()
 
         # now recluster based on where the new centroids are
         self._recluster_by_centroids()
         print("created %s clusters" % self.total_clusters_created)
         return
-
-    def _recluster_singletons(self):
-        print("reclustering singletons")
-        for k in list(self.clusters.keys()):
-            if len(self.clusters[k]['gestures']) == 1:
-                g = self.clusters[k]['gestures'][0]
-                (new_k, dist) = self._get_shortest_cluster_dist(g)
-                self._add_gesture_to_cluster(g, new_k)
-                del self.clusters[k]
 
     @timeit
     def _add_gesture_to_cluster(self, gesture_id, cluster_id):
@@ -161,12 +153,12 @@ class GestureClusterer:
             print(self.clusters[cluster_id].keys())
 
     @timeit
-    def _assign_feature_vectors(self, df=None, gesture_features=GESTURE_FEATURES):
-        df = df if df else self.df
+    def _assign_feature_vectors(self, gesture_features=GESTURE_FEATURES):
+        df = self.df
         print("Getting initial feature vectors.")
         # TODO track this through and make sure it's assigning the right thing to the right thing
-        feats = df.apply(lambda row: self._get_gesture_features(row, gesture_features=gesture_features), axis=1)
-        normalized_feats = self._normalize_feature_values(feats)
+        feats = list(df.apply(lambda row: self._get_gesture_features(row, gesture_features=gesture_features), axis=1))
+        normalized_feats = list(self._normalize_feature_values(feats))
         df['motion_feature_vec'] = normalized_feats
         return df
 
@@ -185,7 +177,6 @@ class GestureClusterer:
 
     @timeit
     def _create_new_cluster(self, seed_gesture_id, feature_vec):
-        self._log("creating new cluster for gesture %s" % seed_gesture_id)
         new_cluster_id = self.c_id
         self.c_id = self.c_id + 1
         c = {
@@ -199,23 +190,16 @@ class GestureClusterer:
 
     # now that we've done the clustering, recluster and only allow clusters to form around current centroids.
     def _recluster_by_centroids(self):
-        gd = self.agd
         print("Reclustering by centroid")
         # clear old gestures
-        rand_c = 0
         for c in self.clusters:
-            self.clusters[c]['gestures'] = []
-            rand_c = c
+            self.clusters[c]['gesture_ids'] = []
 
-        for g in tqdm(gd):
-            min_dist = 1000
-            min_cluster = self.clusters[rand_c]
-            for c in self.clusters:
-                d = self._calculate_distance_between_vectors(g['feature_vec'], self.clusters[c]['centroid'])
-                if d < min_dist:
-                    min_dist = d
-                    min_cluster = self.clusters[c]
-            min_cluster['gestures'].append(g)
+        gs = list(zip(df.id, df.motion_feature_vec))
+        for gesture_id, feature_vec in tqdm(gs):
+            min_c = self._get_shortest_cluster_dist(feature_vec)
+            # TODO check that this actually changes the data we want to change.
+            self.clusters[min_c]['gesture_ids'].append(gesture_id)
         return
 
     def get_sentences_by_cluster(self, cluster_id):
@@ -332,15 +316,6 @@ class GestureClusterer:
     def _calculate_distance_between_vectors(self, v1, v2):
         return np.linalg.norm(np.array(v1) - np.array(v2))
 
-    def _log(self, s):
-        self.logs.append(s)
-
-    def _write_logs(self):
-        with open(self.logfile, 'w') as f:
-            for log in self.logs:
-                f.write("%s\n" % log)
-        f.close()
-
     def get_closest_gesture_to_centroid(self, cluster_id):
         c = self.clusters[cluster_id]
         cent = c['centroid']
@@ -357,17 +332,6 @@ class GestureClusterer:
         c = self.clusters[cluster_id]
         i = random.randrange(0, len(c['gestures']))
         return c['gestures'][i]['id']
-
-    def write_clusters(self):
-        with open(self.cluster_file, 'w') as f:
-            json.dump(self.clusters, f, indent=4)
-        f.close()
-
-    def delete_cluster_file(self):
-        os.remove(self.cluster_file)
-
-    def delete_log_file(self):
-        os.remove(self.logfile)
 
     # a random helper for me to find centroids
     # and peep average distances
