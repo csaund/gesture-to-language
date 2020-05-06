@@ -3,7 +3,7 @@ import json
 import os
 import numpy as np
 import random
-import time
+import pandas as pd
 from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 from GestureMovementHelpers import *
@@ -93,12 +93,12 @@ class GestureClusterer:
         self.c_id = 0
 
     @timeit
-    def cluster_gestures(self, gesture_features=GESTURE_FEATURES, max_cluster_distance=0.10,
+    def cluster_gestures(self, gesture_features=GESTURE_FEATURES, max_cluster_distance=0.03,
                          max_number_clusters=0, seed_ids=None):
         if seed_ids is None:
             seed_ids = []
 
-        if 'feature_vec' in list(self.df):
+        if 'motion_feature_vec' in list(self.df):
             print("already have feature vectors in our gesture data")
         else:
             print("trying to assign feature vectors")
@@ -113,15 +113,15 @@ class GestureClusterer:
                 fv = self.df.iloc[row_id]['motion_feature_vec']
                 self._create_new_cluster(s_id, fv)
 
-        self._cluster_gestures(gd, max_cluster_distance, max_number_clusters, seed_ids)
+        self._cluster_gestures(max_cluster_distance, max_number_clusters, seed_ids)
 
     @timeit
-    def _cluster_gestures(self, df, max_cluster_distance=0.03, max_number_clusters=0, seed_ids=None):
+    def _cluster_gestures(self, max_cluster_distance=0.03, max_number_clusters=0, seed_ids=None):
         if seed_ids is None:
             seed_ids = []
         print("Clustering gestures")
 
-        gs = list(zip(df.id, df.motion_feature_vec))
+        gs = list(zip(self.df.id, self.df.motion_feature_vec))
 
         for gesture_id, feature_vec in tqdm(gs):
             # if we've already seeded a cluster with this gesture, don't cluster it.
@@ -154,10 +154,11 @@ class GestureClusterer:
 
     @timeit
     def _assign_feature_vectors(self, gesture_features=GESTURE_FEATURES):
+        tqdm.pandas()
         df = self.df
         print("Getting initial feature vectors.")
         # TODO track this through and make sure it's assigning the right thing to the right thing
-        feats = list(df.apply(lambda row: self._get_gesture_features(row, gesture_features=gesture_features), axis=1))
+        feats = list(df.progress_apply(lambda row: self._get_gesture_features(row, gesture_features=gesture_features), axis=1))
         normalized_feats = list(self._normalize_feature_values(feats))
         df['motion_feature_vec'] = normalized_feats
         return df
@@ -189,16 +190,16 @@ class GestureClusterer:
         self.total_clusters_created += 1
 
     # now that we've done the clustering, recluster and only allow clusters to form around current centroids.
+    # TODO go through and recluster any clusters whose silhouette scores are negative?
     def _recluster_by_centroids(self):
         print("Reclustering by centroid")
         # clear old gestures
         for c in self.clusters:
             self.clusters[c]['gesture_ids'] = []
 
-        gs = list(zip(df.id, df.motion_feature_vec))
+        gs = list(zip(self.df.id, self.df.motion_feature_vec))
         for gesture_id, feature_vec in tqdm(gs):
-            min_c = self._get_shortest_cluster_dist(feature_vec)
-            # TODO check that this actually changes the data we want to change.
+            min_c, dist = self._get_shortest_cluster_dist(feature_vec)
             self.clusters[min_c]['gesture_ids'].append(gesture_id)
         return
 
@@ -214,8 +215,8 @@ class GestureClusterer:
 
     def report_clusters(self):
         print(("Number of clusters: %s" % len(self.clusters)))
-        cluster_rep = [(c, len(self.clusters[c]['gestures'])) for c in list(self.clusters.keys())]
-        cluster_lengths = [len(self.clusters[c]['gestures']) for c in list(self.clusters.keys())]
+        cluster_rep = [(c, len(self.clusters[c]['gesture_ids'])) for c in list(self.clusters.keys())]
+        cluster_lengths = [len(self.clusters[c]['gesture_ids']) for c in list(self.clusters.keys())]
         print(("Cluster lengths: %s" % cluster_rep))
         print(("Avg cluster size: %s" % np.average(cluster_lengths)))
         print(("Median cluster size: %s" % np.median(cluster_lengths)))
@@ -235,7 +236,7 @@ class GestureClusterer:
         c = self.clusters[cluster_id]
         cent = c['centroid']
         gestures_in_cluster = self.df.loc[self.df['id'].isin(c['gesture_ids'])]
-        feat_vecs = list(gestures_in_cluster['motion_feature_vecs'])
+        feat_vecs = list(gestures_in_cluster['motion_feature_vec'])
         dists = [self._calculate_distance_between_vectors(f, cent) for f in feat_vecs]
         return np.average(dists)
 
@@ -256,7 +257,7 @@ class GestureClusterer:
     def _update_cluster_centroid(self, cluster_id):
         c = self.clusters[cluster_id]
         gestures_in_cluster = self.df.loc[self.df['id'].isin(c['gesture_ids'])]
-        feat_vecs = list(gestures_in_cluster['motion_feature_vecs'])
+        feat_vecs = list(gestures_in_cluster['motion_feature_vec'])
         feat_vecs = np.array(feat_vecs)
         c['centroid'] = [np.average(x) for x in feat_vecs.T]
         self.clusters[cluster_id] = c
@@ -357,7 +358,7 @@ class GestureClusterer:
         return dists
 
     # takes a cluster ID, returns nearest neighbor cluster ID
-    def get_nearest_cluster_id(self, cluster_id):
+    def get_nearest_cluster_from_cluster_id(self, cluster_id):
         dist = 1000
         min_c = 0
         for c in self.clusters:
@@ -372,22 +373,29 @@ class GestureClusterer:
 
     # given a point and cluster id, returns avg distance between the point and
     # all points in the cluster.
-    def get_avg_dist_between_point_and_cluster(self, vec, cluster_id):
+    def get_dists_between_point_and_cluster(self, vec, cluster_id):
         dists = []
         c = self.clusters[cluster_id]
-        if len(c['gestures']) == 0:
+        if len(c['gesture_ids']) == 0:
             print("WARNING: NO GESTURES FOUND IN CLUSTER ID %s" % cluster_id)
             print("num clusters: %s" % len(self.clusters))
             return 0
-        for g in c['gestures']:
-            dists.append(self._calculate_distance_between_vectors(vec, g['feature_vec']))
-        return _avg(dists)
+        for g_id in c['gesture_ids']:
+            f = self.get_feature_vector_by_gesture_id(g_id)
+            dists.append(self._calculate_distance_between_vectors(vec, f))
+        return np.array(dists)
 
     # gets silhouette score for cluster using centroid
     def get_silhouette_score(self, cluster_id):
-        p = self.clusters[cluster_id]['centroid']
-        a = self.get_avg_dist_between_point_and_cluster(p, cluster_id)
-        b = self.get_avg_dist_between_point_and_cluster(p, self.get_nearest_cluster_id(cluster_id))
+        c = self.clusters[cluster_id]
+        cluster_magnitude = len(c['gesture_ids'])
+        if len(c['gesture_ids']) <= 1:
+            return 0
+        p = c['centroid']
+        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id)) / (cluster_magnitude-1)
+        b = sum(self.get_dists_between_point_and_cluster(p,
+                                                         self.get_nearest_cluster_from_cluster_id(cluster_id)) /
+                                                         cluster_magnitude)
         score = (b - a) / max(b, a)
         return score
 
