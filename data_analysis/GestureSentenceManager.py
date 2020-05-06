@@ -66,11 +66,18 @@ class GestureSentenceManager():
         self.VideoManager = VideoManager()
         print("loading gestures")
         self.load_gestures()
+        self.df = self.get_df()
         self.GestureClusterer = GestureClusterer(self.agd)
 
     ################################################
     ##################### SETUP ####################
     ################################################
+    def get_index_by_gesture_id(self, gid):
+        l = self.df.index[self.df['id'] == gid].tolist()
+        if l:
+            return l[0]
+        return None
+
     # splice gestures when there seems to be no movement or speaking
     def _splice_gestures(self):
         dats = [self.get_gesture_by_id(el['id']) for el in self.agd]
@@ -105,6 +112,23 @@ class GestureSentenceManager():
         except:
             print("No speaker gesture data found in %s for speaker %s" % (agd_bucket, self.speaker))
             print("Try running data_management_scripts/get_keyframes_for_gestures")
+
+    def get_df(self):
+        prelim_data = [self.get_gesture_by_id(el['id']) for el in self.agd]
+        data = {}
+        for el in prelim_data:
+            data[el['id']] = {
+                'id': el['id'],
+                'speaker': el['speaker'],
+                'video_fn': el['phase']['video_fn'],
+                'transcript':  el['phase']['transcript'],
+                'start_seconds':  el['phase']['start_seconds'],
+                'end_seconds': el['phase']['end_seconds'],
+                'words': el['words'],
+                'keyframes': el['keyframes']
+            }
+
+        return pd.DataFrame.from_dict(data).T.reset_index()
 
     def downsample_speaker(self, speaker="angelica", n=1000):
         print("sampling out angelica speakers")
