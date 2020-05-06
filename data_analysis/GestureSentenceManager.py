@@ -71,9 +71,7 @@ class GestureSentenceManager():
     ################################################
     # splice gestures when there seems to be no movement or speaking
     def _splice_gestures(self):
-        dats = [self.get_gesture_by_id(el['id']) for el in self.agd]
-        self.GestureSplicer = GestureSplicer(dats)
-        new_agd_maybe = self.GestureSplicer.splice_gestures()
+        new_agd_maybe = self.GestureSplicer.splice_gestures(self.df)
         return new_agd_maybe
 
     def _initialize_rhetorical_clusterer(self):
