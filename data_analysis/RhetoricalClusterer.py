@@ -193,7 +193,7 @@ class RhetoricalClusterer:
         for f in files:
             gesture_indexes = self.df.index[self.df['video_fn'] == f].tolist()
             self.get_all_encodings_for_video_fn(f, gesture_indexes)
-        print("got", len(self.df[self.df['rhetorical_sequence'] == '']), "out of ", len(self.df), "gestures")
+        print("could not get", len(self.df[self.df['rhetorical_sequence'] == '']), "out of ", len(self.df), "gestures")
         return
 
     def get_all_encodings_for_video_fn(self, video_fn, gesture_indexes):
@@ -221,7 +221,7 @@ class RhetoricalClusterer:
         order = list(zip(self.df.id, self.df.rhetorical_sequence))
 
         for k, v in sorted(order):
-            words.append(" ".join(v['sequence']))
+            words.append(" ".join(v))
 
         lev_similarity = []
         print("getting edit distances")
@@ -236,65 +236,43 @@ class RhetoricalClusterer:
         agg = AgglomerativeClustering(n_clusters=100, affinity='precomputed', linkage='complete')
         u = agg.fit_predict(lev_similarity)
 
-        #self.make_clusters_from_labels(agg)
+        labs = agg.labels_
+        i = 0
+        for k, v in sorted(order):
+            if labs[i] not in self.clusters.keys():
+                self.make_new_cluster(labs[i])
+            ind = self.df.index[self.df['id'] == k].tolist()
+            if not ind:
+                print("could not find index for gesture ", k)
+            self.clusters[labs[i]]['gesture_ids'].append(k)
 
-        #i = 0
-        #for k, v in sorted(order):
-
-        #    self.agd[k]['cluster_id'] = u[i]
-        #    i += 1
-
+        # TODO set these somewhere in here.
         return(agg, u, lev_similarity)
 
-    #def make_clusters_from_labels(self, clustering):
-    #    for c in clustering.labels_:
-
+    def make_new_cluster(self, lab):
+        self.clusters[lab] = {
+            'cluster_id': lab,
+            'gesture_ids': []
+        }
 
     def get_sentences_for_cluster(self, cluster_id):
-        transcripts = []
-        for k in self.agd:
-            v = self.agd[k]
-            if v['cluster_id'] == cluster_id:
-                transcripts.append(v['transcript'])
-        return transcripts
-
-    def get_ids_for_cluster(self, cluster_id):
-        ids = []
-        for k in self.agd:
-            v = self.agd[k]
-            if v['cluster_id'] == cluster_id:
-                ids.append(v['id'])
-        return ids
+        c = self.clusters[cluster_id]
+        rows = self.df[self.df['id'].isin(c['gesture_ids'])]
+        return list(rows['transcript'])
 
     def get_clusters_with_sizes(self):
-        ret = {}
-        for k in self.agd:
-            v = self.agd[k]
-            if v['cluster_id'] not in ret.keys():
-                ret[v['cluster_id']] = 1
-            else:
-                ret[v['cluster_id']] = ret[v['cluster_id']] + 1
-        return ret
+        return [{c: len(self.clusters[c]['gesture_ids'])} for c in self.clusters.keys()]
 
-
-def get_sentences_for_rhetorical_cluster(GSM, c_id):
-    Rh = GSM.RhetoricalClusterer
-    t_ids = [Rh.agd[k]['id'] for k in Rh.agd.keys() if Rh.agd[k]['cluster_id'] == c_id]
-    transcripts = [GSM.get_gesture_transcript_by_id(i) for i in t_ids]
-    for t in transcripts:
-        print(t['phase']['transcript'])
-
-
-def try_silhouette_scores(similarities, n_clusters=[15, 40, 60, 80, 100, 150, 200]):
-    for n in n_clusters:
-        print("trying ", n)
-        clusters = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
-        # similarities is nxn matrix (lev_sim)
-        u_short = clusters.fit_predict(similarities)
-        print(sklearn.metrics.silhouette_score(similarities, clusters.labels_))
-        singletons = []
-        for lab in list(set(clusters.labels_)):
-            l = len([i for i in clusters.labels_ if i == lab])
-            if l <= 1:
-                singletons.append(lab)
-        print("singletons: ", len(singletons))
+    def try_silhouette_scores(self, similarities, n_clusters=[15, 40, 60, 80, 100, 150, 200]):
+        for n in n_clusters:
+            print("trying ", n)
+            clustering = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
+            # similarities is nxn matrix (lev_sim)
+            u = clustering.fit_predict(similarities)
+            print(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
+            singletons = []
+            for lab in list(set(clustering.labels_)):
+                l = len([i for i in clustering.labels_ if i == lab])
+                if l <= 1:
+                    singletons.append(lab)
+            print("singletons: ", len(singletons))
