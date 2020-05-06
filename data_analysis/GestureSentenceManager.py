@@ -60,24 +60,15 @@ class GestureSentenceManager():
         self.full_transcript_bucket = "full_timings_with_transcript_bucket"
         self.gesture_transcript = None
         self.gesture_sentence_clusters = {}
-        self.get_transcript()
-        self.agd = None
+        self.transcript = self.get_transcript()
         # self._initialize_sentence_clusterer()
         self.VideoManager = VideoManager()
-        print("loading gestures")
-        self.load_gestures()
         self.df = self.get_df()
-        self.GestureClusterer = GestureClusterer(self.agd)
+        self.GestureClusterer = GestureClusterer(self.df)
 
     ################################################
     ##################### SETUP ####################
     ################################################
-    def get_index_by_gesture_id(self, gid):
-        l = self.df.index[self.df['id'] == gid].tolist()
-        if l:
-            return l[0]
-        return None
-
     # splice gestures when there seems to be no movement or speaking
     def _splice_gestures(self):
         dats = [self.get_gesture_by_id(el['id']) for el in self.agd]
@@ -85,50 +76,96 @@ class GestureSentenceManager():
         new_agd_maybe = self.GestureSplicer.splice_gestures()
         return new_agd_maybe
 
-    # TODO make this not set self var bt instead return the right thing.
     def _initialize_rhetorical_clusterer(self):
         gestures_with_transcripts = [self.get_gesture_transcript_by_id(g['id']) for g in self.agd]
-        self.RhetoricalClusterer = RhetoricalClusterer(gestures_with_transcripts)
-
-    def _initialize_sentence_clusterer(self):
-        self.SentenceClusterer = SentenceClusterer(self.speaker)
-        # now we have clusters, now need to get the corresponding sentences for those clusters.
+        return RhetoricalClusterer(gestures_with_transcripts)
 
     def load_gestures(self):
-        self.agd = []
         ## for testing, so it doesn't take so long to get the file.
         if self.speaker == "test":
             fp = os.path.join(os.getcwd(), "test_agd.json")    # hacky
             if not os.path.exists(fp):
                 fp = os.path.join(os.getcwd(), "data_analysis", "test_agd.json")  # ha
-            self.agd = get_data_from_path(fp)
-            return
+            d = get_data_from_path(fp)
+            return d
+        else:
+            agd_bucket = "all_gesture_data"
+            try:
+                print("trying to get data from cloud from %s, %s" % (agd_bucket, "%s_agd.json" % self.speaker))
+                d = get_data_from_blob(agd_bucket, "%s_agd.json" % self.speaker)
+                return d
+            except:
+                print("No speaker gesture data found in %s for speaker %s" % (agd_bucket, self.speaker))
+                print("Try running data_management_scripts/get_keyframes_for_gestures")
 
-        agd_bucket = "all_gesture_data"
-        try:
-            print("trying to get data from cloud from %s, %s" % (agd_bucket, "%s_agd.json" % self.speaker))
-            d = get_data_from_blob(agd_bucket, "%s_agd.json" % self.speaker)
-            self.agd = d
-        except:
-            print("No speaker gesture data found in %s for speaker %s" % (agd_bucket, self.speaker))
-            print("Try running data_management_scripts/get_keyframes_for_gestures")
+    def get_transcript(self):
+        fp = "temp.json"
+        if self.gesture_transcript:
+            return
+        elif self.speaker == "test":
+            fp = os.path.join(os.getcwd(), "test_timings_with_transcript.json")    # hacky
+            if not os.path.exists(fp):
+                fp = os.path.join(os.getcwd(), "data_analysis", "test_timings_with_transcript.json")  # hacky
+        else:       # TODO make this smarter so if it's already downloaded it won't download again
+            download_blob(self.full_transcript_bucket,
+                          "%s_timings_with_transcript.json" % self.speaker,
+                          fp)
+
+        gesture_transcript = read_data(fp)
+        return gesture_transcript
 
     def get_df(self):
-        prelim_data = [self.get_gesture_by_id(el['id']) for el in self.agd]
+        print("loading gestures")
+        motion_data = self.load_gestures()
+
+        print("getting transcript")
+        transcripts = self.get_transcript()['phrases']
+
+        if not motion_data or not transcripts:
+            print("could not get motion or transcript for ", self.speaker)
+
+        ids = [g['id'] for g in motion_data]
+
+        print("converting data")
         data = {}
-        for el in prelim_data:
-            data[el['id']] = {
-                'id': el['id'],
-                'speaker': el['speaker'],
-                'video_fn': el['phase']['video_fn'],
-                'transcript':  el['phase']['transcript'],
-                'start_seconds':  el['phase']['start_seconds'],
-                'end_seconds': el['phase']['end_seconds'],
-                'words': el['words'],
-                'keyframes': el['keyframes']
+        for i in ids:
+            motion = [el['keyframes'] for el in motion_data if el['id'] == i]
+            text = [el for el in transcripts if el['id'] == i]
+            if not motion:
+                print("no motion data found for gesture ", i)
+            if not text:
+                print("no text data found for gesture ", i)
+            if not motion or not text:
+                continue
+            text = text[0]
+            motion = motion[0]
+
+            data[i] = {
+                'id': text['id'],
+                'speaker': text['speaker'],
+                'video_fn': text['phase']['video_fn'],
+                'transcript':  text['phase']['transcript'],
+                'start_seconds':  text['phase']['start_seconds'],
+                'end_seconds': text['phase']['end_seconds'],
+                'words': text['words'],
+                'keyframes': motion
             }
 
         return pd.DataFrame.from_dict(data).T.reset_index()
+
+    def add_feature_motion_features(self):
+        self.df['motion_feature_vec'] = get_motion_features()
+
+    def get_motion_features(self):
+        print("adding motion feature vector to gestures")
+        feats = self.df.apply(self.GestureClusterer._get_gesture_features, axis=1)
+        return feats
+
+    def get_index_by_gesture_id(self, gid):
+        l = self.df.index[self.df['id'] == gid].tolist()
+        if l:
+            return l[0]
+        return None
 
     def downsample_speaker(self, speaker="angelica", n=1000):
         print("sampling out angelica speakers")
@@ -173,20 +210,6 @@ class GestureSentenceManager():
                                                max_cluster_distance=mcd,
                                                gesture_features=gesture_features)
 
-    def get_transcript(self):
-        fp = "temp.json"
-        if self.gesture_transcript:
-            return
-        elif self.speaker == "test":
-            fp = os.path.join(os.getcwd(), "test_timings_with_transcript.json")    # hacky
-            if not os.path.exists(fp):
-                fp = os.path.join(os.getcwd(), "data_analysis", "test_timings_with_transcript.json")  # hacky
-        else:       # TODO make this smarter so if it's already downloaded it won't download again
-            download_blob(self.full_transcript_bucket,
-                          "%s_timings_with_transcript.json" % self.speaker,
-                          fp)
-        self.gesture_transcript = read_data(fp)
-
     def assign_gesture_cluster_ids_for_sentence_clusters(self):
         for k in self.SentenceClusterer.clusters:
             g_cluster_ids = self.get_gesture_clusters_for_sentence_cluster(k)
@@ -195,21 +218,6 @@ class GestureSentenceManager():
     def get_gesture_ids_fewer_than_n_words(self, n):
         ids = [g['id'] for g in self.gesture_transcript['phrases'] if len(g['phase']['transcript'].split(' ')) < n and len(g['phase']['transcript'].split(' ')) > 1]
         return ids
-
-    def combine_all_gesture_data(self):
-        self.complete_gesture_data = {}
-        for d in tqdm(self.agd):
-            gid = d['id']
-            gesture = self.get_gesture_by_id(gid)
-            m_g = [g for g in self.GestureClusterer.agd if g['id'] == gid][0]
-            s_g = [p for p in self.SentenceClusterer.agd['phrases'] if p['id'] == gid][0]
-            gest_movement_keys = [k for k in list(m_g.keys()) if k not in list(gesture.keys())]
-            for nk in gest_movement_keys:
-                gesture[nk] = m_g[nk]
-            sentence_keys = [k for k in list(s_g.keys()) if k not in list(gesture.keys())]
-            for nk in sentence_keys:
-                gesture[nk] = s_g[nk]
-            self.complete_gesture_data[gid] = gesture
 
     # can be used to replace GSM.agd
     def get_gestures_motion_under_time(self, time):
@@ -374,8 +382,9 @@ class GestureSentenceManager():
         return g_trans
 
     def get_gesture_motion_by_id(self, g_id):
-        dat = [d for d in self.agd if d['id'] == g_id]
-        return dat[0]
+        i = self.get_index_by_gesture_id(g_id)
+        dat = self.df.iloc[i]['keyframes']
+        return dat
 
     def get_gesture_transcript_by_id(self, g_id):
         self.get_transcript()
@@ -394,12 +403,6 @@ class GestureSentenceManager():
     ##############################################
     ################ VIDEO THINGS ################
     ##############################################
-    def get_gesture_vid_time_by_id(self, g_id):
-        g = self.get_gesture_by_id(g_id)
-        vid = g['phase']['video_fn']
-        start = g['phase']['start_seconds']
-        end = g['phase']['end_seconds']
-
     def get_gesture_video_clip_by_gesture_id(self, g_id, folder=""):
         g = self.get_gesture_by_id(g_id)
         p = g['phase']
@@ -754,6 +757,7 @@ class GestureSentenceManager():
     ############################################################
     ##################### Data Set Stuff #######################
     ############################################################
+    # TODO un self.agd this
     def show_pie_of_speakers(self):
         speakers = {}
         for g in tqdm(self.agd):
