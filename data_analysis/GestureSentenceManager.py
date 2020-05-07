@@ -59,19 +59,25 @@ class GestureSentenceManager:
         self.transcript = self.get_transcript()
         self.VideoManager = VideoManager()
         self.df = self.get_df()
-        self.GestureClusterer = GestureClusterer(self.df)
         self.GestureSplicer = GestureSplicer()
+        # TODO will need to re-initialize these if we use gesture splicing!!
+        self.GestureClusterer = GestureClusterer(self.df)
+        self.RhetoricalClusterer = RhetoricalClusterer(self.df)
 
     ################################################
     ##################### SETUP ####################
     ################################################
     # splice gestures when there seems to be no movement or speaking
     def splice_gestures(self):
-        new_agd_maybe = self.GestureSplicer.splice_gestures(self.df)
-        return new_agd_maybe
+        new_df_maybe = self.GestureSplicer.splice_gestures(self.df)
+        return new_df_maybe
 
-    def _initialize_rhetorical_clusterer(self):
-        return RhetoricalClusterer(self.df)
+    def initialize_rhetorical_clusterer(self):
+        self.RhetoricalClusterer.initialize_clusterer(self.df)
+
+    def cluster_rhetorical(self):
+        rhetorical_clusters = self.RhetoricalClusterer.cluster_sequences()
+        return rhetorical_clusters
 
     def load_gestures(self):
         ## for testing, so it doesn't take so long to get the file.
@@ -375,3 +381,7 @@ class GestureSentenceManager:
         print("max silhouette: %s" % np.max(s))
         print("sd: %s" % np.std(s))
         return s
+
+    def get_silhouette_rhetorical_vs_gesture(self):
+        # get rhetorical clusters
+        rhetoric_clusters = self.RhetoricalClusterer.cluster_sequences()
