@@ -184,6 +184,10 @@ def get_rhetorical_encoding_for_gesture(g):
     return en[text_range[0]:text_range[-1]+1]
 
 
+def sort_indexes(el):
+    return float(str(el[0]).replace("-", "."))
+
+
 class RhetoricalClusterer:
     def __init__(self, df):
         self.bucket = "parsed_transcript_bucket"
@@ -199,7 +203,7 @@ class RhetoricalClusterer:
     def initialize_clusterer(self, df=None):
         self.df = df if df else self.df
         files = list(set(list(self.df['video_fn'])))
-        for f in files:
+        for f in tqdm(files):
             gesture_indexes = self.df.index[self.df['video_fn'] == f].tolist()
             self.get_all_encodings_for_video_fn(f, gesture_indexes)
         print("could not get", len(self.df[self.df['rhetorical_sequence'] == '']), "out of ", len(self.df), "gestures")
@@ -216,12 +220,16 @@ class RhetoricalClusterer:
         os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)
 
-        for g_i in tqdm(gesture_indexes):
+        for g_i in gesture_indexes:
             transcript_to_match = self.df.iloc[g_i]['transcript']
             text_range = get_matching_words(transcript_to_match, texts)
             if text_range:
                 sequence = en[text_range[0]:text_range[-1]+1]
-                self.df.at[g_i, 'rhetorical_sequence'] = sequence
+                try:
+                    self.df.at[g_i, 'rhetorical_sequence'] = sequence
+                except ValueError:
+                    print("MORE THAN ONE GESTURE FOUND FOR INDEX: ", g_i)
+                    print("giving sequence", sequence)
 
     def cluster_sequences(self):
         if self.clusters:
@@ -232,19 +240,18 @@ class RhetoricalClusterer:
             print("getting initial sequences")
             self.initialize_clusterer()
 
-        words = []
-        order = list(zip(self.df.id, self.df.rhetorical_sequence))  # keep dict in order to sort and
-        for k, v in sorted(order):                                  # assign proper distances to it.
-            words.append(" ".join(v))
-
-        lev_similarity = []
-        print("getting edit distances")
-        for i in range(len(words)):
-            print('\r', i, end='                 ')
-            w = words[i]
-            lev_similarity.append([edlib.align(w, w2)['editDistance'] for w2 in words])
-
-        self.similarities = np.array(lev_similarity)
+        if not self.similarities:
+            print("getting edit distances")
+            words = []
+            order = list(zip(self.df.id, self.df.rhetorical_sequence))  # keep dict in order to sort and
+            for k, v in sorted(order, key=sort_indexes):                                  # assign proper distances to it.
+                words.append(" ".join(v))
+            lev_similarity = []
+            for i in range(len(words)):
+                print('\r', i, end='                 ')
+                w = words[i]
+                lev_similarity.append([edlib.align(w, w2)['editDistance'] for w2 in words])
+            self.similarities = np.array(lev_similarity)
 
         print("getting clustering")
         self.clustering = AgglomerativeClustering(n_clusters=100, affinity='precomputed', linkage='complete')
@@ -252,14 +259,17 @@ class RhetoricalClusterer:
 
         labs = self.clustering.labels_
         i = 0
-        for k, v in sorted(order):
+        for k, v in sorted(order, key=sort_indexes):
             if labs[i] not in self.clusters.keys():
                 self.make_new_cluster(labs[i])
+                continue
             ind = self.df.index[self.df['id'] == k].tolist()
             if not ind:
                 print("could not find index for gesture ", k)
+            #print("adding to cluster", labs[i])
             self.clusters[labs[i]]['gesture_ids'].append(k)                         # keep all the similarities here to
             self.clusters[labs[i]]['similarities'].append(self.similarities[i])     # calculate centroid of cluster.
+            i += 1
 
         for c in self.clusters.keys():
             self.clusters[c]['centroid_id'] = self.get_average_gesture_id_from_cluster(c)

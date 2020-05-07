@@ -67,6 +67,15 @@ class GestureSentenceManager:
     ################################################
     ##################### SETUP ####################
     ################################################
+    # Used for testing mostly
+    def _setup(self):
+        print("Initializing rhetorical clusterer")
+        self.RhetoricalClusterer.initialize_clusterer()
+        print("clustering rhetorically")
+        self.RhetoricalClusterer.cluster_sequences()
+        print("Getting gesture features")
+        self.GestureClusterer.df = self.GestureClusterer.assign_feature_vectors()
+
     # splice gestures when there seems to be no movement or speaking
     def splice_gestures(self):
         new_df_maybe = self.GestureSplicer.splice_gestures(self.df)
@@ -117,7 +126,9 @@ class GestureSentenceManager:
         # You can delete this at any time to re-get the test data the old, slow way.
         # For example, to test a  new splicing mechanism.
         if self.speaker == 'test':
-            return pd.read_pickle('test_spliced_5_6.pkl')
+            print("Loading test pickle")
+            df = pd.read_pickle('test_spliced_5_6.pkl')
+            return df.reset_index()
 
         print("loading gestures")
         motion_data = self.load_gestures()

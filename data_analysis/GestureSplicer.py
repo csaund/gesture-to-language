@@ -58,7 +58,7 @@ def splice_gesture_at_frame(gesture, frame):
     g1['end_seconds'] = gesture['start_seconds'] + time_split
     g2['start_seconds'] = gesture['start_seconds'] + time_split
     g1['end_seconds'] = gesture['end_seconds']
-    g2['id'] = str(gesture['id']) + "-" + str(frame)
+    g2['id'] = str(gesture['id']) + "." + str(frame)
     return g1, g2
 
 
@@ -83,7 +83,8 @@ class GestureSplicer():
         to_del = [g['id'] for g in new_gestures]
         ng_series = [pd.Series(g) for g in new_gestures]
         short_df = df.drop(df.index[df['id'].isin(to_del)])
-        return short_df.append(ng_series)
+        additional = short_df.append(ng_series)
+        return additional.reset_index(inplace=True)
 
     def _splice_gesture(self, gesture, gestures=None):
         # detect lack of movement by finding period of high movement,

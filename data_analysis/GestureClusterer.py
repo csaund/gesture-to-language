@@ -102,7 +102,7 @@ class GestureClusterer:
             print("already have feature vectors in our gesture data")
         else:
             print("trying to assign feature vectors")
-            self.df = self._assign_feature_vectors(gesture_features)
+            self.df = self.assign_feature_vectors(gesture_features)
 
         # if we're seeding our clusters with specific gestures
         if len(seed_ids):
@@ -153,7 +153,7 @@ class GestureClusterer:
             print(self.clusters[cluster_id].keys())
 
     @timeit
-    def _assign_feature_vectors(self, gesture_features=GESTURE_FEATURES):
+    def assign_feature_vectors(self, gesture_features=GESTURE_FEATURES):
         tqdm.pandas()
         df = self.df
         print("Getting initial feature vectors.")
