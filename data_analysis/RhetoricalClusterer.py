@@ -258,14 +258,20 @@ class RhetoricalClusterer:
             ind = self.df.index[self.df['id'] == k].tolist()
             if not ind:
                 print("could not find index for gesture ", k)
-            self.clusters[labs[i]]['gesture_ids'].append(k)
+            self.clusters[labs[i]]['gesture_ids'].append(k)                         # keep all the similarities here to
+            self.clusters[labs[i]]['similarities'].append(self.similarities[i])     # calculate centroid of cluster.
+
+        for c in self.clusters.keys():
+            self.clusters[c]['centroid_id'] = self.get_average_gesture_id_from_cluster(c)
 
         return self.clusters
 
     def make_new_cluster(self, lab):
         self.clusters[lab] = {
             'cluster_id': lab,
-            'gesture_ids': []
+            'gesture_ids': [],
+            'similarities': [],
+            'centroid_id': 0
         }
 
     def get_sentences_for_cluster(self, cluster_id):
@@ -275,6 +281,16 @@ class RhetoricalClusterer:
 
     def get_clusters_with_sizes(self):
         return [{c: len(self.clusters[c]['gesture_ids'])} for c in self.clusters.keys()]
+
+    def get_average_gesture_id_from_cluster(self, cluster_id):
+        c = self.clusters[cluster_id]
+        minimum_gesture_id = 0
+        min_diff = 10000
+        for i in range(len(c['gesture_ids'])):
+            if c['similarities'][i].mean() < min_diff:
+                min_diff = c['similarities'][i].mean()
+                minimum_gesture_id = c['gesture_ids'][i]
+        return minimum_gesture_id
 
     def try_silhouette_scores(self, similarities=None, n_clusters=None):
         if similarities is None:
