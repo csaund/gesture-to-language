@@ -388,14 +388,17 @@ class GestureClusterer:
     # gets silhouette score for cluster using centroid
     def get_silhouette_score(self, cluster_id):
         c = self.clusters[cluster_id]
-        cluster_magnitude = len(c['gesture_ids'])
-        if len(c['gesture_ids']) <= 1:
+        c2 = self.get_nearest_cluster_from_cluster_id(cluster_id)
+        c_magnitude = len(c['gesture_ids'])
+        c2_magnitude = len(self.clusters[c2]['gesture_ids'])
+        if len(c['gesture_ids']) == 1:
+            return 0
+        elif len(c['gesture_ids'] < 1):
+            print("No gestures in cluster ", cluster_id)
             return 0
         p = c['centroid']
-        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id)) / (cluster_magnitude-1)
-        b = sum(self.get_dists_between_point_and_cluster(p,
-                                                         self.get_nearest_cluster_from_cluster_id(cluster_id)) /
-                                                         cluster_magnitude)
+        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id)) / (c_magnitude-1)
+        b = sum(self.get_dists_between_point_and_cluster(p, c2)) / c2_magnitude
         score = (b - a) / max(b, a)
         return score
 
