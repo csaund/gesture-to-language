@@ -62,7 +62,7 @@ def _get_rl_hand_keypoints(gesture, hand):
 
     for t in gesture['keyframes']:
         if not isinstance(t, dict):
-            print("found empty keyframes for gesture %s" % gesture['id'])
+            # print("found empty keyframes for gesture %s" % gesture['id'])
             # TODO fix this, known temporary fix
             return [{'y': [0], 'x': [0]}]
         y = [t['y'][i] for i in keypoint_range]
@@ -373,12 +373,14 @@ class GestureClusterer:
 
     # given a point and cluster id, returns avg distance between the point and
     # all points in the cluster.
-    def get_dists_between_point_and_cluster(self, vec, cluster_id):
+    def get_dists_between_point_and_cluster(self, vec, cluster_id, clusters=None):
+        if not clusters:
+            clusters = self.clusters
         dists = []
-        c = self.clusters[cluster_id]
+        c = clusters[cluster_id]
         if len(c['gesture_ids']) == 0:
             print("WARNING: NO GESTURES FOUND IN CLUSTER ID %s" % cluster_id)
-            print("num clusters: %s" % len(self.clusters))
+            print("num clusters: %s" % len(clusters))
             return 0
         for g_id in c['gesture_ids']:
             f = self.get_feature_vector_by_gesture_id(g_id)
@@ -406,9 +408,10 @@ class GestureClusterer:
         if len(c['gesture_ids']) <= 1:
             return 0
         p = self.get_feature_vector_by_gesture_id(c['centroid_id'])
-        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id)) / (cluster_magnitude-1)
+        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id, clusters=clusters)) / (cluster_magnitude-1)
         b = sum(self.get_dists_between_point_and_cluster(p,
-                                                         self.get_nearest_cluster_from_cluster_id(cluster_id)) /
+                                                         self.get_nearest_cluster_from_cluster_id(cluster_id),
+                                                         clusters=clusters) /
                                                          cluster_magnitude)
         score = (b - a) / max(b, a)
         return score

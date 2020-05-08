@@ -46,6 +46,7 @@ ADJ = ["JJ"]
 # GSM = GestureSentenceManager("test")
 # GS = GestureSplicer()
 # df = GS.splice_gestures(GSM.df)
+# GSM._setup()
 
 class GestureSentenceManager:
     def __init__(self, speaker):
@@ -394,5 +395,9 @@ class GestureSentenceManager:
         return s
 
     def get_silhouette_rhetorical_vs_gesture(self):
-        # get rhetorical clusters
         rhetoric_clusters = self.RhetoricalClusterer.cluster_sequences()
+        silhouettes = []
+        for k in rhetoric_clusters.keys():
+            silhouettes.append(self.GestureClusterer.get_silhouette_score_for_alternative_clustering(rhetoric_clusters, k))
+        silhouettes = np.array(silhouettes)
+        return silhouettes.mean(), silhouettes.std()
