@@ -86,6 +86,7 @@ class GestureClusterer:
         self.cluster_file = os.path.join(homePath, "GestureData", "cluster_tmp.json")
         self.has_assigned_feature_vecs = False
         self.total_clusters_created = 0
+        tqdm.pandas()
 
     def clear_clusters(self):
         self.clusters = {}
@@ -121,25 +122,23 @@ class GestureClusterer:
             seed_ids = []
         print("Clustering gestures")
 
-        gs = list(zip(self.df.id, self.df.motion_feature_vec))
-
-        for gesture_id, feature_vec in tqdm(gs):
-            # if we've already seeded a cluster with this gesture, don't cluster it.
-            if gesture_id in seed_ids:
-                continue
-            (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(feature_vec)
-            if max_number_clusters and len(self.clusters) > max_number_clusters:
-                self._add_gesture_to_cluster(gesture_id, nearest_cluster_id)
-            # we're further away than we're allowed to be, OR this is the first cluster.
-            elif (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
-                self._create_new_cluster(gesture_id, feature_vec)
-            else:
-                self._add_gesture_to_cluster(gesture_id, nearest_cluster_id)
-
+        self.df.progress_apply(lambda row: self._cluster_gesture_from_row(row, max_cluster_distance, max_number_clusters, seed_ids), axis=1)
         # now recluster based on where the new centroids are
         self._recluster_by_centroids()
         print("created %s clusters" % self.total_clusters_created)
         return
+
+    def _cluster_gesture_from_row(self, gesture, max_cluster_distance=0.03, max_number_clusters=0, seed_ids=None):
+        if gesture['id'] in seed_ids:
+            return
+        (nearest_cluster_id, nearest_cluster_dist) = self._get_shortest_cluster_dist(gesture['motion_feature_vec'])
+        if max_number_clusters and len(self.clusters) > max_number_clusters:
+            self._add_gesture_to_cluster(gesture['id'], nearest_cluster_id)
+        # we're further away than we're allowed to be, OR this is the first cluster.
+        elif (max_cluster_distance and nearest_cluster_dist > max_cluster_distance) or (not len(self.clusters)):
+            self._create_new_cluster(gesture['id'], gesture['motion_feature_vec'])
+        else:
+            self._add_gesture_to_cluster(gesture['id'], nearest_cluster_id)
 
     @timeit
     def _add_gesture_to_cluster(self, gesture_id, cluster_id):
@@ -154,7 +153,6 @@ class GestureClusterer:
 
     @timeit
     def assign_feature_vectors(self, gesture_features=GESTURE_FEATURES):
-        tqdm.pandas()
         df = self.df
         print("Getting initial feature vectors.")
         # TODO track this through and make sure it's assigning the right thing to the right thing
