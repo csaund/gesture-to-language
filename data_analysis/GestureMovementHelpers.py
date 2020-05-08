@@ -787,10 +787,10 @@ GESTURE_FEATURES = {
         'separate_hands': True,
         'function': _max_wrist_velocity
     },
-    'cycles': {
-        'separate_hands': True,
-        'function': detect_cycle
-    }
+    #'cycles': {
+    #    'separate_hands': True,
+    #    'function': detect_cycle
+    #}
     # 'acceleration': {
     #     'separate_hands': True,
     #     'function': _max_wrist_velocity

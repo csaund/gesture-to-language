@@ -13,7 +13,6 @@ import parselmouth
 
 class VideoManager():
     def __init__(self):
-        print("initializing Video Manager")
         homePath = os.getenv("HOME")
         self.base_path = os.path.join(homePath, "GestureData")
         self.temp_output_path = os.path.join(self.base_path, 'tmp', 'temp_video.mp4')

@@ -10,6 +10,8 @@ from sklearn.cluster import AgglomerativeClustering
 import distance
 import edlib
 import sklearn
+import matplotlib.pyplot as plt
+
 
 ## Takes the rhetorical parse located in gs://parsed_transcript_bucket
 ## Determines similarity of two rhetorical structures of a gesture
@@ -61,6 +63,9 @@ PARSER_REPLACEMENTS = {
     "'": " ",
 }
 
+# SOURCES
+# https://gist.github.com/codehacken/8b9316e025beeabb082dda4d0654a6fa
+
 
 def flatten(li): return flatten(li[0]) + (flatten(li[1:]) if len(li) > 1 else []) if type(li) is list else [li]
 
@@ -72,14 +77,14 @@ def multi_index(li, val): return [i for i in range(len(li)) if li[i] == val]
 def multi_replace(text, replacement_dict=None):
     if replacement_dict is None:
         replacement_dict = PUNCTUATION_REPLACEMENTS
-        try:
-            regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
-            # For each match, look-up corresponding value in dictionary
-            return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
-        except:
-            print("could not multi replace text with dict")
-            print(text)
-            print(replacement_dict)
+    try:
+        regex = re.compile("(%s)" % "|".join(map(re.escape, replacement_dict.keys())))
+        # For each match, look-up corresponding value in dictionary
+        return regex.sub(lambda mo: replacement_dict[mo.string[mo.start():mo.end()]], text)
+    except:
+        print("could not multi replace text with dict")
+        print(text)
+        print(replacement_dict)
 
 
 def get_parse_data(fp):
@@ -123,6 +128,7 @@ def get_matching_words(transcript, texts):
     words = [w.translate(str.maketrans('', '', string.punctuation)) for w in words]
     word_counter = 0
     text_indexes = []
+    working_chunks = []
     for t_index in range(len(texts)):
         t = texts[t_index]
         if t == "":     # skip all blank ones.
@@ -131,10 +137,13 @@ def get_matching_words(transcript, texts):
         cs = []
         for c in chunk:
             cs.append(c.translate(str.maketrans('', '', string.punctuation)))
+            working_chunks.append(c.translate(str.maketrans('', '', string.punctuation)))
+        working_chunks.append("/")
         # our word isn't in this chunk, start over
         if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:
             word_counter = 0
             text_indexes = []
+            working_chunks = []
 
         # check that this one isn't the start of the correct block
         if words[word_counter].translate(str.maketrans('', '', string.punctuation)) not in cs:
@@ -148,13 +157,14 @@ def get_matching_words(transcript, texts):
                     successful_chunk_found = True
                     word_counter += len(chunk) - wi      # move up to the next place in line
                     if word_counter >= len(words)-1:
-                        return sorted(list(set(text_indexes)))
+                        return sorted(list(set(text_indexes))), " ".join(working_chunks).split("/")[:-1]
                     break
             if not successful_chunk_found:
                 word_counter = 0
                 text_indexes = []
+                working_chunks = []
 
-    return sorted(list(set(text_indexes)))
+    return sorted(list(set(text_indexes))), " ".join(working_chunks).split("/")[:-1]
 
 
 # see if words come in order in a chunk starting from chunk_index
@@ -181,135 +191,166 @@ def get_rhetorical_encoding_for_gesture(g):
     return en[text_range[0]:text_range[-1]+1]
 
 
+def sort_indexes(el):
+    return float(str(el[0]).replace("-", "."))
+
+
 class RhetoricalClusterer:
-    def __init__(self, gestures):
+    def __init__(self, df):
         self.bucket = "parsed_transcript_bucket"
-        self.agd = {}
+        self.df = df
+        self.df['rhetorical_sequence'] = ''
         self.clusters = {}
         self.c_id = 0
         self.total_clusters_created = 0
-        files = list(set([g['phase']['video_fn'] for g in gestures]))
-        for f in files:
-            self.get_all_encodings_for_video_fn(f, gestures)
-        print("got", len(self.agd), "out of ", len(gestures), "gestures")
+        self.similarities = []
+        self.clustering = None
         return
 
-    def get_all_encodings_for_video_fn(self, video_fn, gestures):
-        gs = [g for g in gestures if g['phase']['video_fn'] == video_fn]
+    def initialize_clusterer(self, df=None):
+        self.df = df if df else self.df
+        files = list(set(list(self.df['video_fn'])))
+        for f in tqdm(files):
+            gesture_indexes = self.df.index[self.df['video_fn'] == f].tolist()
+            self.get_all_encodings_for_video_fn(f, gesture_indexes)
+        print("could not get", len(self.df[self.df['rhetorical_sequence'] == '']), "out of ", len(self.df), "gestures")
+        return
+
+    def get_all_encodings_for_video_fn(self, video_fn, gesture_indexes):
         rhetorical_parse_file = multi_replace(video_fn, VID_EXTENSION_REPLACEMENTS)
         # download and delete?
         try:
-            f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
+            f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet", should_show=False)
         except:
             print("couldn't get rhetorical parse file for ", rhetorical_parse_file)
         content = get_parse_data("tmp.rhet")
         os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)
-        i = 0
-        for g in gs:
-            print(i, "/", len(gs), "\r", end="")
-            i += 1
-            transcript_to_match = g['phase']['transcript']
-            text_range = get_matching_words(transcript_to_match, texts)
+
+        for g_i in gesture_indexes:
+            transcript_to_match = self.df.iloc[g_i]['transcript']
+            text_range, text_chunks = get_matching_words(transcript_to_match, texts)
             if text_range:
-                k = g['id']
-                transcript = g['phase']['transcript']
                 sequence = en[text_range[0]:text_range[-1]+1]
-                self.agd[k] = {
-                                'id': k,
-                                'transcript': transcript,
-                                'sequence': sequence
-                               }
+                try:
+                    rhetorical_units = []
+                    for i in range(len(text_chunks)):
+                        rhetorical_units.append({
+                            'text': text_chunks[i],
+                            'sequence': en[text_range[i]]
+                        })
+                    self.df.at[g_i, 'rhetorical_units'] = rhetorical_units
+                    self.df.at[g_i, 'rhetorical_sequence'] = sequence
+                except ValueError:
+                    print("MORE THAN ONE GESTURE FOUND FOR INDEX: ", g_i)
+                    print("giving sequence", sequence)
 
-    def get_encoding_for_gesture(self, g):
-        transcript_to_match = g['phase']['transcript']
-        rhetorical_parse_file = multi_replace(g['phase']['video_fn'], VID_EXTENSION_REPLACEMENTS)
-        # download and delete?
-        try:
-            f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet")
-        except:
-            print("couldn't get rhetorical parse for ", rhetorical_parse_file)
-        content = get_parse_data("tmp.rhet")
-        os.remove("tmp.rhet")
-        en, texts = get_sequence_encoding(content=content)
-        text_range = get_matching_words(transcript_to_match, texts)
-        if not text_range:
-            print("No rhetorical encoding found for gesture ", g['id'])
-            return None
-        return en[text_range[0]:text_range[-1] + 1]
-
-    def cluster_sequences(self):
-        # https://gist.github.com/codehacken/8b9316e025beeabb082dda4d0654a6fa
-        words = []
-        # keep dict in order to sort and assign proper distances to it.
-        for k, v in sorted(self.agd.items(), key=lambda x: float(str(x[0]).replace("-", "."))):
-            words.append(" ".join(v['sequence']))
-
-        lev_similarity = []
+    def get_levenshtein_similarities(self):
         print("getting edit distances")
-        for i in range(len(words)):
-            print('\r', i, end='                 ')
+        words = []
+        order = list(zip(self.df.id, self.df.rhetorical_sequence))  # keep dict in order to sort and
+        for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
+            words.append(" ".join(v))
+        lev_similarity = []
+        for i in tqdm(range(len(words))):
             w = words[i]
             lev_similarity.append([edlib.align(w, w2)['editDistance'] for w2 in words])
+        self.similarities = np.array(lev_similarity)
+        return self.similarities
 
-        lev_similarity = np.array(lev_similarity)
-
-        print("getting agglomerative clustering")
-        agg = AgglomerativeClustering(n_clusters=100, affinity='precomputed', linkage='complete')
-        u = agg.fit_predict(lev_similarity)
-
+    def create_clusters_from_clustering(self, similarities, clustering):
+        labs = clustering.labels_
         i = 0
-        for k, v in sorted(self.agd.items(), key=lambda x: float(str(x[0]).replace("-", "."))):
-            self.agd[k]['cluster_id'] = u[i]
+        order = list(zip(self.df.id, self.df.rhetorical_sequence))
+        for k, v in sorted(order, key=sort_indexes):
+            if labs[i] not in self.clusters.keys():
+                self.make_new_cluster(labs[i])
+                continue
+            ind = self.df.index[self.df['id'] == k].tolist()
+            if not ind:
+                print("could not find index for gesture ", k)
+            # print("adding to cluster", labs[i])
+            self.clusters[labs[i]]['gesture_ids'].append(k)                         # keep all the similarities here to
+            self.clusters[labs[i]]['similarities'].append(similarities[i])     # calculate centroid of cluster.
             i += 1
 
-        return(agg, u, lev_similarity)
+        for c in self.clusters.keys():
+            self.clusters[c]['centroid_id'] = self.get_average_gesture_id_from_cluster(c)
+
+        return self.clusters
+
+    def cluster_sequences(self, n_clusters=100):
+        if self.clusters and len(self.clusters) == n_clusters:
+            print("already have rhetorical clusters")
+            return self.clusters
+        if 'rhetorical_sequence' not in list(self.df):
+            print("getting initial sequences")
+            self.initialize_clusterer()
+        if not len(self.similarities):
+            self.get_levenshtein_similarities()
+
+        print("getting clustering")
+        self.clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='complete')
+        u = self.clustering.fit_predict(self.similarities)
+        return self.create_clusters_from_clustering(self.similarities, self.clustering)
+
+    def make_new_cluster(self, lab):
+        self.clusters[lab] = {
+            'cluster_id': lab,
+            'gesture_ids': [],
+            'similarities': [],
+            'centroid_id': 0
+        }
 
     def get_sentences_for_cluster(self, cluster_id):
-        transcripts = []
-        for k in self.agd:
-            v = self.agd[k]
-            if v['cluster_id'] == cluster_id:
-                transcripts.append(v['transcript'])
-        return transcripts
-
-    def get_ids_for_cluster(self, cluster_id):
-        ids = []
-        for k in self.agd:
-            v = self.agd[k]
-            if v['cluster_id'] == cluster_id:
-                ids.append(v['id'])
-        return ids
+        c = self.clusters[cluster_id]
+        rows = self.df[self.df['id'].isin(c['gesture_ids'])]
+        return list(rows['transcript'])
 
     def get_clusters_with_sizes(self):
-        ret = {}
-        for k in self.agd:
-            v = self.agd[k]
-            if v['cluster_id'] not in ret.keys():
-                ret[v['cluster_id']] = 1
-            else:
-                ret[v['cluster_id']] = ret[v['cluster_id']] + 1
-        return ret
+        return [{c: len(self.clusters[c]['gesture_ids'])} for c in self.clusters.keys()]
 
+    def get_average_gesture_id_from_cluster(self, cluster_id):
+        c = self.clusters[cluster_id]
+        minimum_gesture_id = 0
+        min_diff = 10000
+        for i in range(len(c['gesture_ids'])):
+            if c['similarities'][i].mean() < min_diff:
+                min_diff = c['similarities'][i].mean()
+                minimum_gesture_id = c['gesture_ids'][i]
+        return minimum_gesture_id
 
-def get_sentences_for_rhetorical_cluster(GSM, c_id):
-    Rh = GSM.RhetoricalClusterer
-    t_ids = [Rh.agd[k]['id'] for k in Rh.agd.keys() if Rh.agd[k]['cluster_id'] == c_id]
-    transcripts = [GSM.get_gesture_transcript_by_id(i) for i in t_ids]
-    for t in transcripts:
-        print(t['phase']['transcript'])
+    def get_silhouette_score(self):
+        return sklearn.metrics.silhouette_score(self.similarities, self.clustering.labels_)
 
+    def try_silhouette_scores(self, similarities=None, n_clusters=None, algo='agglomerative'):
+        if similarities is None:
+            similarities = self.similarities
+        if n_clusters is None:
+            n_clusters = [15, 40, 60, 80, 100, 150, 200]
+        for n in n_clusters:
+            print("trying ", n)
+            clustering = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
+            # similarities is nxn matrix (lev_sim)
+            u = clustering.fit_predict(similarities)
+            print(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
+            singletons = []
+            for lab in list(set(clustering.labels_)):
+                l = len([i for i in clustering.labels_ if i == lab])
+                if l <= 1:
+                    singletons.append(lab)
+            print("singletons: ", len(singletons))
 
-def try_silhouette_scores(similarities, n_clusters=[15, 40, 60, 80, 100, 150, 200]):
-    for n in n_clusters:
-        print("trying ", n)
-        clusters = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
-        # similarities is nxn matrix (lev_sim)
-        u_short = clusters.fit_predict(similarities)
-        print(sklearn.metrics.silhouette_score(similarities, clusters.labels_))
-        singletons = []
-        for lab in list(set(clusters.labels_)):
-            l = len([i for i in clusters.labels_ if i == lab])
-            if l <= 1:
-                singletons.append(lab)
-        print("singletons: ", len(singletons))
+    def plot_silhouette_scores(self, similarities=None, n_clusters=None):
+        if similarities is None:
+            similarities = self.similarities
+        if n_clusters is None:
+            n_clusters = [15, 50, 80, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600]
+        scores = []
+        for n in n_clusters:
+            print("trying ", n)
+            clustering = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
+            u = clustering.fit_predict(similarities)
+            scores.append(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
+
+        plt.plot(n_clusters, scores)
