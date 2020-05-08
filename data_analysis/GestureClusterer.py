@@ -194,12 +194,12 @@ class GestureClusterer:
         # clear old gestures
         for c in self.clusters:
             self.clusters[c]['gesture_ids'] = []
-
-        gs = list(zip(self.df.id, self.df.motion_feature_vec))
-        for gesture_id, feature_vec in tqdm(gs):
-            min_c, dist = self._get_shortest_cluster_dist(feature_vec)
-            self.clusters[min_c]['gesture_ids'].append(gesture_id)
+        self.df.progress_apply(self._just_assign_cluster, axis=1)
         return
+
+    def _just_assign_cluster(self, gesture):
+        min_c, dist = self._get_shortest_cluster_dist(gesture['motion_feature_vec'])
+        self.clusters[min_c]['gesture_ids'].append(gesture['id'])
 
     def get_sentences_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
