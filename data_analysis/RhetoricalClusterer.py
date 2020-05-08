@@ -347,19 +347,10 @@ class RhetoricalClusterer:
         if n_clusters is None:
             n_clusters = [15, 50, 80, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600]
         scores = []
-        singletons = []
         for n in n_clusters:
             print("trying ", n)
             clustering = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
-            # similarities is nxn matrix (lev_sim)
             u = clustering.fit_predict(similarities)
             scores.append(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
-            singles = []
-            for lab in list(set(clustering.labels_)):
-                l = len([i for i in clustering.labels_ if i == lab])
-                if l <= 1:
-                    singles.append(lab)
-            singletons.append(len(singles))
 
         plt.plot(n_clusters, scores)
-        plt.plot(n_clusters, singletons)
