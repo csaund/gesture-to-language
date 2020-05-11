@@ -106,6 +106,16 @@ class GestureSplicer():
         af = self.VideoManager.get_audio_features(g['video_fn'], g['start_seconds'], g['end_seconds'])
         return af
 
+    def splice_gesture_by_rhetorical_parses(self, df=None):
+        df = df if df else self.df
+        if ('motion_feature_vec' not in list(df)) or ('rhetorical_units' not in list(df)):
+            print('need rhetorical parses to perform parse.')
+            print('please initialize rhetorical clusterer before parsing.')
+            return df
+
+
+
+
     # from motion, detect where is a good place to splice the gesture, if any.
     # importantly, only returns FIRST place this should happen.
 

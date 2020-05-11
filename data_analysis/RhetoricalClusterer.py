@@ -199,7 +199,6 @@ class RhetoricalClusterer:
     def __init__(self, df):
         self.bucket = "parsed_transcript_bucket"
         self.df = df
-        self.df['rhetorical_sequence'] = ''
         self.clusters = {}
         self.c_id = 0
         self.total_clusters_created = 0
@@ -208,15 +207,19 @@ class RhetoricalClusterer:
         return
 
     def initialize_clusterer(self, df=None):
+        self.df['rhetorical_sequence'] = ''
+        self.df['rhetorical_units'] = None
+
         self.df = df if df else self.df
         files = list(set(list(self.df['video_fn'])))
         for f in tqdm(files):
-            gesture_indexes = self.df.index[self.df['video_fn'] == f].tolist()
-            self.get_all_encodings_for_video_fn(f, gesture_indexes)
+            print(f)
+            gesture_ids = self.df.loc[self.df['video_fn'] == f]['id'].tolist()
+            self.get_all_encodings_for_video_fn(f, gesture_ids)
         print("could not get", len(self.df[self.df['rhetorical_sequence'] == '']), "out of ", len(self.df), "gestures")
         return
 
-    def get_all_encodings_for_video_fn(self, video_fn, gesture_indexes):
+    def get_all_encodings_for_video_fn(self, video_fn, gesture_ids):
         rhetorical_parse_file = multi_replace(video_fn, VID_EXTENSION_REPLACEMENTS)
         # download and delete?
         try:
@@ -224,26 +227,38 @@ class RhetoricalClusterer:
         except:
             print("couldn't get rhetorical parse file for ", rhetorical_parse_file)
         content = get_parse_data("tmp.rhet")
-        os.remove("tmp.rhet")
+        # os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)
 
-        for g_i in gesture_indexes:
-            transcript_to_match = self.df.iloc[g_i]['transcript']
+        for g_id in gesture_ids:
+            ind = self.df.index[self.df['id'] == g_id].tolist()
+            if len(ind) != 1:
+                print("Unmatching number of gestures possible for gesture ID")
+                print("ID: ", g_id)
+                print("located indexes: ", ind)
+                continue
+            ind = ind[0]
+            transcript_to_match = self.df.iloc[ind]['transcript']
+            if transcript_to_match == '':
+                continue
+
             text_range, text_chunks = get_matching_words(transcript_to_match, texts)
             if text_range:
                 sequence = en[text_range[0]:text_range[-1]+1]
-                try:
-                    rhetorical_units = []
-                    for i in range(len(text_chunks)):
-                        rhetorical_units.append({
-                            'text': text_chunks[i],
-                            'sequence': en[text_range[i]]
-                        })
-                    self.df.at[g_i, 'rhetorical_units'] = rhetorical_units
-                    self.df.at[g_i, 'rhetorical_sequence'] = sequence
-                except ValueError:
-                    print("MORE THAN ONE GESTURE FOUND FOR INDEX: ", g_i)
-                    print("giving sequence", sequence)
+                rhetorical_units = []
+                for i in range(len(text_chunks)):
+                    rhetorical_units.append({
+                        'text': text_chunks[i],
+                        'sequence': en[text_range[i]]
+                    })
+                self.df.at[ind, 'rhetorical_units'] = rhetorical_units
+                self.df.at[ind, 'rhetorical_sequence'] = sequence
+            else:
+                #print("Could not match text to video fn: ", video_fn)
+                #print("Gesture ID: ", g_id)
+                #print("Index: ", ind)
+                #print("Transcript: ", transcript_to_match)
+                continue
 
     def get_levenshtein_similarities(self):
         print("getting edit distances")

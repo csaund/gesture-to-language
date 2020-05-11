@@ -84,6 +84,22 @@ def plot_vel_for_gest(keyframes):
     plt.plot(xs, ys)
 
 
+# between the two frames g1 and g2, just returns (g1_frame, g2_frame) of the closest pose they have.
+def get_closest_frame_between_gestures(g1_keys, g2_keys):
+    min_dist = 100000
+    low_1 = 0
+    low_2 = 0
+    for i in range(len(g1_keys)):
+        for j in range(len(g2_keys)):
+            a = np.array(g1_keys[i]['x'] + g1_keys[i]['y'])
+            b = np.array(g2_keys[j]['x'] + g2_keys[j]['y'])
+            dist = np.linalg.norm(a - b)
+            if dist < min_dist:
+                min_dist = dist
+                low_1 = i
+                low_2 = j
+    return low_1, low_2
+
 
 @timeit
 def _palm_angle_axis(keyframes, xy):
