@@ -62,6 +62,15 @@ def splice_gesture_at_frame(gesture, frame):
     return g1, g2
 
 
+def get_first_occurrence_of_word(text, word):
+    for i in range(len(text)):
+        if text[i] == word:
+            return i
+    print("could not find word in text: ", word)
+    print(text)
+    return None
+
+
 class GestureSplicer():
     def __init__(self):
         # this gesture data needs to be full and complete, and include the transcript.
@@ -113,12 +122,32 @@ class GestureSplicer():
             print('please initialize rhetorical clusterer before parsing.')
             return df
 
+        # get start and end of first rhetorical phrase
+        g = df.iloc[0]
+        words = g['words']
+        units = g['rhetorical_units']
+
+        j = 0
+        starts = []
+        for u in units:
+            text = u['text'].split(" ")
+            i = get_first_occurrence_of_word(text, words[j]['word'])
+            print("adding start", words[j])
+            starts.append(words[j]['word_start'])
+            while text[i] == words[j]['word']:
+                i += 1
+                j += 1
+                if i >= len(text) or j >= len(words):
+                    break
+                if len(words[j]['word'].split("'")) >= 2:
+                    if words[j]['word'].split("'")[0] == text[i]:
+                        i += 2
+                        j += 1
+            continue
+        return starts
+
+    # given an array of text, find the first index at which the word occurs
 
 
-
-    # from motion, detect where is a good place to splice the gesture, if any.
-    # importantly, only returns FIRST place this should happen.
-
-    # actually perform the splicing
 
 
