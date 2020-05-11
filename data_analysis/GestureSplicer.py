@@ -2,16 +2,43 @@
 from GestureMovementHelpers import get_first_low_motion_frame
 from common_helpers import *
 from data_analysis.VideoManager import VideoManager
+from data_analysis.RhetoricalClusterer import multi_replace
 import copy
 import pandas as pd
 from tqdm import tqdm
 
 
+PARSER_REPLACEMENTS = {
+    "n't": " nt",
+    "'s": " s",
+    "'m": " m",
+    "'re": " re",
+    "'ve": " ve",
+    "'ll": " ll",
+    "'": " ",
+}
+
+
 def get_time_split_by_frame(g, f):
     end = g['end_seconds']
     start = g['start_seconds']
+    if not len(g['keyframes']):
+        print('0 length keyframes here')
+        return end
     frame_second = start + f * ((end-start) / len(g['keyframes']))
     return frame_second
+
+
+def get_frame_split_by_time(g, t):
+    start = g['start_seconds']
+    end = g['end_seconds']
+    n_frames = len(g['keyframes'])
+    fps = n_frames / (end - start)
+    frame = fps * (t - start)
+    if frame < 10:
+        return 0
+    else:
+        return int(frame)
 
 
 # only going to be rough approximation because we only have the gesture start
@@ -62,6 +89,7 @@ def splice_gesture_at_frame(gesture, frame):
     return g1, g2
 
 
+# given an array of text, find the first index at which the word occurs
 def get_first_occurrence_of_word(text, word):
     for i in range(len(text)):
         if text[i] == word:
@@ -124,30 +152,45 @@ class GestureSplicer():
 
         # get start and end of first rhetorical phrase
         g = df.iloc[0]
-        words = g['words']
-        units = g['rhetorical_units']
+        times = self.get_splice_times_for_gesture(g)
+        frames = np.array([get_frame_split_by_time(g, t) for t in times])
+        gs = []
+        gest = g
+        for i in range(len(frames)):
+            f = frames[i]
+            print("f: ", f)
+            if not f:
+                continue
+            g1, g2 = splice_gesture_at_frame(gest, f)
+            gs.append(g1)
+            gest = g2
+            frames = frames - f
+        return gs
+
+
+    def get_splice_times_for_gesture(self, gesture):
+        words = gesture['words']
+        units = gesture['rhetorical_units']
 
         j = 0
-        starts = []
+        ends = []
         for u in units:
-            text = u['text'].split(" ")
+            text = multi_replace(u['text'], replacement_dict=PARSER_REPLACEMENTS)
+            text = text.split(" ")
             i = get_first_occurrence_of_word(text, words[j]['word'])
-            print("adding start", words[j])
-            starts.append(words[j]['word_start'])
             while text[i] == words[j]['word']:
                 i += 1
                 j += 1
                 if i >= len(text) or j >= len(words):
+                    # print("broken!")
                     break
-                if len(words[j]['word'].split("'")) >= 2:
-                    if words[j]['word'].split("'")[0] == text[i]:
-                        i += 2
-                        j += 1
-            continue
-        return starts
-
-    # given an array of text, find the first index at which the word occurs
-
+                if len(words[j]['word'].split("'")) >= 2:       # Dealing with apostrophe catastrophe
+                    i += 2
+                    j += 1
+            if len(ends) < len(units)-1:
+                print('appending; ', words[j-1])
+                ends.append(words[j-1]['word_end'])
+        return ends
 
 
 

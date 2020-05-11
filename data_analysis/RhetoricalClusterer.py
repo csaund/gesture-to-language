@@ -184,7 +184,7 @@ def get_rhetorical_encoding_for_gesture(g):
     transcript_to_match = g['phase']['transcript']
     rhetorical_parse_file = multi_replace(g['phase']['video_fn'], VID_EXTENSION_REPLACEMENTS)
     en, texts = get_sequence_encoding(rhet_file=rhetorical_parse_file)
-    text_range = get_matching_words(transcript_to_match, texts)
+    text_range, text_chunks = get_matching_words(transcript_to_match, texts)
     if not text_range:
         print("No rhetorical encoding found for gesture ", g['id'])
         return None
