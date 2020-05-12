@@ -213,7 +213,6 @@ class RhetoricalClusterer:
         self.df = df if df else self.df
         files = list(set(list(self.df['video_fn'])))
         for f in tqdm(files):
-            print(f)
             gesture_ids = self.df.loc[self.df['video_fn'] == f]['id'].tolist()
             self.get_all_encodings_for_video_fn(f, gesture_ids)
         print("could not get", len(self.df[self.df['rhetorical_sequence'] == '']), "out of ", len(self.df), "gestures")
