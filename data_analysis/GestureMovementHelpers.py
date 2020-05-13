@@ -116,6 +116,41 @@ def get_distance_between_vector_arrays(v1, v2):
     return total
 
 
+def get_frame_diff(keys1, keys2):
+    keys1_x = np.array(keys1['x'])
+    keys1_y = np.array(keys1['y'])
+    keys2_x = np.array(keys2['x'])
+    keys2_y = np.array(keys2['y'])
+    x_diff = abs(keys1_x - keys2_x).sum()
+    y_diff = abs(keys1_y - keys2_y).sum()
+    return x_diff + y_diff
+
+
+def get_max_different_frame_in_gesture(keys):
+    f1 = keys[0]
+    max_diff = 0
+    diff_frame = 0
+    for i in range(1, len(keys)):
+        frame_diff = get_frame_diff(f1, keys[i])
+        if frame_diff >= max_diff:
+            max_diff = frame_diff
+            diff_frame = i
+    return diff_frame
+
+
+def create_max_difference_matrix_max_different_frame(df):
+    order = list(zip(df.id, df.keyframes))  # keep dict in order to sort and
+    ordered_keys = []
+    for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
+        ordered_keys.append(v)
+    similarities = []
+    for i in tqdm(range(len(ordered_keys))):
+        keys = ordered_keys[i]
+        comparison_frame = get_max_different_frame_in_gesture(keys)
+        similarities.append([get_frame_diff(keys[comparison_frame], k2[get_max_different_frame_in_gesture(k2)]) for k2 in ordered_keys])
+    return similarities
+
+
 # gets distance based SOLELY on differences between keys between frames.
 # this requires that the two gestures have the same number of frames.
 def get_distance_between_gestures_same_length(g1_keys, g2_keys):
