@@ -128,8 +128,8 @@ class GestureSentenceManager:
         # For example, to test a  new splicing mechanism.
         if self.speaker == 'test':
             print("Loading test pickle")
-            df = pd.read_pickle('test_spliced_5_6.pkl')
-            return df.reset_index()
+            df = pd.read_pickle('test_rhetorical_5_13.pkl')
+            return df.reset_index(drop=True)
 
         print("loading gestures")
         motion_data = self.load_gestures()
@@ -215,6 +215,16 @@ class GestureSentenceManager:
         ids = [g['id'] for g in self.gesture_transcript['phrases'] if (g['phase']['end_seconds'] - g['phase']['start_seconds']) < time]
         gests = [self.get_gesture_by_id(i) for i in ids]
         return gests
+
+    def get_avg_frames_for_gesture(self):
+        return np.array([len(k) for k in self.df['keyframes']]).mean()
+
+    def get_hist_of_lengths(self, df=None):
+        if df is not None:
+            df = self.df
+        lengths = [len(k) for k in df['keyframes']]
+        plt.hist(lengths, bins=[5, 10, 20, 50, 75, 100, 120, 150, 180, 200, 250, 300, 350, 400, 450, 500, 550])
+
 
     ###########################################
     ################ REPORTING ################

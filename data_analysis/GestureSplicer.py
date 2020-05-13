@@ -99,8 +99,8 @@ def get_first_occurrence_of_word(text, word):
     for i in range(len(text)):
         if text[i] == word:
             return i
-    print("could not find word in text: ", word)
-    print(text)
+    # print("could not find word in text: ", word)
+    # print(text)
     return None
 
 
@@ -126,9 +126,9 @@ def get_original_word_index(original_words, new_words, new_index):
     if len(original_words) == len(new_words):
         return new_index
     apostrophe_indexes = [i for i in range(len(original_words)) if original_words[i]['word'].find("'") != -1]
-    print("new index we got was ", new_index)
-    print("original words were: ", original_words)
-    print("think we found apostrophes in indexes: ", apostrophe_indexes)
+    #print("new index we got was ", new_index)
+    #print("original words were: ", original_words)
+    #print("think we found apostrophes in indexes: ", apostrophe_indexes)
     for ai in apostrophe_indexes:
         if new_index <= ai:
             return new_index
@@ -148,43 +148,49 @@ def split_apostrophes(w):
 # because lots of words start and end in the same second.
 # TODO also currently broken bc of one letter words (terrible parsing issue)
 def get_rhetorical_splice_times_for_gesture(gesture):
+    # print("DOING THIS FOR GESTURE ID", gesture['id'])
     transcript = gesture['transcript']
     units = gesture['rhetorical_units']
     words = gesture['words']
-    print("pre-transcript: ", transcript)
+    #print("pre-transcript: ", transcript)
     transcript = multi_replace(transcript, replacement_dict=PARSER_REPLACEMENTS)
     words = flatten([split_apostrophes(w['word']) for w in words])
-    print("words: ", words)
+    #print("words: ", words)
 
     if not units:
-        print("NO RHETORICAL UNITS FOUND")
+        # print("NO RHETORICAL UNITS FOUND")
         return None, None
 
     j = 0
     ends = []
     for u in units:
-        print("new unit!")
+        #print("new unit!")
         text = u['text'].split(" ")
-        print(text)
+        #print(text)
         i = get_first_occurrence_of_word(text, words[j])
         if not i:
-            print('no match found for transcript')
+            # print('no match found for transcript')
+            return None, None
         else:
-            print('found at index: ', i)
+            #print('found at index: ', i)
             while i < len(text) and j < len(words) and text[i] == words[j]:
-                print("comparing ", text[i], "and", words[j])
+                #print("comparing ", text[i], "and", words[j])
                 i += 1
                 j += 1
             word_index = get_original_word_index(gesture['words'], words, j)
-            print("think we should split at word: ", gesture['words'][word_index])
-        ends.append(get_next_word_end(gesture['words'], word_index-1))
+            if word_index >= len(gesture['words']):
+                break
+            #print("word index:", word_index)
+            #print("len gesture words: ", len(gesture['words']))
+            #print("think we should split at word: ", gesture['words'][word_index-1])
+            ends.append(get_next_word_end(gesture['words'], word_index-1))
         # print("looking for this word in that text:", words[j]['word'])
         # i = get_first_occurrence_of_word(text, words[j]['word'])
     return ends, units
 
 
 def splice_gesture_by_rhetorical_parses(g):
-    print("trying to splice")
+    #print("trying to splice")
     times, units = get_rhetorical_splice_times_for_gesture(g)
 
     if not times:
@@ -209,25 +215,31 @@ def splice_gesture_by_rhetorical_parses(g):
     return gs
 
 
+def get_new_gestures_by_rhetorical_parses(df):
+    new_gestures = []
+    for index, row in tqdm(df.iterrows()):
+        # print(row)
+        new_g = splice_gesture_by_rhetorical_parses(row)
+        if len(new_g) >= 2:
+            new_gestures += new_g
+    return new_gestures
+
+
 def splice_all_gestures_by_rhetorical_parses(df):
     if ('motion_feature_vec' not in list(df)) or ('rhetorical_units' not in list(df)):
         print('need rhetorical parses to perform parse.')
         print('please initialize rhetorical clusterer before parsing.')
         return df
 
-    new_gestures = []
-    for index, row in tqdm(df.iterrows()):
-        print(row)
-        new_g = splice_gesture_by_rhetorical_parses(row)
-        if len(new_g) >= 2:
-            new_gestures += new_g
+    new_gestures = get_new_gestures_by_rhetorical_parses(df)
 
     print("rebuilding dataframe")
     to_del = [g['id'] for g in new_gestures]
+    print("number of new gestures created: ", len(new_gestures))
     ng_series = [pd.Series(g) for g in new_gestures]
     short_df = df.drop(df.index[df['id'].isin(to_del)])
     additional = short_df.append(ng_series)
-    return additional.reset_index(inplace=True)
+    return additional.reset_index(drop=True)
 
 
 class GestureSplicer:
