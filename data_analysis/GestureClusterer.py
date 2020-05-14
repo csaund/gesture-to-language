@@ -71,6 +71,34 @@ def _get_rl_hand_keypoints(gesture, hand):
     return keys
 
 
+# Some special alternative clusterings
+def create_max_difference_matrix_max_different_frame(df):
+    order = list(zip(df.id, df.keyframes))  # keep dict in order to sort and
+    ordered_keys = []
+    for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
+        ordered_keys.append(v)
+    similarities = []
+    for i in tqdm(range(len(ordered_keys))):
+        keys = ordered_keys[i]
+        comparison_frame = get_max_different_frame_in_gesture(keys)
+        similarities.append([get_frame_diff(keys[comparison_frame], k2[get_max_different_frame_in_gesture(k2)]) for k2 in ordered_keys])
+    return similarities
+
+
+def cluster_gestures_by_max_different_frame(df):
+    similarities = create_max_difference_matrix_max_different_frame(df)
+    ac = AgglomerativeClustering(n_clusters=10, affinity='precomputed', linkage='complete')
+    u = ac.fit_predict(similarities)
+
+    order = list(zip(df.id, df.keyframes))
+    clusters = {}
+    for i in range(len(order)):
+        if u[i] not in clusters.keys():
+            clusters[u[i]] = {'gestures': []}
+    clusters[u[i]]['gestures'].append(order[i][0])
+    return clusters
+
+
 class GestureClusterer:
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.

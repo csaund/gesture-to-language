@@ -192,7 +192,27 @@ def get_rhetorical_encoding_for_gesture(g):
 
 
 def sort_indexes(el):
-    return float(str(el[0]).replace("-", "."))
+    return str(el[0]).replace("-", ".")
+
+
+def get_lev_similarities_by_rhetorical_units(df):
+    print("getting edit distances")
+    words = []
+    order = list(zip(df.id, df.rhetorical_units))  # keep dict in order to sort and
+    for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
+        if not v:
+            words.append("")
+        elif isinstance(v, dict):
+            words.append(v['sequence'])
+        else:
+            sequences = [el['sequence'] for el in v]
+            words.append(" ".join(sequences))
+    lev_similarity = []
+    for i in tqdm(range(len(words))):
+        w = words[i]
+        lev_similarity.append([edlib.align(w, w2)['editDistance'] for w2 in words])
+    similarities = np.array(lev_similarity)
+    return similarities
 
 
 class RhetoricalClusterer:
@@ -307,6 +327,21 @@ class RhetoricalClusterer:
         self.clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='complete')
         u = self.clustering.fit_predict(self.similarities)
         return self.create_clusters_from_clustering(self.similarities, self.clustering)
+
+    # ONLY DO THIS if the dataset has been spliced by rhetorical units.
+    def cluster_by_units(self, n_clusters=100, df=None):
+        if df is None:
+            df = self.df
+        if 'rhetorical_units' not in list(self.df):
+            print("getting initial sequences")
+            self.initialize_clusterer()
+        similarities = get_lev_similarities_by_rhetorical_units(df)
+
+        print("getting clustering")
+        self.clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='complete')
+        u = self.clustering.fit_predict(similarities)
+        return self.create_clusters_from_clustering(self.similarities, self.clustering)
+
 
     def make_new_cluster(self, lab):
         self.clusters[lab] = {

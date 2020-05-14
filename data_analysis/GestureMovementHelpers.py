@@ -138,19 +138,6 @@ def get_max_different_frame_in_gesture(keys):
     return diff_frame
 
 
-def create_max_difference_matrix_max_different_frame(df):
-    order = list(zip(df.id, df.keyframes))  # keep dict in order to sort and
-    ordered_keys = []
-    for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
-        ordered_keys.append(v)
-    similarities = []
-    for i in tqdm(range(len(ordered_keys))):
-        keys = ordered_keys[i]
-        comparison_frame = get_max_different_frame_in_gesture(keys)
-        similarities.append([get_frame_diff(keys[comparison_frame], k2[get_max_different_frame_in_gesture(k2)]) for k2 in ordered_keys])
-    return similarities
-
-
 # gets distance based SOLELY on differences between keys between frames.
 # this requires that the two gestures have the same number of frames.
 def get_distance_between_gestures_same_length(g1_keys, g2_keys):
