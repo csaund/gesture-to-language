@@ -6,8 +6,9 @@ from tqdm import tqdm
 import string
 
 import numpy as np
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import AgglomerativeClustering, DBSCAN
 import distance
+from collections import Counter
 import edlib
 import sklearn
 import matplotlib.pyplot as plt
@@ -215,6 +216,57 @@ def get_lev_similarities_by_rhetorical_units(df):
     return similarities
 
 
+def get_dbscan_clustering(similarities):
+    clustering = DBSCAN(metric='precomputed')
+    # similarities is nxn matrix (lev_sim)
+    u = clustering.fit_predict(similarities)
+    print(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
+    counts = Counter(u)
+    lens = np.array([counts[c] for c in counts])
+    print("max size: ", max(lens))
+    print("std: ", lens.std())
+    print("mean: ", lens.mean())
+    singletons = np.array([counts[c] for c in counts if counts[c] == 1]).sum()
+    print("singletons: ", singletons)
+    return clustering
+
+
+def get_clustering(similarities, n_clusters=100, algorithm=None):
+    if not algorithm:
+        algorithm = "agglomerative"
+    clustering = None
+    if algorithm == "agglomerative":
+        clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='single')
+    elif algorithm == "dbscan":
+        clustering = DBSCAN(metric='precomputed')
+    else:
+        print("unrecognized algorithm", algorithm)
+        print("please choose one of: agglomerative, dbscan")
+    u = clustering.fit_predict(similarities)
+    print(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
+    counts = Counter(u)
+    lens = np.array([counts[c] for c in counts])
+    print("max size: ", max(lens))
+    print("std: ", lens.std())
+    print("mean: ", lens.mean())
+    singletons = np.array([counts[c] for c in counts if counts[c] == 1]).sum()
+    print("singletons: ", singletons)
+    return clustering
+
+
+def create_clusters_from_clustering(clustering, df):
+    labs = clustering.labels_
+    i = 0
+    clusters = {}
+    order = sorted(list(zip(df.id, df.rhetorical_sequence)), key=sort_indexes)
+    for i in range(len(order)):
+        if labs[i] not in clusters.keys():
+            clusters[labs[i]] = {'gesture_ids': [],
+                                 'id': labs[i]}
+        clusters[labs[i]]['gesture_ids'].append(order[i][0])
+    return clusters
+
+
 class RhetoricalClusterer:
     def __init__(self, df):
         self.bucket = "parsed_transcript_bucket"
@@ -279,10 +331,12 @@ class RhetoricalClusterer:
                 #print("Transcript: ", transcript_to_match)
                 continue
 
-    def get_levenshtein_similarities(self):
+    def get_levenshtein_similarities(self, df=None):
+        if df is None:
+            df = self.df
         print("getting edit distances")
         words = []
-        order = list(zip(self.df.id, self.df.rhetorical_sequence))  # keep dict in order to sort and
+        order = list(zip(df.id, df.rhetorical_sequence))  # keep dict in order to sort and
         for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
             words.append(" ".join(v))
         lev_similarity = []
@@ -292,64 +346,35 @@ class RhetoricalClusterer:
         self.similarities = np.array(lev_similarity)
         return self.similarities
 
-    def create_clusters_from_clustering(self, similarities, clustering):
-        labs = clustering.labels_
-        i = 0
-        order = list(zip(self.df.id, self.df.rhetorical_sequence))
-        for k, v in sorted(order, key=sort_indexes):
-            if labs[i] not in self.clusters.keys():
-                self.make_new_cluster(labs[i])
-                continue
-            ind = self.df.index[self.df['id'] == k].tolist()
-            if not ind:
-                print("could not find index for gesture ", k)
-            # print("adding to cluster", labs[i])
-            self.clusters[labs[i]]['gesture_ids'].append(k)                         # keep all the similarities here to
-            self.clusters[labs[i]]['similarities'].append(similarities[i])     # calculate centroid of cluster.
-            i += 1
-
-        for c in self.clusters.keys():
-            self.clusters[c]['centroid_id'] = self.get_average_gesture_id_from_cluster(c)
-
-        return self.clusters
-
-    def cluster_sequences(self, n_clusters=100):
+    def cluster_sequences(self, n_clusters=100, df=None):
+        if df is None:
+            df = self.df
         if self.clusters and len(self.clusters) == n_clusters:
             print("already have rhetorical clusters")
             return self.clusters
-        if 'rhetorical_sequence' not in list(self.df):
+        if 'rhetorical_sequence' not in list(df):
             print("getting initial sequences")
             self.initialize_clusterer()
         if not len(self.similarities):
-            self.get_levenshtein_similarities()
+            self.get_levenshtein_similarities(df)
 
         print("getting clustering")
-        self.clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='complete')
+        self.clustering = get_clustering(self.similarities, n_clusters, algorithm="agglomerative")
         u = self.clustering.fit_predict(self.similarities)
-        return self.create_clusters_from_clustering(self.similarities, self.clustering)
+        clusters = create_clusters_from_clustering(self.clustering, df)
+        self.clusters = clusters
+        return clusters
 
     # ONLY DO THIS if the dataset has been spliced by rhetorical units.
-    def cluster_by_units(self, n_clusters=100, df=None):
+    def cluster_by_units(self, n_clusters=100, df=None, algorithm="agglomerative"):
         if df is None:
             df = self.df
         if 'rhetorical_units' not in list(self.df):
-            print("getting initial sequences")
-            self.initialize_clusterer()
+            print("DONT USE THIS IF YOU HAVENT SPLICED BY RHETORICAL UNITS, YOU FOOL")
+            return
         similarities = get_lev_similarities_by_rhetorical_units(df)
-
-        print("getting clustering")
-        self.clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='complete')
-        u = self.clustering.fit_predict(similarities)
-        return self.create_clusters_from_clustering(self.similarities, self.clustering)
-
-
-    def make_new_cluster(self, lab):
-        self.clusters[lab] = {
-            'cluster_id': lab,
-            'gesture_ids': [],
-            'similarities': [],
-            'centroid_id': 0
-        }
+        clustering = get_clustering(similarities, n_clusters=n_clusters, algorithm=algorithm)
+        return create_clusters_from_clustering(clustering, df)
 
     def get_sentences_for_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
@@ -379,16 +404,17 @@ class RhetoricalClusterer:
             n_clusters = [15, 40, 60, 80, 100, 150, 200]
         for n in n_clusters:
             print("trying ", n)
-            clustering = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='complete')
+            clustering = AgglomerativeClustering(n_clusters=n, affinity='precomputed', linkage='average')
             # similarities is nxn matrix (lev_sim)
             u = clustering.fit_predict(similarities)
             print(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
-            singletons = []
-            for lab in list(set(clustering.labels_)):
-                l = len([i for i in clustering.labels_ if i == lab])
-                if l <= 1:
-                    singletons.append(lab)
-            print("singletons: ", len(singletons))
+            counts = Counter(u)
+            lens = np.array([counts[c] for c in counts])
+            print("max size: ", max(lens))
+            print("std: ", lens.std())
+            print("mean: ", lens.mean())
+            singletons = np.array([counts[c] for c in counts if counts[c] == 1]).sum()
+            print("singletons: ", singletons)
 
     def plot_silhouette_scores(self, similarities=None, n_clusters=None):
         if similarities is None:
