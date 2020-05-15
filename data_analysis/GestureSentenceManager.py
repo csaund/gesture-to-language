@@ -48,6 +48,14 @@ ADJ = ["JJ"]
 # df = GS.splice_gestures(GSM.df)
 # GSM._setup()
 
+def get_cluster_id_for_gesture(clusters, g_id):
+    k = [c for c in clusters.keys() if g_id in clusters[c]['gesture_ids']]
+    if len(k):
+        return k
+    else:
+        print("gesture", g_id, "not found in clusters.")
+
+
 class GestureSentenceManager:
     def __init__(self, speaker):
         # this is where the magic is gonna happen.
@@ -156,6 +164,10 @@ class GestureSentenceManager:
             text = text[0]
             motion = motion[0]
 
+            exclude_words = True
+            if 'words' in text.keys():
+                exclude_words = False
+
             data[i] = {
                 'id': text['id'],
                 'speaker': text['speaker'],
@@ -163,7 +175,7 @@ class GestureSentenceManager:
                 'transcript':  text['phase']['transcript'],
                 'start_seconds':  text['phase']['start_seconds'],
                 'end_seconds': text['phase']['end_seconds'],
-                'words': text['words'],
+                'words': [] if exclude_words else text['words'],
                 'keyframes': motion
             }
 
@@ -194,27 +206,15 @@ class GestureSentenceManager:
     #    agd = new_agd + angelica_sample
     #    self.agd = agd
 
-    def cluster_gestures(self, max_number_clusters=None, max_cluster_distance=None, gesture_features=GESTURE_FEATURES):
-        self.GestureClusterer = self.GestureClusterer(self.df)
-        self.GestureClusterer.cluster_gestures(max_number_clusters=max_number_clusters,
-                                               max_cluster_distance=max_cluster_distance,
-                                               gesture_features=gesture_features)
-
-    def get_gesture_ids_fewer_than_n_words(self, n):
+    def get_gesture_fewer_than_n_words(self, n):
         fewer_than_n = self.df[self.df['words'].apply(lambda x: len(x) <= n)]
-        return fewer_than_n['id'].tolist()
+        return fewer_than_n
 
-    # can be used to replace GSM.agd
-    def get_gestures_motion_under_time(self, time):
-        ids = [g['id'] for g in self.gesture_transcript['phrases'] if (g['phase']['end_seconds'] - g['phase']['start_seconds']) < time]
-        gests = [self.get_gesture_motion_by_id(i) for i in ids]
-        return gests
-
-    # can be used to replace GSM.gesture_transcript
-    def get_gestures_transcript_under_time(self, time):
-        ids = [g['id'] for g in self.gesture_transcript['phrases'] if (g['phase']['end_seconds'] - g['phase']['start_seconds']) < time]
-        gests = [self.get_gesture_by_id(i) for i in ids]
-        return gests
+    def get_gestures_under_time(self, time, df=None):
+        if df is None:
+            df = self.df
+        filtered = df[df['end_seconds'] - df['start_seconds'] <= time]
+        return filtered
 
     def get_avg_frames_for_gesture(self):
         return np.array([len(k) for k in self.df['keyframes']]).mean()
@@ -227,17 +227,9 @@ class GestureSentenceManager:
         lengths = [len(k) for k in df[key]]
         plt.hist(lengths, bins=bins)
 
-
-    ###########################################
-    ################ REPORTING ################
-    ###########################################
-    def report_gesture_clusters(self):
-        self.GestureClusterer.report_clusters()
-
     ###################################################
     ################ DATA MANIPULATION ################
     ###################################################
-    # TODO df-ify this
     def filter_agd(self, exclude_ids):
         return self.df[~self.df['id'].isin(exclude_ids)]
 
@@ -278,77 +270,25 @@ class GestureSentenceManager:
     # sentences appear
     # def get_gesture_clusters_for_sentence_cluster(self, s_cluster_id):
 
-    # have gesture_cluster_id in them, match those?
-    def get_gesture_cluster_id_for_gesture(self, g_id):
-        for k in self.GestureClusterer.clusters:
-            g_ids = [g['id'] for g in self.GestureClusterer.clusters[k]['gesture_ids']]
-            if g_id in g_ids:
-                return k
-
     ################################################
     ################ VISUALIZATIONS ################
     ################################################
-    def get_gesture_cluster_wordcount_data(self):
-        wc = []
-        for k in self.GestureClusterer.clusters:
-            c = self.GestureClusterer.clusters[k]
-            for g_id in c['gesture_ids']:
-                s = self.get_gesture_transcript_by_id(g_id)
-                wc.append(len(nltk.word_tokenize(s)))
-        return wc
+    '''
+    We should definitely use this to see how well our gestures are clustered. Can do this
+    by seeing the similarity matrix and locating gestures in each cluster. We need to sort by index though.
+    '''
+    # def get_closest_gestures_in_gesture_cluster(self, cluster_id):
+    # def get_furthest_gestures_in_gesture_cluster(self, cluster_id):
 
-    def histogram_of_word_count(self):
-        wc = self.get_gesture_cluster_wordcount_data()
-        n, bins, patches = plt.hist(wc, bins=30, range=[0,100], normed=True, facecolor='green', alpha=0.75)
-        plt.xlabel('wordcount')
-        plt.ylabel('num occurances')
-        # plt.axes([0, 200, 0, .03])
-        plt.grid(True)
-        plt.show()
+    '''
+    if we cluster by motion then this will be great to show that our motion features are 
+    NOT susceptible to individual differences -- i.e. people roughly gesture with large-scale
+    features (containers, frames, etc) at the same rate, although some will surely have more 
+    than others. But overall, for rhetorical clusters and the like, this should definitely 
+    be similar. 
+    '''
+    # def get_speakers_by_gesture_cluster(self, g_cluster_id):
 
-    def histogram_of_gesture_lengths(self):
-        time_lengths = [(g['phase']['end_seconds'] - g['phase']['start_seconds']) for g in self.gesture_transcript['phrases']]
-        plt.hist(time_lengths, color='blue', edgecolor='black',
-                bins=int(180 / 5))
-
-    def get_closest_gestures_in_gesture_cluster(self, cluster_id):
-        c = self.GestureClusterer.clusters[cluster_id]
-        (g1, g2) = (0, 0)
-        min_d = 1000
-        print("exploring distances for %s gestures" % str(len(c['gestures'])))
-        for i in tqdm(list(range(0, len(c['gestures'])))):
-            g = c['gestures'][i]
-            for j in range(0, len(c['gestures'])):
-                comp = c['gestures'][j]
-                dist = np.linalg.norm(np.array(g['feature_vec']) - np.array(comp['feature_vec']))
-                # don't want to be comparing same ones.
-                if dist < min_d and i != j:
-                    min_d = dist
-                    (g1, g2) = (g['id'], comp['id'])
-        return (g1, g2)
-
-    def get_furthest_gestures_in_gesture_cluster(self, cluster_id):
-        c = self.GestureClusterer.clusters[cluster_id]
-        (g1, g2) = (0, 0)
-        max_d = 0
-        print("exploring distances for %s gestures" % str(len(c['gestures'])))
-        for i in tqdm(list(range(0, len(c['gestures'])))):
-            g = c['gestures'][i]
-            for j in range(0, len(c['gestures'])):
-                comp = c['gestures'][j]
-                dist = np.linalg.norm(np.array(g['feature_vec']) - np.array(comp['feature_vec']))
-                # don't want to be comparing same ones.
-                if dist > max_d:
-                    max_d = dist
-                    (g1, g2) = (g['id'], comp['id'])
-        return g1, g2
-
-    def get_speakers_by_gesture_cluster(self, g_cluster_id):
-        c = self.GestureClusterer.clusters[g_cluster_id]
-        speakers = [self.get_gesture_by_id(g['id'])['speaker'] for g in c['gestures']]
-        counts = [speakers.count(s) for s in speakers]
-        both = sorted(list(set(zip(speakers,counts))), key=lambda x: x[1], reverse=True)
-        return both
 
     ####################################################################
     ####################### WORD CLOUD STUFF ###########################
