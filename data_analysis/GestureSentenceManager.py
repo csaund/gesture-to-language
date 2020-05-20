@@ -55,6 +55,9 @@ def get_cluster_id_for_gesture(clusters, g_id):
     else:
         print("gesture", g_id, "not found in clusters.")
 
+def get_total_num_gestures_for_clusters(clusters):
+    return np.array([len(clusters[c]['gesture_ids']) for c in clusters.keys()]).sum()
+
 
 class GestureSentenceManager:
     def __init__(self, speaker):

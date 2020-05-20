@@ -256,7 +256,6 @@ def get_clustering(similarities, n_clusters=100, algorithm=None):
 
 def create_clusters_from_clustering(clustering, df):
     labs = clustering.labels_
-    i = 0
     clusters = {}
     order = sorted(list(zip(df.id, df.rhetorical_sequence)), key=sort_indexes)
     for i in range(len(order)):
