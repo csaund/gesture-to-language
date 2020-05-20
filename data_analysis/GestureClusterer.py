@@ -71,6 +71,79 @@ def _get_rl_hand_keypoints(gesture, hand):
     return keys
 
 
+# Some special alternative clusterings
+def create_max_difference_matrix_max_different_frame(df):
+    order = list(zip(df.id, df.keyframes))  # keep dict in order to sort and
+    ordered_keys = []
+    for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
+        ordered_keys.append(v)
+    similarities = []
+    for i in tqdm(range(len(ordered_keys))):
+        keys = ordered_keys[i]
+        comparison_frame = get_max_different_frame_in_gesture(keys)
+        similarities.append(
+            [get_frame_diff(keys[comparison_frame], k2[get_max_different_frame_in_gesture(k2)]) for k2 in ordered_keys])
+    return similarities
+
+
+def cluster_gestures_by_max_different_frame(df):
+    similarities = create_max_difference_matrix_max_different_frame(df)
+    ac = AgglomerativeClustering(n_clusters=10, affinity='precomputed', linkage='complete')
+    u = ac.fit_predict(similarities)
+
+    order = list(zip(df.id, df.keyframes))
+    clusters = {}
+    for i in range(len(order)):
+        if u[i] not in clusters.keys():
+            clusters[u[i]] = {'gestures': []}
+    clusters[u[i]]['gestures'].append(order[i][0])
+    return clusters
+
+
+def get_percent_gesture_cluster_overlap(A, B):
+    setsA = [(c, set(A[c]['gesture_ids'])) for c in A.keys()]
+    setsB = [(c, set(B[c]['gesture_ids'])) for c in B.keys()]
+
+    overlaps = {}
+    for k, a_ids in setsA:
+        max_overlap_id = 0
+        max_overlap = 0
+        all_overlaps = []
+        for j, b_ids in setsB:
+            overlap = float(len(a_ids & b_ids)) / len(a_ids)
+            print("overlap for ", k, j, ":", overlap)
+            all_overlaps.append(overlap)
+            if overlap > max_overlap:
+                max_overlap = overlap
+                max_overlap_id = j
+        overlaps[k] = {
+            'max_overlap': max_overlap,
+            'max_overlap_id': max_overlap_id,
+            'avg_overlap': np.array(all_overlaps).mean(),
+            'std_overlap': np.array(all_overlaps).std()
+        }
+    return overlaps
+
+
+def get_avg_motion_dist_for_clusters(df, clusters, motion_metric='feature_vec'):
+    avg = np.array([])
+    for c in clusters.keys():
+        fvs = df[df['id'].isin(clusters[c]['gesture_ids'])]['motion_feature_vec'].tolist()
+        dists = []
+        for i in range(len(fvs)):     # maybe inefficient to get all the gestures one by one?
+            if not i % 200:
+                print(i, "/", len(fvs))
+            for j in range(i, len(fvs)):
+                diff = np.linalg.norm(np.array(fvs[i]) - np.array(fvs[j]))
+                dists.append(diff)
+        avg = np.append(avgs, np.array(dists).mean())
+    return avg
+
+
+def _calculate_distance_between_vectors(v1, v2):
+    return np.linalg.norm(np.array(v1) - np.array(v2))
+
+
 class GestureClusterer:
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
@@ -122,7 +195,9 @@ class GestureClusterer:
             seed_ids = []
         print("Clustering gestures")
 
-        self.df.progress_apply(lambda row: self._cluster_gesture_from_row(row, max_cluster_distance, max_number_clusters, seed_ids), axis=1)
+        self.df.progress_apply(
+            lambda row: self._cluster_gesture_from_row(row, max_cluster_distance, max_number_clusters, seed_ids),
+            axis=1)
         # now recluster based on where the new centroids are
         self._recluster_by_centroids()
         print("created %s clusters" % self.total_clusters_created)
@@ -156,7 +231,8 @@ class GestureClusterer:
         df = self.df
         print("Getting initial feature vectors.")
         # TODO track this through and make sure it's assigning the right thing to the right thing
-        feats = list(df.progress_apply(lambda row: self._get_gesture_features(row, gesture_features=gesture_features), axis=1))
+        feats = list(
+            df.progress_apply(lambda row: self._get_gesture_features(row, gesture_features=gesture_features), axis=1))
         normalized_feats = list(self._normalize_feature_values(feats))
         df['motion_feature_vec'] = normalized_feats
         return df
@@ -180,9 +256,9 @@ class GestureClusterer:
         self.c_id = self.c_id + 1
         c = {
             'cluster_id': new_cluster_id,
-             'centroid': feature_vec,
-             'seed_id': seed_gesture_id,
-             'gesture_ids': [seed_gesture_id]
+            'centroid': feature_vec,
+            'seed_id': seed_gesture_id,
+            'gesture_ids': [seed_gesture_id]
         }
         self.clusters[new_cluster_id] = c
         self.total_clusters_created += 1
@@ -235,7 +311,7 @@ class GestureClusterer:
         cent = c['centroid']
         gestures_in_cluster = self.df.loc[self.df['id'].isin(c['gesture_ids'])]
         feat_vecs = list(gestures_in_cluster['motion_feature_vec'])
-        dists = [self._calculate_distance_between_vectors(f, cent) for f in feat_vecs]
+        dists = [_calculate_distance_between_vectors(f, cent) for f in feat_vecs]
         return np.average(dists)
 
     # instead of this need to use centroid.
@@ -246,7 +322,7 @@ class GestureClusterer:
         for k in self.clusters:
             c = self.clusters[k]
             centroid = c['centroid']
-            dist = self._calculate_distance_between_vectors(feature_vec, centroid)
+            dist = _calculate_distance_between_vectors(feature_vec, centroid)
             if dist < shortest_dist:
                 nearest_cluster_id = c['cluster_id']
             shortest_dist = min(shortest_dist, dist)
@@ -311,17 +387,13 @@ class GestureClusterer:
         feat2 = np.array(self._get_gesture_features(g2))
         return np.linalg.norm(feat1 - feat2)
 
-    @timeit
-    def _calculate_distance_between_vectors(self, v1, v2):
-        return np.linalg.norm(np.array(v1) - np.array(v2))
-
     def get_closest_gesture_to_centroid(self, cluster_id):
         c = self.clusters[cluster_id]
         cent = c['centroid']
         min_d = 1000
         g_id = 0
         for g in c['gestures']:
-            dist = self._calculate_distance_between_vectors(g['feature_vec'], cent)
+            dist = _calculate_distance_between_vectors(g['feature_vec'], cent)
             if dist < min_d:
                 g_id = g['id']
                 min_d = dist
@@ -337,7 +409,7 @@ class GestureClusterer:
     def _calc_dist_between_random_gestures(self):
         i = random.randrange(0, len(self.agd))
         j = random.randrange(0, len(self.agd))
-        return self._calculate_distance_between_vectors(self.agd[i]['feature_vec'], self.agd[j]['feature_vec'])
+        return _calculate_distance_between_vectors(self.agd[i]['feature_vec'], self.agd[j]['feature_vec'])
 
     # lol this is wrong.
     # goes through each gesture twice (which actually might calculate right value but is wrong theoretically)
@@ -349,7 +421,7 @@ class GestureClusterer:
             for j in range(len(gs)):
                 if i == j:
                     continue
-                all_dists = all_dists + self._calculate_distance_between_vectors(gs[i]['feature_vec'],
+                all_dists = all_dists + _calculate_distance_between_vectors(gs[i]['feature_vec'],
                                                                                  gs[j]['feature_vec'])
 
         dists = {'average': _avg(all_dists), 'max': max(all_dists), 'min': min(all_dists)}
@@ -362,7 +434,7 @@ class GestureClusterer:
         for c in self.clusters:
             if c == cluster_id:
                 continue
-            mind = self._calculate_distance_between_vectors(self.clusters[c]['centroid'],
+            mind = _calculate_distance_between_vectors(self.clusters[c]['centroid'],
                                                             self.clusters[cluster_id]['centroid'])
             if mind < dist:
                 dist = mind
@@ -382,7 +454,7 @@ class GestureClusterer:
             return 0
         for g_id in c['gesture_ids']:
             f = self.get_feature_vector_by_gesture_id(g_id)
-            dists.append(self._calculate_distance_between_vectors(vec, f))
+            dists.append(_calculate_distance_between_vectors(vec, f))
         return np.array(dists)
 
     # gets silhouette score for cluster using centroid
@@ -397,7 +469,7 @@ class GestureClusterer:
             print("No gestures in cluster ", cluster_id)
             return 0
         p = c['centroid']
-        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id)) / (c_magnitude-1)
+        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id)) / (c_magnitude - 1)
         b = sum(self.get_dists_between_point_and_cluster(p, c2)) / c2_magnitude
         score = (b - a) / max(b, a)
         return score
@@ -409,11 +481,11 @@ class GestureClusterer:
         if len(c['gesture_ids']) <= 1:
             return 0
         p = self.get_feature_vector_by_gesture_id(c['centroid_id'])
-        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id, clusters=clusters)) / (cluster_magnitude-1)
+        a = sum(self.get_dists_between_point_and_cluster(p, cluster_id, clusters=clusters)) / (cluster_magnitude - 1)
         b = sum(self.get_dists_between_point_and_cluster(p,
                                                          self.get_nearest_cluster_from_cluster_id(cluster_id),
                                                          clusters=clusters) /
-                                                         cluster_magnitude)
+                cluster_magnitude)
         score = (b - a) / max(b, a)
         return score
 
@@ -423,6 +495,8 @@ class GestureClusterer:
             scores.append(self.get_silhouette_score(g))
         return _avg(scores)
 
+    # given two sets of clusterings A and B, determines what percentage of gestures in each
+    # cluster in clustering A are also in the same cluster in clustering B
 
 # our basic problem is that we need to figure out how to map distances between motions that are very long
 # vectors, and different lengths of keyframes. But we need to distinguish between the speed of those motions

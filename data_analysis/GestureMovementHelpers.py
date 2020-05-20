@@ -84,6 +84,90 @@ def plot_vel_for_gest(keyframes):
     plt.plot(xs, ys)
 
 
+# between the two frames g1 and g2, just returns (g1_frame, g2_frame) of the closest pose they have.
+def get_closest_frame_between_gestures(g1_keys, g2_keys):
+    min_dist = 100000
+    low_1 = 0
+    low_2 = 0
+    for i in range(len(g1_keys)):
+        for j in range(len(g2_keys)):
+            a = np.array(g1_keys[i]['x'] + g1_keys[i]['y'])
+            b = np.array(g2_keys[j]['x'] + g2_keys[j]['y'])
+            dist = np.linalg.norm(a - b)
+            if dist < min_dist:
+                min_dist = dist
+                low_1 = i
+                low_2 = j
+    return low_1, low_2
+
+
+def get_difference_vector(key_vector):
+    diffs = []
+    kv = np.array(key_vector)
+    for i in range(len(kv)-1):
+        diffs.append(kv[i] - kv[i+1])
+    return diffs
+
+
+def get_distance_between_vector_arrays(v1, v2):
+    total = 0
+    for i in range(len(v1)):
+        total += abs(v1[i]-v2[i]).mean()
+    return total
+
+
+def get_frame_diff(keys1, keys2):
+    keys1_x = np.array(keys1['x'])
+    keys1_y = np.array(keys1['y'])
+    keys2_x = np.array(keys2['x'])
+    keys2_y = np.array(keys2['y'])
+    x_diff = abs(keys1_x - keys2_x).sum()
+    y_diff = abs(keys1_y - keys2_y).sum()
+    return x_diff + y_diff
+
+
+def get_max_different_frame_in_gesture(keys):
+    f1 = keys[0]
+    max_diff = 0
+    diff_frame = 0
+    for i in range(1, len(keys)):
+        frame_diff = get_frame_diff(f1, keys[i])
+        if frame_diff >= max_diff:
+            max_diff = frame_diff
+            diff_frame = i
+    return diff_frame
+
+
+# gets distance based SOLELY on differences between keys between frames.
+# this requires that the two gestures have the same number of frames.
+def get_distance_between_gestures_same_length(g1_keys, g2_keys):
+    if len(g1_keys) != len(g2_keys):
+        print("yeah no this method of distance ain't gonna work, pal.")
+        return None
+    g1_x_diffs = get_difference_vector([k['x'] for k in g1_keys])
+    g1_y_diffs = get_difference_vector([k['y'] for k in g1_keys])
+    g2_x_diffs = get_difference_vector([k['x'] for k in g2_keys])
+    g2_y_diffs = get_difference_vector([k['y'] for k in g2_keys])
+    x_diff = get_distance_between_vector_arrays(g1_x_diffs, g2_x_diffs)
+    y_diff = get_distance_between_vector_arrays(g1_y_diffs, g2_y_diffs)
+    return (x_diff + y_diff).sum()
+
+
+def get_distances(df):
+    order = list(zip(df.id, df.keyframes))  # keep dict in order to sort and
+    ordered_keys = []
+    for k, v in sorted(order, key=sort_indexes):  # assign proper distances to it.
+        ordered_keys.append(v)
+    similarities = []
+    for i in tqdm(range(len(ordered_keys))):
+        keys = ordered_keys[i]
+        similarities.append([get_distance_between_gestures_same_length(keys, k2) for k2 in ordered_keys])
+    return similarities
+
+
+def sort_indexes(el):
+    return str(el[0]).replace("-", ".")
+
 
 @timeit
 def _palm_angle_axis(keyframes, xy):

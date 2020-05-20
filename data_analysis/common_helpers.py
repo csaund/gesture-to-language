@@ -11,6 +11,18 @@ import numpy as np
 from google.cloud import storage
 
 
+def get_gesture_by_id(df, g_id):
+    i = get_index_by_gesture_id(df, g_id)
+    return df.iloc[i]
+
+
+def get_index_by_gesture_id(df, gid):
+    ids = df.index[df['id'] == gid].tolist()
+    if ids:
+        return ids[0]
+    return None
+
+
 ########################################################
 ############### Getting Actual Keyframes ###############
 ########################################################
