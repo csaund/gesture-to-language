@@ -12,7 +12,9 @@ from data_analysis.VideoManager import VideoManager
 from data_analysis.GestureClusterer import GestureClusterer
 from data_analysis.GestureMovementHelpers import GESTURE_FEATURES
 from data_analysis.RhetoricalClusterer import RhetoricalClusterer
+from data_analysis.RhetoricalClusterer import cluster_fixed_tag
 from data_analysis.GestureSplicer import GestureSplicer
+from data_analysis.GestureSplicer import *
 
 
 VERBS = ["V", "VB", "VBD", "VBD", "VBZ", "VBP", "VBN"]
@@ -37,6 +39,33 @@ ADJ = ["JJ"]
 # Ann = Analyzer(GSM)           # Before this must run GSM.combine_all_gesture_data()
 
 
+# set up the GSM with rhetorical parses, etc.
+# example:
+# $ GSM = setup_GSM("ellen")
+def setup_GSM(speaker, GSM=None):
+    if GSM is None:
+        GSM = GestureSentenceManager(speaker)
+    print("starting shape:")
+    print(GSM.df.shape)
+    print("avg gesture length: ", GSM.get_avg_frames_for_gesture())
+    GSM.drop_null_keyframes(inplace=True)
+    GSM.RhetoricalClusterer = RhetoricalClusterer(GSM.df)
+    GSM.RhetoricalClusterer.initialize_clusterer()
+    GSM.df = GSM.drop_null_keyframes(inplace=True)
+    GSM.drop_null_rhetorical_units(inplace=True)
+    GSM.df = splice_all_gestures_by_rhetorical_parses(GSM.df)
+    print("ending shape")
+    print(GSM.df.shape)
+    print("avg gesture length: ", GSM.get_avg_frames_for_gesture())
+    return GSM
+
+
+def setup_clusters(GSM):
+    rhetorical_clusters = cluster_fixed_tag(GSM.df)
+    GSM.GestureClusterer = GestureClusterer(GSM.df)
+    GSM.df = GSM.GestureClusterer.assign_feature_vectors()
+    return GSM, rhetorical_clusters
+
 # from GestureSentenceManager import *
 # GSM = GestureSentenceManager("conglomerate_under_10")
 # GSM.GestureClusterer.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
@@ -46,6 +75,7 @@ ADJ = ["JJ"]
 # GSM = GestureSentenceManager("test")
 # GS = GestureSplicer()
 # df = GS.splice_gestures(GSM.df)
+# GSM.df = df
 # GSM._setup()
 
 def get_cluster_id_for_gesture(clusters, g_id):
@@ -87,6 +117,21 @@ class GestureSentenceManager:
         self.RhetoricalClusterer.cluster_sequences()
         print("Getting gesture features")
         self.GestureClusterer.df = self.GestureClusterer.assign_feature_vectors()
+
+    # TODO implement this
+    # this should really be in the rhetorical parser but because it has to do with
+    # the management of the entire data, I put it here.
+    def drop_without_rhetorical_parse(self):
+        parsed_transcripts = list_blobs(bucket_name='parsed_transcript_bucket')
+        # take off the .json.rhet_parse from the end
+        pts = [p[:-16] for p in parsed_transcripts]
+        hack = []
+        for p in pts:
+            hack.append(p + '.webm')
+            hack.append(p + '.mkv')
+            hack.append(p + '.mp4')
+        new_df = self.df[self.df['video_fn'].isin(hack)].reset_index(drop=True)
+        return new_df
 
     # splice gestures when there seems to be no movement or speaking
     def splice_gestures(self):
@@ -229,6 +274,21 @@ class GestureSentenceManager:
             bins = [5, 10, 20, 50, 75, 100, 120, 150, 180, 200, 250, 300, 350, 400, 450, 500, 550]
         lengths = [len(k) for k in df[key]]
         plt.hist(lengths, bins=bins)
+
+    def drop_null_keyframes(self, inplace=True):
+        df = self.df.dropna(subset=['keyframes'])
+        df = df[df.keyframes.str.len() > 0]
+        if inplace:
+            self.df = df
+            return
+        return df
+
+    def drop_null_rhetorical_units(self, inplace=True):
+        df = self.df.dropna(subset=['rhetorical_units'])
+        if inplace:
+            self.df = df
+            return
+        return df
 
     ###################################################
     ################ DATA MANIPULATION ################

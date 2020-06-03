@@ -35,32 +35,7 @@ def get_cluster_sizes(clusters, appender='R'):
     return {'ids': ids, 'sizes': lens}
 
 
-def create_network_from_two_clusterings(A, B):
-    # create df for network diagram
-    from_ = []
-    to_ = []
-    colors_ = []
-    weights_ = []
-    for k in A.keys():
-        B_clusters = get_all_clusters_for_gesture_ids(A[k]['gesture_ids'], B)
-        for b in B_clusters:
-            from_.append(str(k)+'R')
-            to_.append(str(b)+'M')
-            weights_.append(get_percent_gesture_cluster_overlap(A[k], B[b]))
-
-    df = pd.DataFrame({'from': from_, 'to': to_, 'weights': weights_})
-    G = nx.from_pandas_edgelist(df, 'from', 'to')
-
-    node_sizes = pd.DataFrame(get_cluster_sizes(A))
-    node_sizes = node_sizes.set_index('ids')
-    node_sizes = node_sizes.reindex(G.nodes())
-    print(node_sizes['sizes'])
-
-    nx.draw(G, with_labels=True, edge_color=df['weights'], node_size=node_sizes['sizes'])
-    plt.show()
-
-
-def create_network_from_two_clusterings(A, B):
+def create_network_from_two_clusterings(A, B, layout="spring"):
     # create df for network diagram
     G = nx.Graph()
     for k in A.keys():
@@ -81,6 +56,11 @@ def create_network_from_two_clusterings(A, B):
     esmall = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] <= 0.2]
 
     pos = nx.spring_layout(G)  # positions for all nodes
+    if layout == "shell":
+        pos = nx.shell_layout(G)
+    elif layout == "spectral":
+        pos = nx.spectral_layout(G)
+
     nx.draw_networkx_nodes(G, pos, node_size=node_sizes['sizes'], node_color=node_colors, alpha=0.5)
     nx.draw_networkx_edges(G, pos, edgelist=elarge,
                            width=1, edge_color='g')

@@ -117,6 +117,18 @@ def get_distance_between_vector_arrays(v1, v2):
 
 
 def get_frame_diff(keys1, keys2):
+    if not keys1 and not keys2:
+        print("EMPTY KEYS")
+        return 0
+    if not keys1:
+        keys2_x = np.array(keys2['x'])
+        keys2_y = np.array(keys2['y'])
+        return (keys2_x + keys2_y).sum()
+    elif not keys2:
+        keys1_x = np.array(keys2['x'])
+        keys1_y = np.array(keys2['y'])
+        return (keys1_x + keys1_y).sum()
+
     keys1_x = np.array(keys1['x'])
     keys1_y = np.array(keys1['y'])
     keys2_x = np.array(keys2['x'])
@@ -127,6 +139,9 @@ def get_frame_diff(keys1, keys2):
 
 
 def get_max_different_frame_in_gesture(keys):
+    if not keys:
+        print("EMPTY KEYS")
+        return 0
     f1 = keys[0]
     max_diff = 0
     diff_frame = 0

@@ -226,7 +226,7 @@ def get_new_gestures_by_rhetorical_parses(df):
 
 
 def splice_all_gestures_by_rhetorical_parses(df):
-    if ('motion_feature_vec' not in list(df)) or ('rhetorical_units' not in list(df)):
+    if 'rhetorical_units' not in list(df):
         print('need rhetorical parses to perform parse.')
         print('please initialize rhetorical clusterer before parsing.')
         return df
@@ -249,22 +249,30 @@ class GestureSplicer:
         # time to convert to dfs.
         self.VideoManager = VideoManager()
 
-    def splice_gestures(self, df):
+    def splice_gestures(self, df, splice_type=None):
         # this hurts real bad but we have to do it like this. we have to iterate over every one
         # we can't use apply because we're adding and deleting rows from the df.
         print("splicing gestures")
-        new_gestures = []
-        for index, row in tqdm(df.iterrows()):
-            new_g = self._splice_gesture(row)
-            if len(new_g) >= 2:
-                new_gestures += new_g
-
-        print("rebuilding dataframe")
-        to_del = [g['id'] for g in new_gestures]
-        ng_series = [pd.Series(g) for g in new_gestures]
-        short_df = df.drop(df.index[df['id'].isin(to_del)])
-        additional = short_df.append(ng_series)
-        return additional.reset_index(inplace=True)
+        if splice_type is None:
+            print("missing required parameter splice_type in gesture splicer. Must be 'motion' or 'rhetorical'")
+            return df
+        if splice_type == 'motion':
+            new_gestures = []
+            for index, row in tqdm(df.iterrows()):
+                new_g = self._splice_gesture(row)
+                if len(new_g) >= 2:
+                    new_gestures += new_g
+            print("rebuilding dataframe")
+            to_del = [g['id'] for g in new_gestures]
+            ng_series = [pd.Series(g) for g in new_gestures]
+            short_df = df.drop(df.index[df['id'].isin(to_del)])
+            additional = short_df.append(ng_series)
+            return additional.reset_index(inplace=True, drop=True)
+        elif splice_type == 'rhetorical':
+            return splice_all_gestures_by_rhetorical_parses(df)
+        else:
+            print('unrecognized splice type', splice_type)
+            return df
 
     def _splice_gesture(self, gesture, gestures=None):
         # detect lack of movement by finding period of high movement,

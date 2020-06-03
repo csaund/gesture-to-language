@@ -236,7 +236,7 @@ def get_clustering(similarities, n_clusters=100, algorithm=None):
         algorithm = "agglomerative"
     clustering = None
     if algorithm == "agglomerative":
-        clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='single')
+        clustering = AgglomerativeClustering(n_clusters=n_clusters, affinity='precomputed', linkage='complete')
     elif algorithm == "dbscan":
         clustering = DBSCAN(metric='precomputed')
     else:
@@ -264,6 +264,56 @@ def create_clusters_from_clustering(clustering, df):
                                  'id': labs[i]}
         clusters[labs[i]]['gesture_ids'].append(order[i][0])
     return clusters
+
+
+# TODO delete this and only go through the rhetorical clusterer as progress_apply is better.
+# TODO also delete clusters with only one gesture
+def cluster_fixed_tag(df):
+    ftc = {
+        -1: {
+            'gesture_ids': []
+        }
+    }
+
+    for i, row in df.iterrows():
+        ru = row['rhetorical_units']
+        if isinstance(row['rhetorical_units'], dict):
+            ru = ru['sequence']
+        elif isinstance(row['rhetorical_units'], list):
+            ru = " ".join([el['sequence'] for el in ru])
+        else:
+            ftc[-1]['gesture_ids'].append(row['id'])
+            continue
+        if ru in ftc.keys():
+            ftc[ru]['gesture_ids'].append(row['id'])
+        else:
+            ftc[ru] = {
+                'gesture_ids': [row['id']]
+            }
+
+    return ftc
+
+
+# average, max, sd cluster size
+def get_cluster_metrics(clusters):
+    lengths = []
+    for c in clusters.keys():
+        lengths.append(len(clusters[c]['gesture_ids']))
+    lengths = np.array(lengths)
+    print("average cluster size:", lengths.mean())
+    print("std cluster size:", lengths.std())
+    print("max cluster size:", lengths.max())
+    without_max = np.delete(lengths, np.argwhere(lengths == lengths.max()))
+    print("average without_max size:", without_max.mean())
+    print("std without_max size:", without_max.std())
+    print("max without_max size:", without_max.max())
+
+
+def count_gestures_in_clusters(clusters):
+    total = []
+    for c in clusters.keys():
+        total += clusters[c]['gesture_ids']
+    return len(total)
 
 
 class RhetoricalClusterer:
@@ -296,6 +346,7 @@ class RhetoricalClusterer:
             f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet", should_show=False)
         except:
             print("couldn't get rhetorical parse file for ", rhetorical_parse_file)
+            return
         content = get_parse_data("tmp.rhet")
         # os.remove("tmp.rhet")
         en, texts = get_sequence_encoding(content=content)
@@ -428,3 +479,33 @@ class RhetoricalClusterer:
             scores.append(sklearn.metrics.silhouette_score(similarities, clustering.labels_))
 
         plt.plot(n_clusters, scores)
+
+
+    #clusters_rhet_dbscan_large
+    def cluster_to_fixed_tag(self, row):
+        print(row)
+        ru = row['rhetorical_units']
+        if isinstance(row['rhetorical_units'], dict):
+            ru = ru['sequence']
+        elif isinstance(row['rhetorical_units'], list):
+            ru = " ".join([el['sequence'] for el in ru])
+        else:
+            self.clusters[-1]['gesture_ids'].append(row['id'])
+            return
+        if ru in self.clusters.keys():
+            self.clusters[ru]['gesture_ids'].append(row['id'])
+        else:
+            self.clusters[ru] = {
+                'gesture_ids': []
+            }
+
+
+    def cluster_fixed_tag(self, df):
+        self.clusters = {
+            -1: {
+                'gesture_ids': []
+            }
+        }
+
+        df.progress_apply(self.cluster_to_fixed_tag)
+        return self.clusters
