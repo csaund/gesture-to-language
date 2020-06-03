@@ -345,7 +345,7 @@ class RhetoricalClusterer:
         try:
             f = download_blob(self.bucket, rhetorical_parse_file, "tmp.rhet", should_show=False)
         except:
-            print("couldn't get rhetorical parse file for ", rhetorical_parse_file)
+            # print("couldn't get rhetorical parse file for ", rhetorical_parse_file)
             return
         content = get_parse_data("tmp.rhet")
         # os.remove("tmp.rhet")

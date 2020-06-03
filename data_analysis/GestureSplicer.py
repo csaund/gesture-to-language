@@ -163,6 +163,8 @@ def get_rhetorical_splice_times_for_gesture(gesture):
 
     j = 0
     ends = []
+    if not isinstance(units, list):     # the rhetorical units only contain 1, so we can't parse it further
+        return None, None
     for u in units:
         #print("new unit!")
         text = u['text'].split(" ")

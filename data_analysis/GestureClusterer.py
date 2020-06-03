@@ -25,14 +25,86 @@ from common_helpers import *
 # add cycle detection to features
 # add rotation? arcs? sweeps? oscillation?
 
-def get_silhouette_scores_alternative_clustering(df, clusters):
+# if a cluster has only 1 gesture, re-cluster into others using supplied distance metric
+def combine_singletons(clusters, distance_metric='feature_vec'):
+    to_del = []
+    for k in clusters.keys():
+        if len(clusters[k]['gesture_ids']) == 0:
+            to_del.append(k)
+            continue
+        if len(clusters[k]['gesture_ids']) == 1:
+            to_del.append(k)
+            nearest_k = get_nearest_cluster_from_cluster_id(k, clusters)
+            if 'combined_keys' not in clusters[nearest_k].keys():
+                clusters[nearest_k]['combined_keys'] = [nearest_k, k]
+            else:
+                clusters[nearest_k]['combined_keys'].append(k)
+            clusters[nearest_k]['gesture_ids'] += clusters[k]['gesture_ids']
+
+    for k in to_del:
+        del clusters[k]
+    return clusters
+
+
+def combine_clusters_by_id(cid1, cid2, clustering, df):
+    c1 = clustering[cid1]
+    c2 = clustering[cid2]
+    nk = cid1 + '+' + cid2
+    ng_ids = c1['gesture_ids'] + c2['gesture_ids']
+    comb_keys = []
+    if 'combined_keys' in c1.keys() and 'combined_keys' in c2.keys():
+        comb_keys = c1['combined_keys'] + c2['combined_keys']
+    elif 'combined_keys' in c1.keys():
+        comb_keys = c1['combined_keys']
+    elif 'combined_keys' in c2.keys():
+        comb_keys = c2['combined_keys']
+    clustering[nk] = {
+        'gesture_ids': ng_ids,
+        'combined_keys': comb_keys,
+        'centroid': get_centroid_from_gids(df, ng_ids)
+    }
+    del clustering[cid1]
+    del clustering[cid2]
+    clustering[nk]['silhouette_score'] = \
+        get_silhouette_score_for_alternative_clustering_by_id(df, clustering, nk)
+    return clustering
+
+
+def get_key_for_worst_silhouette_score(clusters):
+    min_score = 1
+    mink = 0
+    for k in clusters.keys():
+        c = clusters[k]
+        s = c['silhouette_score']
+        if s < min_score:
+            min_score = s
+            mink = k
+    return mink
+
+
+def combine_worst_n_clusters(clusters, n, df):
+    for i in tqdm(range(n)):
+        k = get_key_for_worst_silhouette_score(clusters)
+        ck = get_nearest_cluster_from_cluster_id(k, clusters)
+        clusters = combine_clusters_by_id(k, ck, clusters, df)
+    return clusters
+
+
+def get_silhouette_scores_alternative_clustering(df, clusters, exclude_keys=[], add_scores=True):
     scores = []
     for c in tqdm(clusters.keys()):
-        scores.append(get_silhouette_score_for_alternative_clustering(df, clusters, c))
-    return scores
+        if c in exclude_keys:
+            continue
+        s = get_silhouette_score_for_alternative_clustering_by_id(df, clusters, c)
+        scores.append(s)
+        if add_scores:
+            clusters[c]['silhouette_score'] = s
+    if add_scores:
+        return np.array(scores), clusters
+    return np.array(scores)
 
 
-def get_silhouette_score_for_alternative_clustering(df, clusters, cluster_id):
+def get_silhouette_score_for_alternative_clustering_by_id(df, clusters, cluster_id):
     c = clusters[cluster_id]
     cluster_magnitude = len(c['gesture_ids'])
     if len(c['gesture_ids']) <= 1:
@@ -62,7 +134,8 @@ def get_between_cluster_distances(clusters):
         nc = get_nearest_cluster_from_cluster_id(c, clusters=clusters)
         dist = _calculate_distance_between_vectors(clusters[c]['centroid'], clusters[nc]['centroid'])
         ds.append(dist)
-    return ds
+    return np.array(ds)
+
 
 # TODO MOVE THIS
 def no_singletons(clusters):
@@ -86,14 +159,17 @@ def get_feature_vector_by_gesture_id(df, g_id):
 # {'gesture_ids': [# list of ids #], 'centroid': [# feature vector #]}
 def add_centroids_to_clusters_motion_vec(df, clusters):
     for c in clusters.keys():
-        fvs = []
-        for gid in clusters[c]['gesture_ids']:
-            fv = get_feature_vector_by_gesture_id(df, gid)
-            fvs.append(fv)
-        m = np.array(fvs)
-        clusters[c]['centroid'] = m.mean(0)
+        clusters[c]['centroid'] = get_centroid_from_gids(df, clusters[c]['gesture_ids'])
     return clusters
 
+
+def get_centroid_from_gids(df, gids):
+    fvs = []
+    for gid in gids:
+        fv = get_feature_vector_by_gesture_id(df, gid)
+        fvs.append(fv)
+    m = np.array(fvs)
+    return m.mean(0)
 
 def get_dists_between_point_and_cluster(df, vec, cluster_id, clusters):
     dists = []
@@ -109,8 +185,8 @@ def get_dists_between_point_and_cluster(df, vec, cluster_id, clusters):
 
 
 def get_nearest_cluster_from_cluster_id(cluster_id, clusters=None):
-    dist = 1000
-    min_c = 0
+    dist = 10000
+    min_c = cluster_id
     for c in clusters.keys():
         if c == cluster_id:
             continue

@@ -15,6 +15,7 @@ from data_analysis.RhetoricalClusterer import RhetoricalClusterer
 from data_analysis.RhetoricalClusterer import cluster_fixed_tag
 from data_analysis.GestureSplicer import GestureSplicer
 from data_analysis.GestureSplicer import *
+from data_analysis.GestureClusterer import *
 
 
 VERBS = ["V", "VB", "VBD", "VBD", "VBZ", "VBP", "VBN"]
@@ -41,42 +42,117 @@ ADJ = ["JJ"]
 
 # set up the GSM with rhetorical parses, etc.
 # example:
-# $ GSM = setup_GSM("ellen")
-def setup_GSM(speaker, GSM=None):
+# $ GSM, stats = setup_GSM("ellen")
+def setup_GSM(speaker, stats, GSM=None):
     if GSM is None:
         GSM = GestureSentenceManager(speaker)
-    print("starting shape:")
-    print(GSM.df.shape)
-    print("avg gesture length: ", GSM.get_avg_frames_for_gesture())
+    stats['starting_shape'] = GSM.df.shape
     GSM.drop_null_keyframes(inplace=True)
+    stats['shape_dropped_kf'] = GSM.df.shape
+    stats['starting_avg_gesture_length'] = GSM.get_avg_frames_for_gesture()
+    GSM.drop_without_rhetorical_parse(inplace=True)
+    stats['shape_no_parse_file'] = GSM.df.shape
     GSM.RhetoricalClusterer = RhetoricalClusterer(GSM.df)
+    print("getting rhetorical parses")
     GSM.RhetoricalClusterer.initialize_clusterer()
-    GSM.df = GSM.drop_null_keyframes(inplace=True)
     GSM.drop_null_rhetorical_units(inplace=True)
+    stats['shape_no_parse_found'] = GSM.df.shape
+    GSM.drop_null_keyframes(inplace=True)
     GSM.df = splice_all_gestures_by_rhetorical_parses(GSM.df)
-    print("ending shape")
-    print(GSM.df.shape)
-    print("avg gesture length: ", GSM.get_avg_frames_for_gesture())
-    return GSM
+    GSM.drop_null_keyframes(inplace=True)
+    stats['shape'] = GSM.df.shape
+    return GSM, stats
 
 
-def setup_clusters(GSM):
+def setup_clusters(GSM, stats):
     rhetorical_clusters = cluster_fixed_tag(GSM.df)
     GSM.GestureClusterer = GestureClusterer(GSM.df)
     GSM.df = GSM.GestureClusterer.assign_feature_vectors()
-    return GSM, rhetorical_clusters
+    rhetorical_clusters = add_centroids_to_clusters_motion_vec(GSM.df, rhetorical_clusters)
+    return GSM, rhetorical_clusters, stats
 
-# from GestureSentenceManager import *
-# GSM = GestureSentenceManager("conglomerate_under_10")
-# GSM.GestureClusterer.cluster_gestures_disparate_seeds(None, max_cluster_distance=0.03, max_number_clusters=27)
-# GSM.cluster_sentences_gesture_independent()
 
-# exec(open('setup.py').read())
-# GSM = GestureSentenceManager("test")
-# GS = GestureSplicer()
-# df = GS.splice_gestures(GSM.df)
-# GSM.df = df
-# GSM._setup()
+def fix_up_clusters(clusters, stats, distance_metric='feature_vec'):
+    # combine singletons using distance metric
+    stats['num_clusters_with_singletons'] = len(clusters)
+    clusters = combine_singletons(clusters)
+    stats['num_clusters_combined_singletons'] = len(clusters)
+    return clusters, stats
+
+
+def analyze_clusters(df, clusters, stats):
+    sc, clusters = get_silhouette_scores_alternative_clustering(df, clusters, add_scores=True)
+    stats['silhouette_scores_raw'] = {
+        'mean': sc.mean(),
+        'std': sc.std(),
+        'max': sc.max(),
+        'min': sc.min()
+    }
+    btw_sc = get_between_cluster_distances(clusters)
+    btw_sc = normalize_to(btw_sc, 1)
+    stats['between_scores_raw'] = {
+        'mean': btw_sc.mean(),
+        'std': btw_sc.std(),
+        'max': btw_sc.max(),
+        'min': btw_sc.min()
+    }
+    lengths = np.array([len(clusters[c]['gesture_ids']) for c in clusters.keys()])
+    stats['avg_cluster_size'] = lengths.mean()
+    stats['std_cluster_size'] = lengths.std()
+    key_lengths = [(c, len(clusters[c]['gesture_ids'])) for c in clusters.keys()]
+    kl = sorted(key_lengths, key=lambda x: x[1])
+    stats['largest_cluster_keys'] = kl[-5:]
+    l = np.array(sorted(lengths)[:-5])
+    stats['avg_cluster_size_-5'] = l.mean()
+    stats['std_cluster_size_-5'] = l.std()
+    ks = [k[0] for k in kl[-5:]]
+    sc_no_generic = get_silhouette_scores_alternative_clustering(df, clusters, exclude_keys=ks, add_scores=False)
+    stats['silhouette_scores_-5'] = {
+        'mean': sc_no_generic.mean(),
+        'std': sc_no_generic.std(),
+        'max': sc_no_generic.max(),
+        'min': sc_no_generic.min()
+    }
+    return sc, btw_sc, clusters, stats
+
+# GSM, clusters, stats = run_all_on_speaker("ellen"), for example
+def run_all_on_speaker(speaker):
+    stats = {}
+    GSM, stats = setup_GSM(speaker, stats)
+    GSM, clusters, stats = setup_clusters(GSM, stats)
+    clusters, stats = fix_up_clusters(clusters, stats)
+    sc, btw, clusters, stats = analyze_clusters(GSM.df, clusters, stats)
+    return GSM, clusters, stats
+
+
+# TODO run loop magic on this?
+def combine_analyze_clusters(dfs, n):
+    comb_df = combine_dfs(dfs)
+    rhetorical_clusters, stats = get_combined_clusters_from_dfs(dfs)    # this adds silhouette scores and centroids
+    rhetorical_clusters = combine_worst_n_clusters(rhetorical_clusters, n, comb_df)
+    comb_sc, comb_btw_sc, comb_clusters, comb_stats = analyze_clusters(comb_df, rhetorical_clusters, stats)
+    return comb_clusters, comb_stats
+
+
+def get_combined_clusters_from_dfs(dfs=None):
+    if dfs is None or not len(dfs):
+        print("gimme something to work with pls")
+    df = combine_dfs(dfs)
+    rhetorical_clusters = cluster_fixed_tag(df)
+    print("re-getting centroids for %s gestures" % df.shape[0])
+    rhetorical_clusters = add_centroids_to_clusters_motion_vec(df, rhetorical_clusters)
+    rhetorical_clusters, stats = fix_up_clusters(rhetorical_clusters, {})
+    print("analyzing clusters")
+    sc, btw, rhetorical_clusters, stats = analyze_clusters(df, rhetorical_clusters, stats)
+    return rhetorical_clusters, stats
+
+
+def combine_dfs(dfs):
+    df0 = dfs[0]
+    for df in dfs:
+        df0 = df0.append(df)
+    return df0
+
 
 def get_cluster_id_for_gesture(clusters, g_id):
     k = [c for c in clusters.keys() if g_id in clusters[c]['gesture_ids']]
@@ -121,7 +197,7 @@ class GestureSentenceManager:
     # TODO implement this
     # this should really be in the rhetorical parser but because it has to do with
     # the management of the entire data, I put it here.
-    def drop_without_rhetorical_parse(self):
+    def drop_without_rhetorical_parse(self, inplace=True):
         parsed_transcripts = list_blobs(bucket_name='parsed_transcript_bucket')
         # take off the .json.rhet_parse from the end
         pts = [p[:-16] for p in parsed_transcripts]
@@ -131,6 +207,9 @@ class GestureSentenceManager:
             hack.append(p + '.mkv')
             hack.append(p + '.mp4')
         new_df = self.df[self.df['video_fn'].isin(hack)].reset_index(drop=True)
+        if inplace:
+            self.df = new_df
+            return
         return new_df
 
     # splice gestures when there seems to be no movement or speaking
