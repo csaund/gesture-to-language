@@ -113,6 +113,7 @@ def analyze_clusters(df, clusters, stats):
         'max': sc_no_generic.max(),
         'min': sc_no_generic.min()
     }
+    stats['speaker_distribution'] = get_speaker_distribution(df, clusters)
     return sc, btw_sc, clusters, stats
 
 # GSM, clusters, stats = run_all_on_speaker("ellen"), for example
@@ -123,6 +124,19 @@ def run_all_on_speaker(speaker):
     clusters, stats = fix_up_clusters(clusters, stats)
     sc, btw, clusters, stats = analyze_clusters(GSM.df, clusters, stats)
     return GSM, clusters, stats
+
+# TODO get speaker overlap within clusters -- should be uniform
+def get_all_for_speakers(speakers):
+    GSMs = []
+    clusters = []
+    stats = []
+    for s in speakers:
+        print("Starting ", s)
+        gsm, cs, st = run_all_on_speaker(s)
+        GSMs.append(gsm)
+        clusters.append(cs)
+        stats.append(st)
+    return GSMs, clusters, stats
 
 
 # TODO run loop magic on this?

@@ -82,6 +82,14 @@ def get_key_for_worst_silhouette_score(clusters):
     return mink
 
 
+def drop_worst_n_clusters(clusters, n):
+    cs = clusters
+    for i in range(n):
+        k = get_key_for_worst_silhouette_score(cs)
+        del cs[k]
+    return cs
+
+
 def combine_worst_n_clusters(clusters, n, df):
     for i in tqdm(range(n)):
         k = get_key_for_worst_silhouette_score(clusters)
@@ -95,6 +103,9 @@ def get_silhouette_scores_alternative_clustering(df, clusters, exclude_keys=[], 
     for c in tqdm(clusters.keys()):
         if c in exclude_keys:
             continue
+        elif 'silhouette_score' in clusters[c].keys():
+            scores.append(clusters[c]['silhouette_score'])
+            continue
         s = get_silhouette_score_for_alternative_clustering_by_id(df, clusters, c)
         scores.append(s)
         if add_scores:
@@ -102,6 +113,31 @@ def get_silhouette_scores_alternative_clustering(df, clusters, exclude_keys=[], 
     if add_scores:
         return np.array(scores), clusters
     return np.array(scores)
+
+
+# TODO do somethng with this
+def get_speaker_distribution(df, clusters):
+    dists = []
+    for c in clusters.keys():
+        speaker_dist = get_speaker_distribution_for_ids(df, clusters[c]['gesture_ids'])
+        dists.append(speaker_dist)
+    return dists
+
+
+def get_speaker_distribution_for_ids(df, ids):
+    sps = df.speaker.unique().tolist()
+    speakers = dict(zip(sps, [0]*len(sps)))
+    for i in ids:
+        sp = df[df['id']==i]['speaker'].to_list()[0]
+        speakers[sp] += 1
+    return speakers
+
+
+
+def len_vs_sil_score_scatter(clusters):
+    lens = [len(clusters[c]['gesture_ids']) for c in clusters.keys()]
+    sils = [clusters[c]['silhouette_score'] for c in clusters.keys()]
+    plt.scatter(lens, sils)
 
 
 def get_silhouette_score_for_alternative_clustering_by_id(df, clusters, cluster_id):
@@ -158,7 +194,7 @@ def get_feature_vector_by_gesture_id(df, g_id):
 # clusters look like this:
 # {'gesture_ids': [# list of ids #], 'centroid': [# feature vector #]}
 def add_centroids_to_clusters_motion_vec(df, clusters):
-    for c in clusters.keys():
+    for c in tqdm(clusters.keys()):
         clusters[c]['centroid'] = get_centroid_from_gids(df, clusters[c]['gesture_ids'])
     return clusters
 
@@ -170,6 +206,7 @@ def get_centroid_from_gids(df, gids):
         fvs.append(fv)
     m = np.array(fvs)
     return m.mean(0)
+
 
 def get_dists_between_point_and_cluster(df, vec, cluster_id, clusters):
     dists = []
