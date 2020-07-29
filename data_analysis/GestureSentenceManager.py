@@ -40,12 +40,29 @@ ADJ = ["JJ"]
 # Ann = Analyzer(GSM)           # Before this must run GSM.combine_all_gesture_data()
 
 
+# GSMs, clusters, stats = get_all_for_speakers(['ellen', 'shelly', 'rock', 'conan', 'oliver'])
+# for individualized stats:
+# ellen_stats = get_stats_motion_subclustering(clusters[0], GSMs[0].df)
+# for big mama stats
+# GSMs = [GSMs[0].df, GSMs[1].df, GSMs[2].df, GSMs[3].df]
+def getta_da_big_stats(GSMs):
+    all_speakers_df = combine_dfs(GSMs)
+    big_clusters = cluster_fixed_tag(all_speakers_df)
+    GCbig = GestureClusterer(all_speakers_df)
+    all_speakers_df = GCbig.assign_feature_vectors()
+    big_clusters = add_centroids_to_clusters_motion_vec(all_speakers_df, big_clusters)
+    big_stats = get_stats_motion_subclustering(big_clusters, all_speakers_df)
+    for k in big_stats.keys():
+        print(big_stats[k])
+
 # set up the GSM with rhetorical parses, etc.
 # example:
 # $ GSM, stats = setup_GSM("ellen")
-def setup_GSM(speaker, stats, GSM=None):
+def setup_GSM(speaker, stats=None, GSM=None):
     if GSM is None:
         GSM = GestureSentenceManager(speaker)
+    if stats is None:
+        stats = {}
     stats['starting_shape'] = GSM.df.shape
     GSM.drop_null_keyframes(inplace=True)
     stats['shape_dropped_kf'] = GSM.df.shape
@@ -125,18 +142,60 @@ def run_all_on_speaker(speaker):
     sc, btw, clusters, stats = analyze_clusters(GSM.df, clusters, stats)
     return GSM, clusters, stats
 
+
 # TODO get speaker overlap within clusters -- should be uniform
 def get_all_for_speakers(speakers):
     GSMs = []
     clusters = []
     stats = []
     for s in speakers:
-        print("Starting ", s)
-        gsm, cs, st = run_all_on_speaker(s)
-        GSMs.append(gsm)
-        clusters.append(cs)
-        stats.append(st)
+        try:
+            print("Starting ", s)
+            gsm, cs, st = run_all_on_speaker(s)
+            GSMs.append(gsm)
+            clusters.append(cs)
+            stats.append(st)
+        except:
+            print("could not get speaker data for ", s)
     return GSMs, clusters, stats
+
+
+def get_stats_motion_subclustering(clusters, df):
+    # get all the single-key clusters. Can remove this bit.
+    clusts = get_single_key_clusters(clusters)
+    stateroonies = dict()
+    # create motion clustering for each cluster
+    for k in clusts.keys():
+        print('running stats for rhetorical cluster', k)
+        c = clusts[k]
+        df_to_cluster = df[df['id'].isin(c['gesture_ids'])]
+        # send these to get clustered by motion
+        GC = GestureClusterer(df_to_cluster)
+        GC.cluster_gestures()
+        # hack, todo put this in GC
+        for cluster_keys in GC.clusters.keys():
+            GC.clusters[cluster_keys]['silhouette_score'] = GC.get_silhouette_score(cluster_keys)
+        GC.clusters = combine_worst_n_clusters(GC.clusters, int(len(GC.clusters)/2), df)
+
+        stateroonies[k] = report_clusters(GC)
+    return stateroonies
+        # get the stats on this clustering
+
+
+def print_stats(stats):
+    avg_stats = []
+    for k in stats.keys():
+        try:
+            avg_stats.append(stats[k]['AvgSilhouetteScore'])
+        except:
+            print('no avg silhouette score for ', k)
+    av = np.array(avg_stats)
+    print(av)
+    print("average silhouette score for individualized clusters: ", av.mean())
+
+
+def get_single_key_clusters(clusters):
+    return {k: clusters[k] for k in clusters.keys() if k != -1 and len(k.split(' ')) < 2}
 
 
 # TODO run loop magic on this?
@@ -145,7 +204,7 @@ def combine_analyze_clusters(dfs, n):
     rhetorical_clusters, stats = get_combined_clusters_from_dfs(dfs)    # this adds silhouette scores and centroids
     rhetorical_clusters = combine_worst_n_clusters(rhetorical_clusters, n, comb_df)
     comb_sc, comb_btw_sc, comb_clusters, comb_stats = analyze_clusters(comb_df, rhetorical_clusters, stats)
-    return comb_clusters, comb_stats
+    return comb_df, comb_clusters, comb_stats
 
 
 def get_combined_clusters_from_dfs(dfs=None):
@@ -320,6 +379,13 @@ class GestureSentenceManager:
                 'keyframes': motion
             }
 
+            # apparently we have to fucking correct the start and end times
+            # of the phrases because wtf.
+            if not exclude_words and data[i]['start_seconds'] >= text['words'][0]['word_start']:
+                data[i]['start_seconds'] = text['words'][0]['word_start'] - 1
+            if not exclude_words and data[i]['end_seconds'] <= text['words'][-1]['word_end']:
+                data[i]['end_seconds'] = text['words'][-1]['word_end'] + 1
+
         return pd.DataFrame.from_dict(data).T.reset_index()
 
     def get_motion_features(self):
@@ -390,8 +456,16 @@ class GestureSentenceManager:
         return self.df[~self.df['id'].isin(exclude_ids)]
 
     def get_gesture_by_id(self, g_id):
-        i = self.get_index_by_gesture_id(g_id)
-        return self.df.iloc[i]
+        tdf = self.df[self.df['id'] == g_id]
+        if len(tdf) > 1:
+            print("DANGER more than one gesture found with id", g_id)
+        elif len == 0:
+            print("No gesture found with id ", g_id)
+            return
+
+        for i, r in tdf.iterrows():
+            return r
+
 
     def get_gesture_motion_by_id(self, g_id):
         i = self.get_index_by_gesture_id(g_id)
@@ -509,3 +583,9 @@ class GestureSentenceManager:
             silhouettes.append(self.GestureClusterer.get_silhouette_score_for_alternative_clustering(rhetoric_clusters, k))
         silhouettes = np.array(silhouettes)
         return silhouettes.mean(), silhouettes.std()
+
+
+# TODO either formalize this or delete it
+def get_gesture_length(df, gid):
+    for i, r in df[df['id'] == gid ].iterrows():
+        return r['end_seconds'] - r['start_seconds']

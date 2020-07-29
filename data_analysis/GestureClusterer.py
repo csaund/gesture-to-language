@@ -8,6 +8,7 @@ from tqdm import tqdm
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 from GestureMovementHelpers import *
 from common_helpers import *
+from sklearn.cluster import AgglomerativeClustering, DBSCAN
 
 
 # semantics -- wn / tf
@@ -49,7 +50,7 @@ def combine_singletons(clusters, distance_metric='feature_vec'):
 def combine_clusters_by_id(cid1, cid2, clustering, df):
     c1 = clustering[cid1]
     c2 = clustering[cid2]
-    nk = cid1 + '+' + cid2
+    nk = str(cid1) + '+' + str(cid2)
     ng_ids = c1['gesture_ids'] + c2['gesture_ids']
     comb_keys = []
     if 'combined_keys' in c1.keys() and 'combined_keys' in c2.keys():
@@ -118,9 +119,14 @@ def get_silhouette_scores_alternative_clustering(df, clusters, exclude_keys=[], 
 # TODO do somethng with this
 def get_speaker_distribution(df, clusters):
     dists = []
-    for c in clusters.keys():
-        speaker_dist = get_speaker_distribution_for_ids(df, clusters[c]['gesture_ids'])
-        dists.append(speaker_dist)
+    sps = df.speaker.unique().tolist()
+    for c in tqdm(clusters.keys()):
+        dist = {}
+        for s in sps:
+            dist[s] = len(df[(df['id'].isin(clusters[c]['gesture_ids'])) & (df['speaker'] == s)])
+        # speaker_dist = get_speaker_distribution_for_ids(df, clusters[c]['gesture_ids'])
+        dists.append(dist)
+    # TODO implement Ripley L/K functions here
     return dists
 
 
@@ -128,7 +134,7 @@ def get_speaker_distribution_for_ids(df, ids):
     sps = df.speaker.unique().tolist()
     speakers = dict(zip(sps, [0]*len(sps)))
     for i in ids:
-        sp = df[df['id']==i]['speaker'].to_list()[0]
+        sp = df[df['id'] == i]['speaker'].to_list()[0]
         speakers[sp] += 1
     return speakers
 
@@ -385,6 +391,12 @@ def _calculate_distance_between_vectors(v1, v2):
     return np.linalg.norm(np.array(v1) - np.array(v2))
 
 
+# Given these ids, perform k-means on these IDs.
+# (create multiple clusters from these IDs, based on motion)
+# def create_subclusters_from_gesture_ids():
+
+
+
 class GestureClusterer:
     # all the gesture data for gestures we want to cluster.
     # the ids of any seed gestures we want to use for our clusters.
@@ -482,9 +494,10 @@ class GestureClusterer:
         return df
 
     def get_feature_vector_by_gesture_id(self, g_id):
-        i = self.df.index[self.df['id'] == g_id].tolist()
-        if i:
-            return self.df.iloc[i[0]]['motion_feature_vec']
+        try:
+            return self.df[self.df['id'] == g_id].motion_feature_vec.to_list()[0]
+        except:
+            print('no id found ', gid)
         return
 
     @timeit
@@ -523,31 +536,31 @@ class GestureClusterer:
 
     def get_sentences_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
-        gestures_in_cluster = self.df.loc[self.df['id'].isin(c['gesture_ids'])]
-        transcripts = list(gestures_in_cluster['transcripts'])
-        return transcripts
+        return self.df[self.df['id'].isin(c['gesture_ids'])]['transcript'].to_list()
 
     def get_gesture_ids_by_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
         return c['gesture_ids']
 
     def report_clusters(self):
-        print(("Number of clusters: %s" % len(self.clusters)))
+        report = {}
+        report["NumberOfClusters"] = len(self.clusters)
         cluster_rep = [(c, len(self.clusters[c]['gesture_ids'])) for c in list(self.clusters.keys())]
         cluster_lengths = [len(self.clusters[c]['gesture_ids']) for c in list(self.clusters.keys())]
-        print(("Cluster lengths: %s" % cluster_rep))
-        print(("Avg cluster size: %s" % np.average(cluster_lengths)))
-        print(("Median cluster size: %s" % np.median(cluster_lengths)))
-        print(("Largest cluster size: %s" % max(cluster_lengths)))
+        report["ClusterLengths"] = cluster_rep
+        report["AvgClusterSize" ] = np.average(cluster_lengths)
+        report["MedianClusterSize"] = np.median(cluster_lengths)
+        report["LargestClusterSize"] = max(cluster_lengths)
         cluster_sparsity = [self.get_cluster_sparsity(c) for c in list(self.clusters.keys())]
-        print(("Cluster sparsity: %s" % cluster_sparsity))
-        print(("Avg cluster sparsity: %s" % np.average(cluster_sparsity)))
-        print(("Median cluster sparsity: %s" % np.median(cluster_sparsity)))
-        print(("Sanity check: total clustered gestures: %s / %s" % (sum(cluster_lengths), len(self.agd))))
-        print("silhouette score: %s" % self.get_avg_silhouette_score())
+        report["ClusterSparsity" ] = cluster_sparsity
+        report["AvgClusterSparsity" ] = np.average(cluster_sparsity)
+        report["MedianClusterSparsity"] = np.median(cluster_sparsity)
+        report["AvgSilhouetteScore"] = self.get_avg_silhouette_score()
+        sil_scores_keys = [(c, self.clusters[c]['silhouette_score']) for c in self.clusters.keys()]
+        report['AllSilhouetteScores'] = sil_scores_keys
         # TODO: average and median centroid distances from each other.
         # TODO: also get minimum and maximum centroid distances.
-        return self.clusters
+        return report
 
     # measure of how distant the gestures are... basically avg distance to centroid
     def get_cluster_sparsity(self, cluster_id):
@@ -636,7 +649,7 @@ class GestureClusterer:
         cent = c['centroid']
         min_d = 1000
         g_id = 0
-        for g in c['gestures']:
+        for g in c['gesture_ids']:
             dist = _calculate_distance_between_vectors(g['feature_vec'], cent)
             if dist < min_d:
                 g_id = g['id']
@@ -645,8 +658,8 @@ class GestureClusterer:
 
     def get_random_gesture_id_from_cluster(self, cluster_id):
         c = self.clusters[cluster_id]
-        i = random.randrange(0, len(c['gestures']))
-        return c['gestures'][i]['id']
+        i = random.randrange(0, len(c['gesture_ids']))
+        return c['gesture_ids'][i]['id']
 
     # a random helper for me to find centroids
     # and peep average distances
@@ -711,13 +724,14 @@ class GestureClusterer:
         c2_magnitude = len(self.clusters[c2]['gesture_ids'])
         if len(c['gesture_ids']) == 1:
             return 0
-        elif len(c['gesture_ids'] < 1):
+        elif len(c['gesture_ids']) < 1:
             print("No gestures in cluster ", cluster_id)
             return 0
         p = c['centroid']
         a = sum(self.get_dists_between_point_and_cluster(p, cluster_id)) / (c_magnitude - 1)
         b = sum(self.get_dists_between_point_and_cluster(p, c2)) / c2_magnitude
         score = (b - a) / max(b, a)
+        self.clusters[cluster_id]['silhouette_score'] = score
         return score
 
     # get silhouette score of MOVEMENT as if it were clustered as clusters.
@@ -758,3 +772,25 @@ class GestureClusterer:
 
 
 # Silhouette scores for clusters are a good way of determining how many "base" gestures there may be??
+def report_clusters(GC):
+    report = {}
+    report["NumberOfClusters"] = len(GC.clusters)
+    cluster_rep = [(c, len(GC.clusters[c]['gesture_ids'])) for c in list(GC.clusters.keys())]
+    cluster_lengths = [len(GC.clusters[c]['gesture_ids']) for c in list(GC.clusters.keys())]
+    report["ClusterLengths"] = cluster_rep
+    report["AvgClusterSize" ] = np.average(cluster_lengths)
+    report["MedianClusterSize"] = np.median(cluster_lengths)
+    report["LargestClusterSize"] = max(cluster_lengths)
+    cluster_sparsity = [GC.get_cluster_sparsity(c) for c in list(GC.clusters.keys())]
+    report["ClusterSparsity" ] = cluster_sparsity
+    report["AvgClusterSparsity" ] = np.average(cluster_sparsity)
+    report["MedianClusterSparsity"] = np.median(cluster_sparsity)
+    try:
+        report["AvgSilhouetteScore"] = GC.get_avg_silhouette_score()
+        sil_scores_keys = [(c, GC.clusters[c]['silhouette_score']) for c in GC.clusters.keys()]
+        report['AllSilhouetteScores'] = sil_scores_keys
+        # TODO: average and median centroid distances from each other.
+        # TODO: also get minimum and maximum centroid distances.
+    except:
+        print("Could not get silhouette score for clusters")
+    return report
